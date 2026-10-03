@@ -660,10 +660,13 @@ def _resumen_movimientos(pagos, gastos, pagos_personal, incluir_detalle=False):
             gastos_efectivo += monto
 
         if incluir_detalle:
+            concepto_detalle = getattr(pp, 'motivo', None) or f"{pp.mes}/{pp.anio}"
             detalle['pagos_personal'].append({
                 'fecha': str(pp.fecha_pago),
-                'detalle': f"{pp.nombre_persona} - {pp.mes}/{pp.anio}",
-                'monto': monto, 'metodo': metodo
+                'nombre_persona': pp.nombre_persona,
+                'detalle': concepto_detalle,
+                'monto': monto,
+                'metodo': metodo
             })
 
     return {
@@ -790,7 +793,7 @@ def iniciar_scheduler_informes(app):
                         hoy = ahora.date()
                         generar_informe_diario(hoy)
                         if ahora.weekday() == 6:
-                            gener_informe_semanal(hoy)
+                            generar_informe_semanal(hoy)
                         if (hoy + timedelta(days=1)).day == 1:
                             generar_informe_mensual(hoy.year, hoy.month)
             except Exception as e:

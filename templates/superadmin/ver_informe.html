@@ -177,6 +177,7 @@
                     <thead class="table-light">
                         <tr>
                             <th>ID</th>
+                            <th>Concepto / Detalle</th>
                             <th>Estudiante</th>
                             <th>Mes/Año</th>
                             <th>Monto</th>
@@ -188,6 +189,9 @@
                         {% for pago in detalle.pagos %}
                         <tr>
                             <td>{{ pago.id }}</td>
+                            <td>
+                                <strong>{{ pago.concepto or pago.detalle or 'Pago de Colegiatura / Cuota' }}</strong>
+                            </td>
                             <td>ID: {{ pago.estudiante_id }}</td>
                             <td>{{ pago.mes }}/{{ pago.anio }}</td>
                             <td class="text-success">
@@ -253,6 +257,58 @@
                             </td>
                             <td><small>{{ gasto.fecha }}</small></td>
                             <td><small>{{ gasto.proveedor }}</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- =============================================================== -->
+    <!-- PAGOS AL PERSONAL -->
+    <!-- =============================================================== -->
+
+    {% if detalle.pagos_personal %}
+    <div class="card shadow mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-people-fill"></i> Pagos al Personal ({{ detalle.pagos_personal|length }} registros)
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th style="width: 100px;">Fecha</th>
+                            <th>Personal / Beneficiario</th>
+                            <th>Concepto / Detalle</th>
+                            <th style="width: 110px;">Método</th>
+                            <th style="width: 130px;" class="text-end">Monto</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in detalle.pagos_personal %}
+                        <tr>
+                            <td><small>{{ p.fecha }}</small></td>
+                            <td><strong>{{ p.nombre_persona }}</strong></td>
+                            <td>
+                                <span class="badge bg-light text-dark border">
+                                    {{ p.motivo or p.concepto or 'Sueldo / Adelanto' }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if p.metodo_pago == 'Efectivo' or not p.metodo_pago %}
+                                    <span class="badge bg-success">Efectivo</span>
+                                {% else %}
+                                    <span class="badge bg-primary">Bancario</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-danger text-end">
+                                <strong>Bs. {{ '%.2f'|format(p.monto or p.monto_neto_pagado or 0) }}</strong>
+                            </td>
                         </tr>
                         {% endfor %}
                     </tbody>
