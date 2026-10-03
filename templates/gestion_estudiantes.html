@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>CANAL 9 TVA-TELEVISIÓN AMAZÓNICA-RIBERALTA - Gestión de Estudiantes</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; background-color: #f4f4f9; color: #333; }
+        .container { max-width: 600px; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-weight: bold; margin-bottom: 8px; }
+        select { width: 100%; padding: 10px; border-radius: 4px; border: 1px solid #ccc; font-size: 16px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Gestión de Estudiantes</h2>
+        
+        <!-- Selector de Cursos y Paralelos -->
+        <div class="form-group">
+            <label for="filtro-curso">Filtrar por Curso:</label>
+            <select id="filtro-curso" class="form-control" onchange="cargarEstudiantes(this.value)">
+                <option value="" disabled selected>-- Seleccione un curso --</option>
+                <option value="todos">Todos los Cursos</option>
+                <option value="1_primaria_a">1ro Primaria A</option>
+                <option value="1_primaria_b">1ro Primaria B</option>
+                <option value="2_primaria_a">2do Primaria A</option>
+                <option value="2_primaria_b">2do Primaria B</option>
+                <option value="3_primaria_a">3ro Primaria A</option>
+                <option value="3_primaria_b">3ro Primaria B</option>
+                <option value="4_primaria_a">4to Primaria A</option>
+                <option value="4_primaria_b">4to Primaria B</option>
+                <option value="5_primaria_a">5to Primaria A</option>
+                <option value="5_primaria_b">5to Primaria B</option>
+                <option value="6_primaria_a">6to Primaria A</option>
+                <option value="6_primaria_b">6to Primaria B</option>
+                <option value="1_secundaria_a">1ro Secundaria A</option>
+                <option value="1_secundaria_b">1ro Secundaria B</option>
+                <option value="2_secundaria_a">2do Secundaria A</option>
+                <option value="2_secundaria_b">2do Secundaria B</option>
+                <option value="3_secundaria_a">3ro Secundaria A</option>
+                <option value="3_secundaria_b">3ro Secundaria B</option>
+                <option value="4_secundaria_a">4to Secundaria A</option>
+                <option value="4_secundaria_b">4to Secundaria B</option>
+                <option value="5_secundaria_a">5to Secundaria A</option>
+                <option value="5_secundaria_b">5to Secundaria B</option>
+                <option value="6_secundaria_a">6to Secundaria A</option>
+                <option value="6_secundaria_b">6to Secundaria B</option>
+            </select>
+        </div>
+
+        <!-- Selector de Estudiantes (Inicia totalmente vacío y deshabilitado) -->
+        <div class="form-group">
+            <label for="select-estudiante">Estudiante:</label>
+            <select id="select-estudiante" class="form-control" name="estudiante_id" disabled>
+                <option value="" disabled selected>-- Primero seleccione un curso --</option>
+            </select>
+        </div>
+    </div>
+
+    <script>
+    function cargarEstudiantes(curso) {
+        const selectEstudiante = document.getElementById('select-estudiante');
+        
+        selectEstudiante.innerHTML = '<option value="" disabled selected>Cargando estudiantes...</option>';
+        selectEstudiante.disabled = true;
+
+        if (!curso) return;
+
+        fetch(`/api/estudiantes_por_curso?curso=${encodeURIComponent(curso)}`)
+            .then(response => response.json())
+            .then(data => {
+                selectEstudiante.innerHTML = '<option value="" disabled selected>-- Seleccione un estudiante --</option>';
+                
+                if (data.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = "";
+                    option.textContent = "No hay estudiantes registrados en este curso";
+                    selectEstudiante.appendChild(option);
+                    selectEstudiante.disabled = true;
+                    return;
+                }
+
+                data.forEach(est => {
+                    const option = document.createElement('option');
+                    option.value = est.id;
+                    option.textContent = `${est.apellidos}, ${est.nombres}`;
+                    selectEstudiante.appendChild(option);
+                });
+
+                selectEstudiante.disabled = false;
+            })
+            .catch(error => {
+                console.error('Error al obtener los estudiantes:', error);
+                selectEstudiante.innerHTML = '<option value="" disabled selected>Error al cargar datos</option>';
+            });
+    }
+    </script>
+</body>
+</html>

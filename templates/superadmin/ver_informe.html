@@ -1,0 +1,276 @@
+{% extends "base.html" %}
+
+{% block title %}
+    {% if informe.tipo_informe == 'Diario' %}
+        Informe Diario
+    {% elif informe.tipo_informe == 'Semanal' %}
+        Informe Semanal
+    {% else %}
+        Informe Mensual
+    {% endif %}
+    - Colegio Dr. Antonio Vaca Díez
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- =============================================================== -->
+    <!-- ENCABEZADO -->
+    <!-- =============================================================== -->
+
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-2">
+        <h2 class="mb-0">
+            {% if informe.tipo_informe == 'Diario' %}
+                <i class="bi bi-calendar-day text-primary"></i> Informe Diario
+            {% elif informe.tipo_informe == 'Semanal' %}
+                <i class="bi bi-calendar-week text-success"></i> Informe Semanal
+            {% else %}
+                <i class="bi bi-calendar-month text-info"></i> Informe Mensual
+            {% endif %}
+        </h2>
+
+        <a href="{{ url_for('superadmin.lista_informes') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <!-- =============================================================== -->
+    <!-- PERÍODO -->
+    <!-- =============================================================== -->
+
+    <div class="alert alert-info">
+        <strong>Período:</strong>
+        {{ informe.fecha_inicio.strftime('%d/%m/%Y') }}
+        {% if informe.fecha_inicio != informe.fecha_fin %}
+            al {{ informe.fecha_fin.strftime('%d/%m/%Y') }}
+        {% endif %}
+        <br>
+        <strong>Generado:</strong> {{ informe.fecha_generacion.strftime('%d/%m/%Y %H:%M:%S') }}
+    </div>
+
+    <!-- =============================================================== -->
+    <!-- RESUMEN POR CAJAS -->
+    <!-- =============================================================== -->
+
+    <div class="row g-3 mb-4">
+
+        <!-- Caja Efectivo -->
+        <div class="col-12 col-md-6">
+            <div class="card shadow-sm border-success h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Caja Efectivo</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <tr>
+                            <td><strong>Ingresos:</strong></td>
+                            <td class="text-success text-end">
+                                <strong>Bs. {{ '%.2f'|format(informe.ingresos_efectivo) }}</strong>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gastos:</strong></td>
+                            <td class="text-danger text-end">
+                                <strong>Bs. {{ '%.2f'|format(informe.gastos_efectivo) }}</strong>
+                            </td>
+                        </tr>
+                        <tr class="table-active">
+                            <td><strong>Saldo:</strong></td>
+                            <td class="text-end">
+                                <strong class="{% if informe.saldo_efectivo >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    Bs. {{ '%.2f'|format(informe.saldo_efectivo) }}
+                                </strong>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Caja Bancaria -->
+        <div class="col-12 col-md-6">
+            <div class="card shadow-sm border-primary h-100">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-bank"></i> Caja Bancaria</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <tr>
+                            <td><strong>Ingresos:</strong></td>
+                            <td class="text-success text-end">
+                                <strong>Bs. {{ '%.2f'|format(informe.ingresos_bancario) }}</strong>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td><strong>Gastos:</strong></td>
+                            <td class="text-danger text-end">
+                                <strong>Bs. {{ '%.2f'|format(informe.gastos_bancario) }}</strong>
+                            </td>
+                        </tr>
+                        <tr class="table-active">
+                            <td><strong>Saldo:</strong></td>
+                            <td class="text-end">
+                                <strong class="{% if informe.saldo_bancario >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                    Bs. {{ '%.2f'|format(informe.saldo_bancario) }}
+                                </strong>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- =============================================================== -->
+    <!-- TOTALES GENERALES -->
+    <!-- =============================================================== -->
+
+    <div class="card shadow mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="bi bi-calculator"></i> Resumen General</h5>
+        </div>
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-12 col-md-4">
+                    <div class="text-center p-3 bg-light rounded">
+                        <h6 class="text-muted">Total Ingresos</h6>
+                        <h3 class="text-success mb-0">
+                            Bs. {{ '%.2f'|format(informe.total_ingresos) }}
+                        </h3>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="text-center p-3 bg-light rounded">
+                        <h6 class="text-muted">Total Gastos</h6>
+                        <h3 class="text-danger mb-0">
+                            Bs. {{ '%.2f'|format(informe.total_gastos) }}
+                        </h3>
+                    </div>
+                </div>
+                <div class="col-12 col-md-4">
+                    <div class="text-center p-3 bg-light rounded">
+                        <h6 class="text-muted">Saldo Total</h6>
+                        <h3 class="{% if informe.saldo_total >= 0 %}text-success{% else %}text-danger{% endif %} mb-0">
+                            Bs. {{ '%.2f'|format(informe.saldo_total) }}
+                        </h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- =============================================================== -->
+    <!-- DETALLE DE PAGOS (INGRESOS) -->
+    <!-- =============================================================== -->
+
+    {% if detalle.pagos %}
+    <div class="card shadow mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-arrow-down-circle"></i> Detalle de Ingresos ({{ detalle.pagos|length }} pagos)
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Estudiante</th>
+                            <th>Mes/Año</th>
+                            <th>Monto</th>
+                            <th>Método</th>
+                            <th>Fecha</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pago in detalle.pagos %}
+                        <tr>
+                            <td>{{ pago.id }}</td>
+                            <td>ID: {{ pago.estudiante_id }}</td>
+                            <td>{{ pago.mes }}/{{ pago.anio }}</td>
+                            <td class="text-success">
+                                <strong>Bs. {{ '%.2f'|format(pago.monto) }}</strong>
+                            </td>
+                            <td>
+                                {% if pago.metodo_pago == 'Efectivo' %}
+                                    <span class="badge bg-success">Efectivo</span>
+                                {% else %}
+                                    <span class="badge bg-primary">Bancario</span>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ pago.fecha }}</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- =============================================================== -->
+    <!-- DETALLE DE GASTOS -->
+    <!-- =============================================================== -->
+
+    {% if detalle.gastos %}
+    <div class="card shadow mb-4">
+        <div class="card-header bg-danger text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-arrow-up-circle"></i> Detalle de Gastos ({{ detalle.gastos|length }} gastos)
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>ID</th>
+                            <th>Categoría</th>
+                            <th>Descripción</th>
+                            <th>Monto</th>
+                            <th>Método</th>
+                            <th>Fecha</th>
+                            <th>Proveedor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for gasto in detalle.gastos %}
+                        <tr>
+                            <td>{{ gasto.id }}</td>
+                            <td>{{ gasto.categoria }}</td>
+                            <td>{{ gasto.descripcion }}</td>
+                            <td class="text-danger">
+                                <strong>Bs. {{ '%.2f'|format(gasto.monto) }}</strong>
+                            </td>
+                            <td>
+                                {% if gasto.metodo_pago == 'Efectivo' %}
+                                    <span class="badge bg-success">Efectivo</span>
+                                {% else %}
+                                    <span class="badge bg-primary">Bancario</span>
+                                {% endif %}
+                            </td>
+                            <td><small>{{ gasto.fecha }}</small></td>
+                            <td><small>{{ gasto.proveedor }}</small></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- =============================================================== -->
+    <!-- AVISO CONFIDENCIAL -->
+    <!-- =============================================================== -->
+
+    <div class="alert alert-warning">
+        <i class="bi bi-shield-exclamation"></i>
+        <strong>Documento Confidencial:</strong> Este informe es de uso exclusivo del Superadministrador.
+        No comparta esta información con terceros.
+    </div>
+
+</div>
+{% endblock %}

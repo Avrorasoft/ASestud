@@ -1,0 +1,111 @@
+{% extends "base.html" %}
+{% block title %}Actualizar Cardex de Salud - {{ est.nombres }} {{ est.apellidos }}{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Cabecera -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
+        <div>
+            <h2 class="text-dark mb-0">
+                <i class="bi bi-heart-pulse-fill me-2 text-danger"></i>Actualizar Cardex de Salud
+            </h2>
+            <p class="text-muted mb-0 ms-4">Estudiante: <strong>{{ est.apellidos }}, {{ est.nombres }}</strong> | RUDE: {{ est.rude }}</p>
+        </div>
+        <div>
+            <a href="{{ url_for('estudiantes.ver_estudiante', id=est.id) }}" class="btn btn-secondary shadow-sm">
+                <i class="bi bi-arrow-left me-1"></i>Volver al Cardex
+            </a>
+        </div>
+    </div>
+
+    <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-header bg-white py-3 border-bottom">
+            <h5 class="mb-0 text-dark fw-bold">Información Médica del Estudiante</h5>
+        </div>
+        <div class="card-body p-4 p-md-5">
+            <!-- FORMULARIO REPARADO -->
+            <form action="{{ url_for('estudiantes.salud_estudiante', id=est.id) }}" method="POST">
+                <div class="row g-4">
+                    
+                    <!-- Tipo de Sangre -->
+                    <div class="col-md-4">
+                        <label for="tipo_sangre" class="form-label fw-bold text-secondary">Tipo de Sangre</label>
+                        <select class="form-select form-select-lg" name="tipo_sangre" id="tipo_sangre">
+                            <option value="" {% if not est.tipo_sangre %}selected{% endif %}>Seleccione...</option>
+                            <option value="O+" {% if est.tipo_sangre == 'O+' %}selected{% endif %}>O Positivo (O+)</option>
+                            <option value="O-" {% if est.tipo_sangre == 'O-' %}selected{% endif %}>O Negativo (O-)</option>
+                            <option value="A+" {% if est.tipo_sangre == 'A+' %}selected{% endif %}>A Positivo (A+)</option>
+                            <option value="A-" {% if est.tipo_sangre == 'A-' %}selected{% endif %}>A Negativo (A-)</option>
+                            <option value="B+" {% if est.tipo_sangre == 'B+' %}selected{% endif %}>B Positivo (B+)</option>
+                            <option value="B-" {% if est.tipo_sangre == 'B-' %}selected{% endif %}>B Negativo (B-)</option>
+                            <option value="AB+" {% if est.tipo_sangre == 'AB+' %}selected{% endif %}>AB Positivo (AB+)</option>
+                            <option value="AB-" {% if est.tipo_sangre == 'AB-' %}selected{% endif %}>AB Negativo (AB-)</option>
+                        </select>
+                    </div>
+
+                    <!-- Seguro Médico -->
+                    <div class="col-md-8">
+                        <label for="seguro_medico" class="form-label fw-bold text-secondary">Seguro Médico</label>
+                        <input type="text" class="form-control form-control-lg" name="seguro_medico" id="seguro_medico" value="{{ est.seguro_medico or '' }}" placeholder="Ej. Caja Nacional de Salud, Seguro Privado, etc.">
+                    </div>
+
+                    <!-- Alergias -->
+                    <div class="col-md-6">
+                        <label for="alergias" class="form-label fw-bold text-secondary">Alergias Conocidas</label>
+                        <textarea class="form-control" name="alergias" id="alergias" rows="3" placeholder="Medicamentos, alimentos, picaduras, etc.">{{ est.alergias or '' }}</textarea>
+                    </div>
+
+                    <!-- Enfermedades Crónicas -->
+                    <div class="col-md-6">
+                        <label for="enfermedades_cronicas" class="form-label fw-bold text-secondary">Enfermedades Crónicas</label>
+                        <textarea class="form-control" name="enfermedades_cronicas" id="enfermedades_cronicas" rows="3" placeholder="Asma, diabetes, epilepsia, etc.">{{ est.enfermedades_cronicas or '' }}</textarea>
+                    </div>
+
+                    <!-- Medicamentos Actuales -->
+                    <div class="col-12">
+                        <label for="medicamentos_actuales" class="form-label fw-bold text-secondary">Medicamentos de uso actual o regular</label>
+                        <input type="text" class="form-control" name="medicamentos_actuales" id="medicamentos_actuales" value="{{ est.medicamentos_actuales or '' }}" placeholder="Especifique si el estudiante toma algún medicamento durante el horario escolar">
+                    </div>
+
+                    <div class="col-12 mt-4">
+                        <h6 class="text-dark fw-bold border-bottom pb-2 mb-3">Contacto Médico de Emergencia</h6>
+                    </div>
+
+                    <!-- Nombre del Médico -->
+                    <div class="col-md-4">
+                        <label for="medico_nombre" class="form-label fw-bold text-secondary">Médico de Cabecera</label>
+                        <input type="text" class="form-control" name="medico_nombre" id="medico_nombre" value="{{ est.medico_nombre or '' }}" placeholder="Nombre del doctor">
+                    </div>
+
+                    <!-- Teléfono del Médico -->
+                    <div class="col-md-4">
+                        <label for="medico_telefono" class="form-label fw-bold text-secondary">Teléfono del Médico</label>
+                        <input type="text" class="form-control" name="medico_telefono" id="medico_telefono" value="{{ est.medico_telefono or '' }}" placeholder="Nro. de contacto">
+                    </div>
+
+                    <!-- Clínica Habitual -->
+                    <div class="col-md-4">
+                        <label for="clinica_habitual" class="form-label fw-bold text-secondary">Clínica / Centro de Salud Habitual</label>
+                        <input type="text" class="form-control" name="clinica_habitual" id="clinica_habitual" value="{{ est.clinica_habitual or '' }}" placeholder="Lugar de atención">
+                    </div>
+
+                    <!-- Observaciones Especiales -->
+                    <div class="col-12">
+                        <label for="observaciones_salud" class="form-label fw-bold text-secondary">Observaciones Especiales / Recomendaciones</label>
+                        <textarea class="form-control" name="observaciones_salud" id="observaciones_salud" rows="4" placeholder="Cualquier información adicional importante sobre la salud o cuidados del estudiante...">{{ est.observaciones_salud or '' }}</textarea>
+                    </div>
+
+                </div>
+                
+                <hr class="my-5 text-muted">
+                
+                <div class="d-flex justify-content-end gap-2">
+                    <a href="{{ url_for('estudiantes.ver_estudiante', id=est.id) }}" class="btn btn-light border shadow-sm px-4">Cancelar</a>
+                    <button type="submit" class="btn btn-danger shadow-sm px-5 fw-bold">
+                        <i class="bi bi-save-fill me-2"></i>Guardar Cardex de Salud
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

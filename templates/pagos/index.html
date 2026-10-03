@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Caja y Pagos - Colegio Dr. Antonio Vaca Díez{% endblock %}
+{% block content %}
+
+<div class="mb-3">
+    <a href="{{ url_for('pagos.reporte_deudores') }}" id="btnReporteDeudores" class="btn btn-danger shadow-sm">
+        <i class="fas fa-file-invoice-dollar me-2"></i> Generar Reporte de Deudores por Curso
+    </a>
+</div>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const btnDeudores = document.getElementById("btnReporteDeudores");
+        if (btnDeudores) {
+            btnDeudores.addEventListener("click", function(e) {
+                console.log("Navegando al módulo de control de deudores...");
+            });
+        }
+    });
+</script>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <h2><i class="bi bi-cash-coin me-2"></i>Control de Caja</h2>
+    </div>
+    <div class="col-md-4 text-end">
+        <a href="{{ url_for('pagos.registrar') }}" class="btn btn-success btn-lg"><i class="bi bi-plus-circle me-1"></i>Registrar Nuevo Pago</a>
+    </div>
+</div>
+
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body">
+                <h5 class="card-title">Total Recaudado</h5>
+                <h2 class="display-6">Bs. {{ "%.2f"|format(total) }}</h2>
+                <p class="card-text small">Acumulado histórico</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h4 class="mb-3">Últimos Movimientos</h4>
+<div class="card">
+    <div class="card-body p-0">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Fecha</th>
+                    <th>Estudiante</th>
+                    <th>Mes</th>
+                    <th>Monto</th>
+                    <th>Estado</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in recientes %}
+                <tr>
+                    <td>{{ p.fecha_pago.strftime('%d/%m/%Y') if p.fecha_pago else 'S/F' }}</td>
+                    <td>{{ p.estudiante.apellidos }}, {{ p.estudiante.nombres }}</td>
+                    <td>{{ p.mes }}/{{ p.anio }}</td>
+                    <td>Bs. {{ "%.2f"|format(p.monto_pagado) }}</td>
+                    <td>
+                        {% if p.estado == 'Anulado' %}
+                        <span class="badge bg-danger">{{ p.estado }}</span>
+                        {% else %}
+                        <span class="badge bg-success">{{ p.estado }}</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <a href="{{ url_for('pagos.generar_recibo', id=p.id) }}" class="btn btn-sm btn-outline-secondary me-1" title="Ver Recibo">
+                            <i class="bi bi-file-text"></i>
+                        </a>
+                        {% if p.estado != 'Anulado' %}
+                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalAnular{{ p.id }}" title="Anular Pago">
+                            <i class="bi bi-x-circle"></i> Anular
+                        </button>
+                        
+                        <!-- Modal de Autorización de Bóveda para Anulación -->
+                        <div class="modal fade text-start" id="modalAnular{{ p.id }}" tabindex="-1" aria-hidden="true">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form action="{{ url_for('pagos.anular_pago', id=p.id) }}" method="POST">
+                                        <div class="modal-header bg-danger text-white">
+                                            <h5 class="modal-title"><i class="bi bi-shield-lock-fill me-2"></i>Autorización de Bóveda</h5>
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+                                        <div class="modal-body">
+                                            <p class="mb-2">¿Está seguro de anular el pago del estudiante <strong>{{ p.estudiante.apellidos }}, {{ p.estudiante.nombres }}</strong> correspondiente a <strong>{{ p.mes }}/{{ p.anio }}</strong>?</p>
+                                            <p class="text-muted small mb-3">Esta acción excluirá el monto de los ingresos y dejará constancia contable.</p>
+                                            <div class="mb-3">
+                                                <label for="boveda_password{{ p.id }}" class="form-label fw-bold">Contraseña de Bóveda:</label>
+                                                <input type="password" class="form-control" id="boveda_password{{ p.id }}" name="boveda_password" placeholder="Ingrese clave de bóveda" required>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                            <button type="submit" class="btn btn-danger">Confirmar Anulación</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <span class="text-muted small fst-italic">Sin acciones</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="6" class="text-center py-3">No hay movimientos recientes.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

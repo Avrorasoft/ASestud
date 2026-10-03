@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-chat-dots-fill"></i> Centro de Mensajería Oficial</h2>
+        <a href="{{ url_for('mensajes.enviar_mensaje') }}" class="btn btn-primary"><i class="bi bi-plus-circle"></i> Redactar Comunicado</a>
+    </div>
+
+    <div class="card p-3">
+        <h5 class="card-title">Historial de Comunicados Enviados</h5>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Destinatario</th>
+                        <th>Tipo</th>
+                        <th>Teléfono</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for msg in mensajes %}
+                    <tr>
+                        <td>{{ msg.fecha_envio.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>{{ msg.destinatario }}</td>
+                        <td><span class="badge bg-info">{{ msg.tipo_mensaje }}</span></td>
+                        <td>{{ msg.telefono }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="text-center">Aún no hay mensajes registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

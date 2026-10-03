@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Monitor Institucional - Dirección</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        html, body {
+            background-color: #0b0f19;
+            color: #f8fafc;
+            font-family: 'Poppins', sans-serif;
+            overflow: hidden !important; 
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            font-size: 1.25rem;
+            box-sizing: border-box;
+        }
+
+        *, *::before, *::after { box-sizing: inherit; }
+
+        .header-monitor {
+            flex-shrink: 0; 
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border-bottom: 3px solid #38bdf8;
+            padding: 15px 30px;
+        }
+
+        .main-container {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden !important;
+            padding: 15px;
+        }
+
+        .row-container {
+            flex-grow: 1;
+            display: flex;
+            height: 100%;
+            overflow: hidden !important;
+        }
+
+        .card-monitor {
+            background: #1e293b;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden !important; 
+        }
+
+        .card-header-custom {
+            flex-shrink: 0;
+            padding: 15px 25px;
+            font-weight: 800;
+            font-size: 1.5rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .panel-content {
+            flex-grow: 1;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden !important; 
+        }
+        
+        .badge { font-size: 1.2rem !important; padding: 8px 12px; }
+        
+        /* ESTILOS PARA LOS DOS CARRUSELES DE RECONOCIMIENTO */
+        .retv-container {
+            flex-grow: 1;
+            display: flex;
+            gap: 15px;
+            min-height: 0;
+            margin-bottom: 15px;
+        }
+
+        .retrato-box {
+            flex: 1;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            border: 2px solid rgba(255, 255, 255, 0.15);
+            background: #0f172a;
+        }
+
+        .retrato-box.excelencia { border-color: #fbbf24; box-shadow: 0 0 15px rgba(251, 191, 36, 0.2); }
+        .retrato-box.valores { border-color: #34d399; box-shadow: 0 0 15px rgba(52, 211, 153, 0.2); }
+
+        .retrato-caption {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.95), rgba(0,0,0,0.7) 70%, transparent);
+            padding: 20px 10px 8px 10px;
+            text-align: center;
+            z-index: 5;
+        }
+
+        .album-container {
+            flex-grow: 1;
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+            background-color: #0f172a;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            height: 100%;
+        }
+        .carousel, .carousel-inner, .carousel-item { height: 100%; }
+        .carousel-item img {
+            width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0;
+        }
+        .carousel-caption-custom {
+            position: absolute; bottom: 0; left: 0; right: 0;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            padding: 40px 20px 20px 20px; text-align: center;
+        }
+
+        /* EFECTO TABLERO DE AEROPUERTO */
+        .airport-board {
+            background-color: #000000;
+            border: 3px solid #1e293b;
+            border-radius: 10px;
+            flex-grow: 1; 
+            overflow: hidden !important; 
+            position: relative;
+            box-shadow: inset 0 0 20px rgba(0,0,0,1);
+            display: flex;
+            flex-direction: column;
+        }
+        .airport-scroll {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            position: absolute;
+            top: 100%;
+            animation: scroll-airport linear infinite; 
+        }
+        .airport-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            border-bottom: 2px solid #111827;
+            font-family: 'Courier New', Courier, monospace;
+            color: #fbbf24;
+            font-size: 1.5rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            text-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
+            letter-spacing: 1px;
+            flex-shrink: 0;
+        }
+        .airport-row .curso { color: #38bdf8; text-shadow: 0 0 8px rgba(56, 189, 248, 0.6); }
+        
+        @keyframes scroll-airport {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(-100%); }
+        }
+
+        /* Ticker de Noticias Inferior */
+        .ticker-wrap {
+            flex-shrink: 0; 
+            width: 100%; 
+            background-color: #0f172a; 
+            border-top: 3px solid #38bdf8;
+            height: 60px; 
+            overflow: hidden !important; 
+            position: relative; 
+            display: flex; 
+            align-items: center;
+        }
+        .ticker-title {
+            background: #38bdf8; 
+            color: #0f172a; 
+            padding: 0 25px; 
+            font-weight: 800; 
+            font-size: 1.4rem;
+            height: 100%; 
+            display: flex; 
+            align-items: center;
+            z-index: 10; 
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+        }
+        .ticker-content {
+            white-space: nowrap; 
+            padding-left: 100vw;
+            animation: ticker linear infinite;
+            font-weight: 600; 
+            font-size: 1.5rem; 
+            color: #f8fafc;
+        }
+        @keyframes ticker {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-100%); }
+        }
+    </style>
+    <meta http-equiv="refresh" content="300">
+</head>
+<body>
+
+    {% set lista_mostrar = ausentes if ausentes else [
+        {'apellidos': 'RIVERO PINTO', 'nombres': 'CARLOS', 'curso': '5TO SECUNDARIA'},
+        {'apellidos': 'SUÁREZ ROSELLÓN', 'nombres': 'RAISA', 'curso': '3RO SECUNDARIA'},
+        {'apellidos': 'MENDIETA', 'nombres': 'ROBERTO', 'curso': '6TO PRIMARIA'},
+        {'apellidos': 'VACA DÍEZ', 'nombres': 'ANTONIO', 'curso': '1RO SECUNDARIA'},
+        {'apellidos': 'MAMANI', 'nombres': 'JOSÉ', 'curso': '2DO PRIMARIA'},
+        {'apellidos': 'GÓMEZ', 'nombres': 'ANA LAURA', 'curso': 'NIDITO 2'}
+    ] %}
+
+    <div class="header-monitor d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-3">
+            <i class="bi bi-display text-info" style="font-size: 2.8rem;"></i>
+            <div>
+                <h2 class="mb-0 fw-bold text-white lh-1">PERIÓDICO MURAL INSTITUCIONAL</h2>
+                <span class="text-muted fs-5">Comunidad Educativa | Dirección</span>
+            </div>
+        </div>
+        <div class="text-end">
+            <h3 class="mb-0 text-info fw-bold lh-1"><i class="bi bi-calendar-event me-2"></i>{{ fecha_hoy }}</h3>
+            <span class="text-success fs-6 fw-bold"><i class="bi bi-circle-fill fs-6 me-1"></i> TRANSMISIÓN EN DIRECTO</span>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="row row-container g-3">
+            
+            <!-- COLUMNA IZQUIERDA: ÁLBUM FOTOGRÁFICO GENERAL -->
+            <div class="col-md-7 h-100">
+                <div class="card-monitor">
+                    <div class="card-header-custom bg-info text-white d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-images me-2"></i> {{ configuracion.album_titulo }}</span>
+                        <span class="badge bg-light text-info fs-5">Álbum</span>
+                    </div>
+                    <div class="panel-content">
+                        <div class="album-container shadow">
+                            <div id="carruselAlbum" class="carousel slide carousel-fade h-100" data-bs-ride="carousel">
+                                <div class="carousel-inner h-100">
+                                    {% if fotos_album %}
+                                        {% for foto in fotos_album %}
+                                        <div class="carousel-item {% if loop.first %}active{% endif %}" data-bs-interval="{{ configuracion.intervalo_carrusel }}">
+                                            <img src="{{ url_for('reportes.imagen_album', filename=foto) }}" alt="Foto">
+                                            <div class="carousel-caption-custom">
+                                                <h2 class="fw-bold text-white mb-1">{{ configuracion.album_titulo }}</h2>
+                                                <p class="text-light fs-4 mb-0">{{ configuracion.album_subtitulo }}</p>
+                                            </div>
+                                        </div>
+                                        {% endfor %}
+                                    {% else %}
+                                        <div class="carousel-item active" data-bs-interval="{{ configuracion.intervalo_carrusel }}">
+                                            <div style="width: 100%; height: 100%; background: linear-gradient(45deg, #1e3a8a, #3b82f6); display: flex; align-items: center; justify-content: center;">
+                                                <i class="bi bi-camera text-white opacity-25" style="font-size: 8rem;"></i>
+                                            </div>
+                                            <div class="carousel-caption-custom">
+                                                <h2 class="fw-bold text-white mb-1">Sin Fotografías en el Álbum</h2>
+                                                <p class="text-light fs-4 mb-0">Sube fotos desde el Panel de Control</p>
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COLUMNA DERECHA: DOS CARRUSELES DE RECONOCIMIENTO Y TABLERO -->
+            <div class="col-md-5 h-100">
+                <div class="card-monitor">
+                    <div class="card-header-custom bg-secondary text-white d-flex justify-content-between align-items-center">
+                        <span><i class="bi bi-award-fill text-warning me-2"></i> Cuadro de Honor y Distinciones</span>
+                    </div>
+                    <div class="panel-content">
+                        
+                        <!-- DOS CARRUSELES INDEPENDIENTES (EXCELENCIA Y VALORES/DEPORTES) -->
+                        <div class="retv-container">
+                            
+                            <!-- Carrusel 1: Excelencia Académica -->
+                            <div class="retrato-box excelencia shadow">
+                                <div id="carruselExcelencia" class="carousel slide carousel-fade h-100" data-bs-ride="carousel">
+                                    <div class="carousel-inner h-100">
+                                        {% if fotos_excelencia %}
+                                            {% for foto in fotos_excelencia %}
+                                            <div class="carousel-item {% if loop.first %}active{% endif %}" data-bs-interval="{{ configuracion.intervalo_carrusel }}">
+                                                <img src="{{ url_for('reportes.imagen_album', filename=foto) }}" style="width: 100%; height: 100%; object-fit: cover; position: absolute;" alt="Excelencia">
+                                            </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="carousel-item active" data-bs-interval="{{ configuracion.intervalo_carrusel }}">
+                                                <div style="width: 100%; height: 100%; background: #0f172a; display: flex; align-items: center; justify-content: center;">
+                                                    <i class="bi bi-star text-warning opacity-50" style="font-size: 4rem;"></i>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="retrato-caption">
+                                    <h6 class="fw-bold text-warning mb-0" style="font-size: 0.95rem;"><i class="bi bi-star-fill"></i> Excelencia Académica</h6>
+                                </div>
+                            </div>
+
+                            <!-- Carrusel 2: Valores y Deportes -->
+                            <div class="retrato-box valores shadow">
+                                <div id="carruselValores" class="carousel slide carousel-fade h-100" data-bs-ride="carousel">
+                                    <div class="carousel-inner h-100">
+                                        {% if fotos_valores %}
+                                            {% for foto in fotos_valores %}
+                                            <div class="carousel-item {% if loop.first %}active{% endif %}" data-bs-interval="{{ configuracion.intervalo_carrusel }}">
+                                                <img src="{{ url_for('reportes.imagen_album', filename=foto) }}" style="width: 100%; height: 100%; object-fit: cover; position: absolute;" alt="Valores y Deportes">
+                                            </div>
+                                            {% endfor %}
+                                        {% else %}
+                                            <div class="carousel-item active" data-bs-interval="{{ configuracion.intervalo_carrusel }}">
+                                                <div style="width: 100%; height: 100%; background: #0f172a; display: flex; align-items: center; justify-content: center;">
+                                                    <i class="bi bi-trophy text-success opacity-50" style="font-size: 4rem;"></i>
+                                                </div>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="retrato-caption">
+                                    <h6 class="fw-bold text-success mb-0" style="font-size: 0.95rem;"><i class="bi bi-trophy-fill"></i> Valores y Deportes</h6>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- TABLERO DE AUSENCIAS -->
+                        <div class="d-flex justify-content-between align-items-end mb-2 flex-shrink-0">
+                            <h5 class="text-danger fw-bold mb-0"><i class="bi bi-exclamation-octagon-fill me-2"></i> Ausencias de Hoy</h5>
+                            <span class="badge bg-danger fs-5">{{ lista_mostrar|length }}</span>
+                        </div>
+                        
+                        <div class="airport-board shadow" id="tablero-aeropuerto">
+                            <div class="airport-scroll" id="lista-ausentes">
+                                {% for est in lista_mostrar %}
+                                <div class="airport-row"><span>{{ est.apellidos }}, {{ est.nombres }}</span><span class="curso">{{ est.curso }}</span></div>
+                                {% endfor %}
+                                {% for est in lista_mostrar %}
+                                <div class="airport-row"><span>{{ est.apellidos }}, {{ est.nombres }}</span><span class="curso">{{ est.curso }}</span></div>
+                                {% endfor %}
+                                {% for est in lista_mostrar %}
+                                <div class="airport-row"><span>{{ est.apellidos }}, {{ est.nombres }}</span><span class="curso">{{ est.curso }}</span></div>
+                                {% endfor %}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ticker-wrap">
+        <div class="ticker-title">
+            <i class="bi bi-megaphone-fill me-2"></i> COMUNICADOS
+        </div>
+        <div class="ticker-content" id="cinta-ticker">
+            <span>{{ configuracion.texto_ticker }}</span>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const velTicker = {{ configuracion.velocidad_ticker | default(150) }};
+            const velBoard = {{ configuracion.velocidad_aeropuerto | default(40) }};
+
+            const tickerEl = document.getElementById('cinta-ticker');
+            if(tickerEl && velTicker > 0) {
+                const distanceX = window.innerWidth + tickerEl.scrollWidth;
+                const timeX = distanceX / velTicker;
+                tickerEl.style.animationDuration = timeX + 's';
+            }
+
+            const boardEl = document.getElementById('lista-ausentes');
+            if(boardEl && velBoard > 0) {
+                const distanceY = boardEl.scrollHeight;
+                const timeY = distanceY / velBoard;
+                boardEl.style.animationDuration = timeY + 's';
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <h3 class="mb-4"><i class="bi bi-cash-stack"></i> Registrar Adelanto: {{ persona.apellidos }}, {{ persona.nombres }}</h3>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">Datos del Trabajador</div>
+                <div class="card-body">
+                    <p><strong>Cargo:</strong> {{ persona.especialidad if tipo == 'profesor' else persona.cargo }}</p>
+                    <p><strong>Salario Base:</strong> Bs. {{ '%.2f'|format(persona.salario_base or 0) }}</p>
+                    <hr>
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle"></i> Seleccione el mes al que corresponde este adelanto y el monto.
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-warning text-dark">Detalles del Adelanto</div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Mes del Adelanto</label>
+                                <select name="mes" class="form-select" required>
+                                    <option value="Enero">Enero</option>
+                                    <option value="Febrero">Febrero</option>
+                                    <option value="Marzo">Marzo</option>
+                                    <option value="Abril">Abril</option>
+                                    <option value="Mayo">Mayo</option>
+                                    <option value="Junio">Junio</option>
+                                    <option value="Julio">Julio</option>
+                                    <option value="Agosto">Agosto</option>
+                                    <option value="Septiembre">Septiembre</option>
+                                    <option value="Octubre">Octubre</option>
+                                    <option value="Noviembre">Noviembre</option>
+                                    <option value="Diciembre">Diciembre</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Año</label>
+                                <input type="number" name="anio" class="form-control" value="{{ anio_actual }}" required>
+                            </div>
+                        </div>
+                                                <div class="mb-3">
+                            <label class="form-label fw-bold">Motivo / Concepto del Adelanto</label>
+                            <input type="text" name="motivo" list="lista-motivos-pers" class="form-control" placeholder="Ej: Consumo en Snack, Adelanto Personal, Cuota..." required>
+                            <datalist id="lista-motivos-pers">
+                                <option value="Consumo en Snack">
+                                <option value="Adelanto Personal de Sueldo">
+                                <option value="Descuento por Cuota">
+                                <option value="Préstamo Institucional">
+                                <option value="Anticipo de Emergencia">
+                            </datalist>
+                        </div>
+<div class="mb-3">
+                            <label class="form-label fw-bold">Monto del Adelanto (Bs.)</label>
+                            <input type="number" step="0.01" min="0.01" name="monto" class="form-control" required placeholder="Ejemplo: 500.00">
+                        </div>
+                        <button type="submit" class="btn btn-warning btn-lg w-100">
+                            <i class="bi bi-cash-coin"></i> Registrar Adelanto y Generar Recibo
+                        </button>
+                        <a href="{{ url_for('personal.cardex_personal', tipo=tipo, id=persona.id) }}" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

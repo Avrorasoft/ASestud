@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Editar Pago - Colegio Dr. Antonio Vaca Díez{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="bi bi-pencil-square me-2"></i>Editar Registro de Pago</h4>
+                </div>
+                <div class="card-body text-dark">
+                    <!-- Formulario de edición -->
+                    <form method="POST">
+                        <!-- Campo oculto para mantener la sesión de superadmin activa -->
+                        <input type="hidden" name="superadmin_pass" value="{{ request.args.get('pass', '') }}">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Monto Total (Bs.)</label>
+                                <input type="number" step="0.01" min="0" class="form-control" name="monto_total" value="{{ pago.monto_total }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Descuento (Bs.)</label>
+                                <input type="number" step="0.01" min="0" class="form-control" name="descuento" value="{{ pago.descuento or 0 }}" required>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Monto Pagado (Bs.)</label>
+                                <input type="number" step="0.01" min="0" class="form-control" name="monto_pagado" value="{{ pago.monto_pagado }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold">Estado del Pago</label>
+                                <select class="form-select" name="estado" required>
+                                    <option value="Pendiente" {% if pago.estado == 'Pendiente' %}selected{% endif %}>Pendiente</option>
+                                    <option value="Pagado" {% if pago.estado == 'Pagado' %}selected{% endif %}>Pagado</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('estudiantes.ver_estudiante', id=pago.estudiante_id) }}" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left-circle me-1"></i> Cancelar y Volver
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-save-fill me-1"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

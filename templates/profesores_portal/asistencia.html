@@ -1,0 +1,101 @@
+{% extends "profesores_portal/base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3><i class="bi bi-calendar-check"></i> Registro de Asistencia Diaria</h3>
+            <h5 class="text-muted">{{ materia.nombre }} - Curso: {{ materia.curso_id }}</h5>
+        </div>
+        <a href="{{ url_for('profesores_portal.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver al Panel
+        </a>
+    </div>
+
+    {% if bloqueado_para_docente %}
+    <div class="alert alert-warning">
+        <i class="bi bi-lock-fill"></i> <strong>Asistencia Cerrada:</strong> Esta asistencia ya fue enviada y registrada. Su edición se encuentra bloqueada para el cuerpo docente y es de exclusiva competencia administrativa.
+    </div>
+    {% endif %}
+
+    <!-- Selector de Fecha -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body bg-light">
+            <form method="GET" action="{{ url_for('profesores_portal.registrar_asistencia', materia_id=materia.id) }}" class="row g-3 align-items-center">
+                <div class="col-auto">
+                    <label for="fecha" class="col-form-label fw-bold"><i class="bi bi-calendar-event"></i> Seleccionar Fecha:</label>
+                </div>
+                <div class="col-auto">
+                    <input type="date" id="fecha" name="fecha" value="{{ fecha_sel }}" class="form-control" onchange="this.form.submit()">
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Formulario de Marcado de Asistencia -->
+    <form method="POST" action="{{ url_for('profesores_portal.registrar_asistencia', materia_id=materia.id) }}">
+        <input type="hidden" name="fecha_asistencia" value="{{ fecha_sel }}">
+        
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-people"></i> Lista de Alumnos - Fecha: {{ fecha_sel }}</h5>
+                {% if not bloqueado_para_docente %}
+                <button type="submit" class="btn btn-success btn-sm fw-bold">
+                    <i class="bi bi-save"></i> Guardar y Enviar Asistencia
+                </button>
+                {% endif %}
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="text-center" style="width: 50px;">#</th>
+                                <th>Apellidos y Nombres</th>
+                                <th style="width: 120px;" class="text-center">C.I.</th>
+                                <th class="text-center" style="width: 250px;">Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if estudiantes %}
+                                {% for est in estudiantes %}
+                                    {% set estado_actual = asistencias_map.get(est.id, 'Presente') %}
+                                    <tr>
+                                        <td class="text-center fw-bold text-muted">{{ loop.index }}</td>
+                                        <td>
+                                            <div class="fw-bold">{{ est.apellidos }}, {{ est.nombres }}</div>
+                                            <small class="text-muted">RUDE: {{ est.rude or 'N/D' }}</small>
+                                        </td>
+                                        <td class="text-center"><span class="badge bg-light text-dark border">{{ est.ci }}</span></td>
+                                        <td class="text-center">
+                                            <div class="btn-group w-100" role="group">
+                                                <input type="radio" class="btn-check" name="asistencia_{{ est.id }}" id="pres_{{ est.id }}" value="Presente" {% if estado_actual == 'Presente' or not estado_actual %}checked{% endif %} {% if bloqueado_para_docente %}disabled{% endif %}>
+                                                <label class="btn btn-outline-success btn-sm fw-bold" for="pres_{{ est.id }}">Presente</label>
+
+                                                <input type="radio" class="btn-check" name="asistencia_{{ est.id }}" id="aus_{{ est.id }}" value="Ausente" {% if estado_actual == 'Ausente' or estado_actual == 'Falta Injustificada' %}checked{% endif %} {% if bloqueado_para_docente %}disabled{% endif %}>
+                                                <label class="btn btn-outline-danger btn-sm fw-bold" for="aus_{{ est.id }}">Ausente</label>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">
+                                        No hay estudiantes activos registrados en este curso.
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% if not bloqueado_para_docente and estudiantes %}
+            <div class="card-footer bg-white p-3 text-end">
+                <button type="submit" class="btn btn-success fw-bold px-4">
+                    <i class="bi bi-save me-1"></i> Guardar y Enviar Asistencia
+                </button>
+            </div>
+            {% endif %}
+        </div>
+    </form>
+</div>
+{% endblock %}

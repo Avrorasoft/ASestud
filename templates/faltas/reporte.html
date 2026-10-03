@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3><i class="bi bi-person-lines-fill"></i> Historial de Asistencia de {{ tipo_sujeto }}: {{ nombre_sujeto }}[cite: 9]</h3>
+        <a href="{{ url_for('faltas.lista_faltas') }}" class="btn btn-outline-secondary">Volver al listado</a>
+    </div>
+    
+    <div class="table-responsive">
+        <table class="table table-striped">
+            <thead class="table-dark">
+                <tr>
+                    <th>Fecha</th>
+                    <th>Tipo</th>
+                    <th>Observaciones</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for falta in faltas %}
+                <tr>
+                    <td>{{ falta.fecha.strftime('%d/%m/%Y') }}</td>
+                    <td>{{ falta.tipo_falta }}</td>
+                    <td>{{ falta.observaciones or '-' }}</td>
+                    <td><span class="badge bg-{% if falta.estado == 'Aprobada' or falta.estado == 'Justificada' %}success{% elif falta.estado == 'Rechazada' or falta.estado == 'Injustificada' %}danger{% else %}secondary{% endif %}">{{ falta.estado }}</span></td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="text-center">Este sujeto no tiene registros de asistencia.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

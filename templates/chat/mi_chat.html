@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Mis Mensajes{% endblock %}
+{% block content %}
+<!-- Reutilizamos estilos CSS del index.html anterior aquí o en base.html -->
+<style>
+    /* Copiar los mismos estilos CSS de arriba para asegurar consistencia */
+    .chat-container { height: 80vh; display: flex; border: 1px solid #ddd; background: #fff; }
+    .chat-area { flex: 1; display: flex; flex-direction: column; background: #efe7dd; }
+    .messages-box { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+    .input-area { padding: 15px; background: #f0f2f5; border-top: 1px solid #ddd; display: flex; gap: 10px; }
+    .msg { max-width: 80%; padding: 10px 15px; border-radius: 10px; position: relative; }
+    .msg-colegio { align-self: flex-start; background: #fff; border-bottom-left-radius: 0; }
+    .msg-padre { align-self: flex-end; background: #d9fdd3; border-bottom-right-radius: 0; }
+    .msg-time { font-size: 0.7rem; color: #999; text-align: right; margin-top: 5px; }
+</style>
+
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>Chat con el Colegio</h4>
+        <a href="{{ url_for('chat.logout_chat') }}" class="btn btn-outline-danger btn-sm">Salir</a>
+    </div>
+
+    <div class="chat-container shadow-sm rounded">
+        <div class="chat-area">
+            <div class="p-3 bg-white border-bottom">
+                <strong>Estudiante:</strong> {{ estudiante.apellidos }} {{ estudiante.nombres }}
+            </div>
+
+            <div class="messages-box" id="messagesBox">
+                {% for msg in mensajes %}
+                <div class="msg {% if msg.remitente_tipo == 'COLEGIO' %}msg-colegio{% else %}msg-padre{% endif %}">
+                    {{ msg.mensaje }}
+                    <div class="msg-time">{{ msg.fecha.strftime('%H:%M %d/%m') }}</div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <div class="input-area">
+                <form id="padreForm" class="d-flex w-100">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="text" name="mensaje" class="form-control" placeholder="Responder al colegio..." required autocomplete="off">
+                    <button type="submit" class="btn btn-success"><i class="bi bi-send-fill"></i></button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const msgBox = document.getElementById('messagesBox');
+    if(msgBox) msgBox.scrollTop = msgBox.scrollHeight;
+
+    document.getElementById('padreForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const input = e.target.querySelector('input');
+        
+        const res = await fetch('{{ url_for("chat.padre_enviar") }}', { method: 'POST', body: formData });
+        const data = await res.json();
+        
+        if(data.success) {
+            const html = `<div class="msg msg-padre">${data.mensaje.mensaje}<div class="msg-time">${data.mensaje.fecha}</div></div>`;
+            msgBox.insertAdjacentHTML('beforeend', html);
+            msgBox.scrollTop = msgBox.scrollHeight;
+            input.value = '';
+        }
+    });
+</script>
+{% endblock %}

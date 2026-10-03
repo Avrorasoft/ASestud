@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración Año Escolar - Bóveda{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-calendar3"></i> Configuración del Año Escolar</h2>
+        <a href="{{ url_for('superadmin.boveda') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver a la Bóveda
+        </a>
+    </div>
+
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> 
+        <strong>Configuración inicial:</strong> Desde aquí puedes definir cómo comienza el año escolar,
+        los parámetros de mora, trimestres y fechas importantes. Estos valores se usarán en todo el sistema.
+    </div>
+
+    <form method="POST">
+        
+        <!-- ============================================= -->
+        <!-- PRESETS DE INICIO RÁPIDO -->
+        <!-- ============================================= -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-lightning"></i> Inicio Rápido (Presets)</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Selecciona un preset para aplicar automáticamente una configuración estándar:</p>
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card border-primary h-100 {% if configs.inicio_rapido == 'bolivia' %}bg-light{% endif %}">
+                            <div class="card-body">
+                                <h6 class="card-title text-primary">
+                                    <i class="bi bi-flag"></i> Calendario Bolivia
+                                </h6>
+                                <ul class="small">
+                                    <li>Febrero - Diciembre</li>
+                                    <li>3 Trimestres</li>
+                                    <li>Vence día 5 del mes</li>
+                                    <li>5 días de gracia</li>
+                                    <li>Mora manual</li>
+                                </ul>
+                                <button type="submit" name="preset_inicio" value="bolivia" 
+                                        class="btn btn-primary btn-sm w-100">
+                                    Aplicar Bolivia
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card border-info h-100 {% if configs.inicio_rapido == 'norte' %}bg-light{% endif %}">
+                            <div class="card-body">
+                                <h6 class="card-title text-info">
+                                    <i class="bi bi-globe-americas"></i> Calendario Norte
+                                </h6>
+                                <ul class="small">
+                                    <li>Septiembre - Junio</li>
+                                    <li>3 Trimestres</li>
+                                    <li>Vence día 10 del mes</li>
+                                    <li>10 días de gracia</li>
+                                    <li>Mora automática</li>
+                                </ul>
+                                <button type="submit" name="preset_inicio" value="norte"
+                                        class="btn btn-info btn-sm w-100">
+                                    Aplicar Norte
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="card border-secondary h-100">
+                            <div class="card-body">
+                                <h6 class="card-title text-secondary">
+                                    <i class="bi bi-gear"></i> Personalizado
+                                </h6>
+                                <ul class="small">
+                                    <li>Modifica los parámetros abajo</li>
+                                    <li>Fechas libres</li>
+                                    <li>Días a tu elección</li>
+                                    <li>Mora a tu criterio</li>
+                                    <li>Trimestres configurables</li>
+                                </ul>
+                                <button type="button" class="btn btn-secondary btn-sm w-100"
+                                        onclick="document.getElementById('formulario-detalles').scrollIntoView({behavior:'smooth'})">
+                                    Configurar abajo
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="formulario-detalles"></div>
+
+        <!-- ============================================= -->
+        <!-- DATOS DEL AÑO ESCOLAR -->
+        <!-- ============================================= -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0"><i class="bi bi-calendar-event"></i> Datos del Año Escolar</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Nombre de la Gestión</label>
+                        <input type="text" name="anio_escolar_nombre" class="form-control"
+                               value="{{ configs.anio_escolar_nombre or '' }}">
+                        <small class="text-muted">Ej: "Gestión 2026"</small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Fecha de Inicio</label>
+                        <input type="date" name="anio_escolar_inicio" class="form-control"
+                               value="{{ configs.anio_escolar_inicio or '' }}">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Fecha de Fin</label>
+                        <input type="date" name="anio_escolar_fin" class="form-control"
+                               value="{{ configs.anio_escolar_fin or '' }}">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Tipo de Calendario</label>
+                        <select name="tipo_calendario" class="form-select">
+                            <option value="bolivia" {% if configs.tipo_calendario == 'bolivia' %}selected{% endif %}>
+                                Bolivia (Feb-Dic)
+                            </option>
+                            <option value="norte" {% if configs.tipo_calendario == 'norte' %}selected{% endif %}>
+                                Norte (Sep-Jun)
+                            </option>
+                            <option value="personalizado" {% if configs.tipo_calendario == 'personalizado' %}selected{% endif %}>
+                                Personalizado
+                            </option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Meses Activos (números separados por coma)</label>
+                        <input type="text" name="meses_activos" class="form-control"
+                               value="{{ configs.meses_activos or '' }}"
+                               placeholder="2,3,4,5,6,7,8,9,10,11">
+                        <small class="text-muted">1=Ene, 2=Feb, ... 12=Dic</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================= -->
+        <!-- PARÁMETROS ECONÓMICOS -->
+        <!-- ============================================= -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Parámetros Económicos (Pensiones)</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Día de Vencimiento de Pensión</label>
+                        <input type="number" name="dia_vencimiento_pension" class="form-control"
+                               min="1" max="28"
+                               value="{{ configs.dia_vencimiento_pension or '5' }}">
+                        <small class="text-muted">Día del mes (1-28 recomendado)</small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Días de Gracia antes de Mora</label>
+                        <input type="number" name="dias_gracia_mora" class="form-control"
+                               min="0" max="30"
+                               value="{{ configs.dias_gracia_mora or '5' }}">
+                        <small class="text-muted">Días adicionales antes de contar mora</small>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label fw-bold">Mora Automática</label>
+                        <select name="aplicar_mora_automatica" class="form-select">
+                            <option value="false" {% if configs.aplicar_mora_automatica == 'false' %}selected{% endif %}>
+                                No - Solo mora manual
+                            </option>
+                            <option value="true" {% if configs.aplicar_mora_automatica == 'true' %}selected{% endif %}>
+                                Sí - Mora automática tras días de gracia
+                            </option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================= -->
+        <!-- TRIMESTRES -->
+        <!-- ============================================= -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Trimestres / Bimestres</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Número de Períodos</label>
+                    <select name="numero_trimestres" class="form-select w-25" onchange="mostrarTrimestres(this.value)">
+                        <option value="2" {% if configs.numero_trimestres == '2' %}selected{% endif %}>2 Bimestres</option>
+                        <option value="3" {% if configs.numero_trimestres == '3' %}selected{% endif %}>3 Trimestres</option>
+                        <option value="4" {% if configs.numero_trimestres == '4' %}selected{% endif %}>4 Períodos</option>
+                    </select>
+                </div>
+
+                <div class="row" id="trimestres-container">
+                    {% for i in range(1, 4) %}
+                    <div class="col-md-4 mb-3 trimestre-bloque" data-num="{{ i }}">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h6>Período {{ i }}</h6>
+                                <div class="mb-2">
+                                    <label class="small fw-bold">Inicio</label>
+                                    <input type="date" name="trimestre{{ i }}_inicio" class="form-control form-control-sm"
+                                           value="{{ configs['trimestre' ~ i ~ '_inicio'] or '' }}">
+                                </div>
+                                <div>
+                                    <label class="small fw-bold">Fin</label>
+                                    <input type="date" name="trimestre{{ i }}_fin" class="form-control form-control-sm"
+                                           value="{{ configs['trimestre' ~ i ~ '_fin'] or '' }}">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTÓN GUARDAR -->
+        <div class="text-center mb-5">
+            <button type="submit" class="btn btn-success btn-lg px-5">
+                <i class="bi bi-check-circle"></i> Guardar Toda la Configuración
+            </button>
+        </div>
+    </form>
+</div>
+
+<script>
+function mostrarTrimestres(num) {
+    document.querySelectorAll('.trimestre-bloque').forEach((el, idx) => {
+        el.style.display = (idx < num) ? 'block' : 'none';
+    });
+}
+// Mostrar solo los trimestres activos al cargar
+document.addEventListener('DOMContentLoaded', function() {
+    const select = document.querySelector('select[name="numero_trimestres"]');
+    if (select) mostrarTrimestres(select.value);
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,199 @@
+        
+{% extends "base.html" %}
+{% block title %}Enviar Mensaje - Chat Interno
+{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-dark"><i class="bi bi-pencil-square me-2"></i>Redactar Mensaje</h2>
+        <a href="{{ url_for('chat.index') }}" class="btn btn-secondary"><i class="bi bi-arrow-left"></i> Volver al Chat</a>
+    </div>
+
+    <form method="POST" action="{{ url_for('chat.enviar') }}" enctype="multipart/form-data" id="formMensaje">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="row">
+            <div class="col-md-5">
+                <div class="card shadow mb-3">
+                    <div class="card-header bg-primary text-white"><h6 class="mb-0"><i class="bi bi-send me-2"></i>Modo de Envío</h6></div>
+                    <div class="card-body">
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="modo_envio" id="modoIndividual" value="individual" checked onchange="toggleModo()">
+                            <label class="form-check-label fw-bold" for="modoIndividual"><i class="bi bi-person me-1"></i> Individual</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="modo_envio" id="modoCurso" value="masivo_curso" onchange="toggleModo()">
+                            <label class="form-check-label fw-bold" for="modoCurso"><i class="bi bi-people me-1"></i> Masivo por Curso</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="modo_envio" id="modoTodos" value="masivo_todos" onchange="toggleModo()">
+                            <label class="form-check-label fw-bold" for="modoTodos"><i class="bi bi-megaphone me-1"></i> Masivo a Todos</label>
+                        </div>
+                        <div class="form-check mb-2">
+                            <input class="form-check-input" type="radio" name="modo_envio" id="modoMorosos" value="masivo_morosos" onchange="toggleModo()">
+                            <label class="form-check-label fw-bold text-danger" for="modoMorosos"><i class="bi bi-exclamation-triangle me-1"></i> Solo Morosos</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow mb-3">
+                    <div class="card-header bg-light text-dark"><h6 class="mb-0"><i class="bi bi-person-badge me-2"></i>Destinatario</h6></div>
+                    <div class="card-body">
+                        <div id="seccionIndividual">
+                            <label class="form-label fw-bold">Seleccionar Estudiante:</label>
+                            <select name="estudiante_id" id="selectEstudiante" class="form-select" onchange="cargarDatosEstudiante(this.value)">
+                                <option value="">-- Seleccione un estudiante --</option>
+                                {% for est in estudiantes %}
+                                <option value="{{ est.id }}">{{ est.apellidos }}, {{ est.nombres }} - {{ est.curso }}</option>
+                                {% endfor %}
+                            </select>
+                            <div id="infoEstudiante" class="mt-2 p-2 bg-light rounded small d-none"></div>
+                        </div>
+                        <div id="seccionCurso" class="d-none">
+                            <label class="form-label fw-bold">Seleccionar Curso:</label>
+                            <select name="curso_destino" class="form-select">
+                                <option value="">-- Seleccione un curso --</option>
+                                {% for c in cursos %}
+                                <option value="{{ c }}">{{ c }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div id="seccionTodos" class="d-none">
+                            <div class="alert alert-info mb-0"><i class="bi bi-info-circle me-2"></i>Se enviará a <strong>TODOS</strong> los padres.</div>
+                        </div>
+                        <div id="seccionMorosos" class="d-none">
+                            <div class="alert alert-danger mb-0"><i class="bi bi-exclamation-triangle me-2"></i>Se enviará <strong>SOLO</strong> a padres con pagos pendientes.</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card shadow mb-3">
+                    <div class="card-header bg-light text-dark"><h6 class="mb-0"><i class="bi bi-card-text me-2"></i>Plantilla Rápida</h6></div>
+                    <div class="card-body">
+                        <div class="row g-2">
+                            {% for tipo in plantillas.keys() %}
+                            <div class="col-6">
+                                <button type="button" class="btn btn-outline-primary w-100 text-start plantilla-btn" onclick="cargarPlantilla('{{ tipo }}', this)">
+                                    {% if tipo == 'General' %}<i class="bi bi-chat-text me-1"></i>
+                                    {% elif tipo == 'Citación' %}<i class="bi bi-calendar-event me-1"></i>
+                                    {% elif 'Pago' in tipo and 'Recordatorio' in tipo %}<i class="bi bi-cash-coin me-1"></i>
+                                    {% elif 'Comprobante' in tipo %}<i class="bi bi-receipt me-1"></i>
+                                    {% elif tipo == 'Inasistencia' %}<i class="bi bi-exclamation-circle me-1"></i>
+                                    {% elif tipo == 'Felicitación' %}<i class="bi bi-trophy me-1"></i>
+                                    {% elif tipo == 'Boletín' %}<i class="bi bi-journal-text me-1"></i>
+                                    {% else %}<i class="bi bi-envelope me-1"></i>{% endif %}
+                                    {{ tipo }}
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        <input type="hidden" name="tipo_mensaje" id="tipoMensaje" value="General">
+                    </div>
+                </div>
+
+                <div class="card shadow mb-3">
+                    <div class="card-header bg-light text-dark"><h6 class="mb-0"><i class="bi bi-paperclip me-2"></i>Adjuntar Archivo</h6></div>
+                    <div class="card-body">
+                        <input type="file" name="archivo" id="archivoInput" class="form-control" accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx">
+                        <small class="text-muted">Opcional: fotos, documentos, audios, PDFs</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-7">
+                <div class="card shadow">
+                    <div class="card-header bg-success text-white"><h6 class="mb-0"><i class="bi bi-chat-left-text me-2"></i>Contenido del Mensaje</h6></div>
+                    <div class="card-body">
+                        <textarea name="contenido" id="contenidoMensaje" class="form-control" rows="20" placeholder="Escriba su mensaje aquí o seleccione una plantilla..." style="font-family: 'Segoe UI', sans-serif; font-size: 0.95rem; white-space: pre-wrap; line-height: 1.6;"></textarea>
+                        <div class="d-flex justify-content-between mt-3">
+                            <a href="{{ url_for('chat.index') }}" class="btn btn-secondary"><i class="bi bi-x-circle"></i> Cancelar</a>
+                            <button type="submit" class="btn btn-success btn-lg"><i class="bi bi-send-fill me-2"></i>Enviar Mensaje</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+const plantillas = {{ plantillas | tojson }};
+
+let datosEstudiante = {
+    tutor: 'Sr./Sra. [Tutor]',
+    estudiante: '[Estudiante]',
+    curso: '[Curso]',
+    mes: '[Mes]',
+    monto: '0.00',
+    fecha: new Date().toLocaleDateString('es-BO'),
+    hora: new Date().toLocaleTimeString('es-BO', {hour: '2-digit', minute: '2-digit'}),
+    gestion: new Date().getFullYear(),
+    promedio: 'N/A',
+    materias_aprobadas: '0',
+    materias_reprobadas: '0',
+    mejor_materia: 'N/A',
+    nota_mejor: '0'
+};
+
+function toggleModo() {
+    const modo = document.querySelector('input[name="modo_envio"]:checked').value;
+    document.getElementById('seccionIndividual').classList.toggle('d-none', modo !== 'individual');
+    document.getElementById('seccionCurso').classList.toggle('d-none', modo !== 'masivo_curso');
+    document.getElementById('seccionTodos').classList.toggle('d-none', modo !== 'masivo_todos');
+    document.getElementById('seccionMorosos').classList.toggle('d-none', modo !== 'masivo_morosos');
+}
+
+function cargarPlantilla(tipo, btn) {
+    document.querySelectorAll('.plantilla-btn').forEach(b => {
+        b.classList.remove('active', 'btn-primary');
+        b.classList.add('btn-outline-primary');
+    });
+    
+    btn.classList.remove('btn-outline-primary');
+    btn.classList.add('active', 'btn-primary');
+    
+    document.getElementById('tipoMensaje').value = tipo;
+    
+    let contenido = plantillas[tipo] || plantillas['General'];
+    contenido = contenido.replace(/{tutor}/g, datosEstudiante.tutor);
+    contenido = contenido.replace(/{estudiante}/g, datosEstudiante.estudiante);
+    contenido = contenido.replace(/{curso}/g, datosEstudiante.curso);
+    contenido = contenido.replace(/{mes}/g, datosEstudiante.mes);
+    contenido = contenido.replace(/{monto}/g, datosEstudiante.monto);
+    contenido = contenido.replace(/{fecha}/g, datosEstudiante.fecha);
+    contenido = contenido.replace(/{hora}/g, datosEstudiante.hora);
+    contenido = contenido.replace(/{gestion}/g, datosEstudiante.gestion);
+    contenido = contenido.replace(/{promedio}/g, datosEstudiante.promedio);
+    contenido = contenido.replace(/{materias_aprobadas}/g, datosEstudiante.materias_aprobadas);
+    contenido = contenido.replace(/{materias_reprobadas}/g, datosEstudiante.materias_reprobadas);
+    contenido = contenido.replace(/{mejor_materia}/g, datosEstudiante.mejor_materia);
+    contenido = contenido.replace(/{nota_mejor}/g, datosEstudiante.nota_mejor);
+    
+    document.getElementById('contenidoMensaje').value = contenido;
+}
+
+function cargarDatosEstudiante(id) {
+    if (!id) return;
+    fetch('/chat/api/datos_estudiante/' + id)
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) return;
+            datosEstudiante = data;
+            const infoDiv = document.getElementById('infoEstudiante');
+            infoDiv.classList.remove('d-none');
+            infoDiv.innerHTML = '<strong>Tutor:</strong> ' + data.tutor + '<br>' +
+                               '<strong>Teléfono:</strong> ' + data.telefono + '<br>' +
+                               '<strong>Deuda:</strong> Bs. ' + data.monto + '<br>' +
+                               '<strong>Promedio:</strong> ' + data.promedio;
+            
+            const tipoActual = document.getElementById('tipoMensaje').value;
+            if (tipoActual) cargarPlantilla(tipoActual, document.querySelector('.plantilla-btn.active') || document.querySelector('.plantilla-btn'));
+        })
+        .catch(err => console.error('Error:', err));
+}
+</script>
+
+{% endblock %}
+
+
+
+

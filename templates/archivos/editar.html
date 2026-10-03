@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <h3 class="mb-4"><i class="bi bi-pencil"></i> Editar Egresado: {{ egresado.apellidos }}, {{ egresado.nombres }}</h3>
+    <div class="card">
+        <div class="card-body">
+            <form method="POST">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">RUDE</label>
+                        <input type="text" class="form-control" value="{{ egresado.rude }}" readonly>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Año de Egreso *</label>
+                        <input type="number" name="anio_egreso" class="form-control" value="{{ egresado.anio_egreso }}" required>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Apellidos *</label>
+                        <input type="text" name="apellidos" class="form-control" value="{{ egresado.apellidos }}" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Nombres *</label>
+                        <input type="text" name="nombres" class="form-control" value="{{ egresado.nombres }}" required>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Curso Final *</label>
+                        <select name="curso_final" class="form-select" required>
+                            {% for c in cursos %}
+                            <option value="{{ c }}" {% if c == egresado.curso_final %}selected{% endif %}>{{ c }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label fw-bold">Estado de Egreso *</label>
+                        <select name="estado_egreso" class="form-select" required>
+                            <option value="Graduado" {% if egresado.estado_egreso == 'Graduado' %}selected{% endif %}>Graduado</option>
+                            <option value="Retirado" {% if egresado.estado_egreso == 'Retirado' %}selected{% endif %}>Retirado</option>
+                            <option value="Transferido" {% if egresado.estado_egreso == 'Transferido' %}selected{% endif %}>Transferido</option>
+                        </select>
+                    </div>
+                </div>
+                <hr>
+                <h5 class="text-muted">Información del Tutor</h5>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Nombre del Tutor</label>
+                        <input type="text" name="nombre_tutor" class="form-control" value="{{ egresado.nombre_tutor or '' }}">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">Teléfono del Tutor</label>
+                        <input type="text" name="telefono_tutor" class="form-control" value="{{ egresado.telefono_tutor or '' }}">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-success btn-lg">
+                    <i class="bi bi-save"></i> Actualizar Egresado
+                </button>
+                <a href="{{ url_for('archivos.detalle_egresado', id=egresado.id) }}" class="btn btn-secondary btn-lg">Cancelar</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

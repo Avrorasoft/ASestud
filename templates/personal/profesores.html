@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- ENCABEZADO CON BOTÓN NUEVO PROFESOR -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="bi bi-mortarboard-fill"></i> Profesores
+        </h2>
+        <a href="{{ url_for('personal.nuevo_profesor') }}" class="btn btn-success btn-lg">
+            <i class="bi bi-person-plus-fill"></i> Nuevo Profesor
+        </a>
+    </div>
+
+    <!-- =============================================================== -->
+    <!-- FILTROS POR NIVEL Y TURNO -->
+    <!-- =============================================================== -->
+
+    <form method="GET" class="row g-2 mb-4">
+
+        <div class="col-md-4">
+            <select name="nivel"
+                    class="form-select"
+                    onchange="this.form.submit()">
+                <option value="">-- Todos los Niveles --</option>
+                <option value="Nidito"
+                    {% if nivel_seleccionado == 'Nidito' %}selected{% endif %}>
+                    Nidito
+                </option>
+                <option value="Primaria"
+                    {% if nivel_seleccionado == 'Primaria' %}selected{% endif %}>
+                    Primaria
+                </option>
+                <option value="Secundaria"
+                    {% if nivel_seleccionado == 'Secundaria' %}selected{% endif %}>
+                    Secundaria
+                </option>
+            </select>
+        </div>
+
+        <div class="col-md-4">
+            <select name="turno"
+                    class="form-select"
+                    onchange="this.form.submit()">
+                <option value="">-- Todos los Turnos --</option>
+                <option value="Mañana"
+                    {% if turno_seleccionado == 'Mañana' %}selected{% endif %}>
+                    Mañana
+                </option>
+                <option value="Tarde"
+                    {% if turno_seleccionado == 'Tarde' %}selected{% endif %}>
+                    Tarde
+                </option>
+            </select>
+        </div>
+
+        <div class="col-md-4 d-flex gap-2">
+            <a href="{{ url_for('personal.lista_profesores') }}"
+               class="btn btn-outline-secondary">
+                Limpiar filtros
+            </a>
+        </div>
+
+    </form>
+
+    <!-- TABLA DE PROFESORES -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            {% if profesores %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-bordered align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>CI</th>
+                                <th>Apellidos y Nombres</th>
+                                <th>Especialidad</th>
+                                <th>Nivel</th>
+                                <th>Turno</th>
+                                <th>Salario Base</th>
+                                <th>Adelanto</th>
+                                <th>Neto</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in profesores %}
+                            <tr>
+                                <td>{{ p.ci or '-' }}</td>
+                                <td><strong>{{ p.apellidos }}, {{ p.nombres }}</strong></td>
+                                <td>{{ p.especialidad or '-' }}</td>
+
+                                <!-- ⭐ NUEVO: NIVEL -->
+                                <td>
+                                    {% if p.nivel %}
+                                        {{ p.nivel }}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+
+                                <!-- ⭐ NUEVO: TURNO -->
+                                <td>
+                                    {% if p.turno == 'Tarde' %}
+                                        <span class="badge bg-warning text-dark">Tarde</span>
+                                    {% else %}
+                                        <span class="badge bg-info text-dark">Mañana</span>
+                                    {% endif %}
+                                </td>
+
+                                <td>Bs. {{ '%.2f'|format(p.salario_base or 0) }}</td>
+                                <td>Bs. {{ '%.2f'|format(p.adelanto or 0) }}</td>
+                                <td><strong>Bs. {{ '%.2f'|format(p.salario_neto or 0) }}</strong></td>
+                                <td class="text-center">
+                                    <a href="{{ url_for('personal.cardex_personal', tipo='profesor', id=p.id) }}"
+                                       class="btn btn-sm btn-primary">
+                                        <i class="bi bi-folder2-open"></i> Cardex
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info text-center">
+                    <h5>No hay profesores registrados todavía.</h5>
+                    <p>Haga clic en el botón <strong>"Nuevo Profesor"</strong> para registrar el primero.</p>
+                    <a href="{{ url_for('personal.nuevo_profesor') }}" class="btn btn-success">
+                        <i class="bi bi-person-plus-fill"></i> Registrar el primer profesor
+                    </a>
+                </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

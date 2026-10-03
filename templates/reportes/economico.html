@@ -1,0 +1,163 @@
+<!-- Ruta: D:\colegio_vaca_diez\templates\reportes\economico.html -->
+{% extends "base.html" %}
+{% block title %}{{ titulo }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="fw-bold mb-0 text-primary"><i class="bi bi-file-earmark-bar-graph"></i> {{ titulo }}</h3>
+        <div>
+            <button onclick="window.print()" class="btn btn-dark btn-sm me-2">
+                <i class="bi bi-printer"></i> Imprimir Reporte
+            </button>
+            <a href="{{ url_for('reportes.economico_general') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Ver Reporte General
+            </a>
+        </div>
+    </div>
+    
+    <!-- TARJETAS DE RESUMEN FINANCIERO -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-success shadow-sm">
+                <div class="card-body text-success">
+                    <h6 class="card-title fw-bold">Total Ingresos</h6>
+                    <h4 class="mb-0">Bs. {{ '%.2f'|format(total) }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-danger shadow-sm">
+                <div class="card-body text-danger">
+                    <h6 class="card-title fw-bold">Total Egresos (Gastos + Personal)</h6>
+                    <h4 class="mb-0">Bs. {{ '%.2f'|format(total_egresos) }}</h4>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-{{ 'success' if balance_neto >= 0 else 'danger' }} shadow-sm">
+                <div class="card-body text-{{ 'success' if balance_neto >= 0 else 'danger' }}">
+                    <h6 class="card-title fw-bold">Balance Neto del Turno</h6>
+                    <h4 class="mb-0">Bs. {{ '%.2f'|format(balance_neto) }}</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 1: INGRESOS -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Detalle de Ingresos (Cobros a Estudiantes)</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>CI Estudiante</th>
+                        <th>Concepto</th>
+                        <th>Monto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in pagos %}
+                    <tr>
+                        <td>{{ p.fecha_pago.strftime('%d/%m/%Y %H:%M') if p.fecha_pago else '' }}</td>
+                        <td>{{ p.ci_estudiante }}</td>
+                        <td>{{ p.mes }} / {{ p.anio }}</td>
+                        <td class="text-success fw-bold">Bs. {{ '%.2f'|format(p.monto_pagado) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="text-center text-muted py-3">No hay cobros registrados en este turno.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 2: GASTOS OPERATIVOS -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="bi bi-receipt"></i> Detalle de Gastos Operativos</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha / ID</th>
+                        <th>Descripción</th>
+                        <th>Categoría</th>
+                        <th>Monto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in gastos %}
+                    <tr>
+                        <td>{{ g.id }}</td>
+                        <td>{{ g.descripcion }}</td>
+                        <td>{{ g.categoria or 'General' }}</td>
+                        <td class="text-danger fw-bold">Bs. {{ '%.2f'|format(g.monto) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="text-center text-muted py-3">No hay gastos operativos registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- SECCIÓN 3: PAGOS AL PERSONAL -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="bi bi-person-badge"></i> Detalle de Pagos / Adelantos al Personal</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-bordered table-striped mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID Personal</th>
+                        <th>Concepto / Detalle</th>
+                        <th>Fecha</th>
+                        <th>Monto</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pp in pagos_personal %}
+                    <tr>
+                        <td>{{ pp.personal_id }} ({{ pp.nombre_persona }})</td>
+                        <td>{{ pp.motivo or 'Pago / Adelanto de Sueldo' }}</td>
+                        <td>{{ pp.fecha_pago.strftime('%d/%m/%Y') if pp.fecha_pago else '' }}</td>
+                        <td class="text-danger fw-bold">Bs. {{ '%.2f'|format(pp.monto_neto_pagado) }}</td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="4" class="text-center text-muted py-3">No hay pagos al personal registrados.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    /* Ocultar la barra de navegación, botones y enlaces al imprimir */
+    nav, footer, .btn, a {
+        display: none !important;
+    }
+    body {
+        background-color: #ffffff !important;
+        color: #000000 !important;
+    }
+    .card {
+        border: 1px solid #dee2e6 !important;
+        box-shadow: none !important;
+        break-inside: avoid;
+    }
+    .container {
+        max-width: 100% !important;
+        padding: 0 !important;
+        margin: 0 !important;
+    }
+}
+</style>
+{% endblock %}

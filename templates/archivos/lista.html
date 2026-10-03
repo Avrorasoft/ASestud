@@ -1,0 +1,186 @@
+{% extends "base.html" %}
+
+{% block title %}
+Registro de Egresados - Colegio Dr. Antonio Vaca Díez
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- =============================================================== -->
+    <!-- ENCABEZADO -->
+    <!-- =============================================================== -->
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">
+            Registro de Egresados
+        </h3>
+
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('archivos.escanear_documento') }}"
+               class="btn btn-info">
+                <i class="bi bi-camera-fill"></i> Escanear Documento
+            </a>
+
+            <a href="{{ url_for('estudiantes.index') }}"
+               class="btn btn-success"
+               title="Seleccione un estudiante de la lista para archivar como egresado">
+                <i class="bi bi-plus-circle-fill"></i> Nuevo Egresado
+            </a>
+        </div>
+    </div>
+
+    <!-- =============================================================== -->
+    <!-- BÚSQUEDA -->
+    <!-- =============================================================== -->
+
+    <form method="GET" class="row g-2 mb-4">
+
+        <div class="col-md-9">
+            <input type="text"
+                   name="q"
+                   value="{{ busqueda or '' }}"
+                   class="form-control"
+                   placeholder="Buscar por C.I., apellido, nombre o RUDE...">
+        </div>
+
+        <div class="col-md-3 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-search"></i> Buscar
+            </button>
+
+            <a href="{{ url_for('archivos.index') }}"
+               class="btn btn-outline-secondary">
+                Limpiar
+            </a>
+        </div>
+
+    </form>
+
+    <!-- =============================================================== -->
+    <!-- TABLA DE EGRESADOS -->
+    <!-- =============================================================== -->
+
+    <div class="card shadow-sm">
+        <div class="card-header">
+            Egresados Registrados
+
+            {% if busqueda %}
+                - Búsqueda: "{{ busqueda }}"
+            {% endif %}
+
+            ({{ egresados|length }})
+        </div>
+
+        <div class="card-body">
+
+            {% if egresados %}
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>C.I.</th>
+                            <th>Apellidos y Nombres</th>
+                            <th>Año Egreso</th>
+                            <th>Curso Final</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for eg in egresados %}
+                        <tr>
+                            <td>
+                                <strong class="text-primary">{{ eg.ci }}</strong>
+
+                                {% if eg.rude %}
+                                <br>
+                                <small class="text-muted">
+                                    RUDE: {{ eg.rude }}
+                                </small>
+                                {% endif %}
+                            </td>
+
+                            <td>{{ eg.apellidos }}, {{ eg.nombres }}</td>
+                            <td>{{ eg.anio_egreso }}</td>
+                            <td>{{ eg.curso_final }}</td>
+
+                            <td>
+                                {% if eg.estado_egreso == 'Graduado' %}
+                                    <span class="badge bg-success">{{ eg.estado_egreso }}</span>
+                                {% elif eg.estado_egreso == 'No Graduado' %}
+                                    <span class="badge bg-danger">{{ eg.estado_egreso }}</span>
+                                {% elif eg.estado_egreso == 'Retirado' %}
+                                    <span class="badge bg-warning text-dark">{{ eg.estado_egreso }}</span>
+                                {% elif eg.estado_egreso == 'Trasladado' %}
+                                    <span class="badge bg-info text-dark">{{ eg.estado_egreso }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ eg.estado_egreso }}</span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                <div class="d-flex gap-1 flex-wrap">
+
+                                    <!-- VER CARDEX (azul) -->
+                                    <a href="{{ url_for('archivos.detalle_egresado', id=eg.id) }}"
+                                       class="btn btn-sm btn-primary"
+                                       title="Ver Cardex">
+                                        <i class="bi bi-eye-fill"></i>
+                                    </a>
+
+                                    <!-- GESTIONAR NOTAS (verde, con SVG que nunca se reduce) -->
+                                    <a href="{{ url_for('archivos.gestionar_notas', id=eg.id) }}"
+                                       class="btn btn-sm btn-success"
+                                       title="Gestionar Notas"
+                                       style="min-width: 32px; min-height: 28px; display: inline-flex; align-items: center; justify-content: center;">
+                                        <svg xmlns="http://www.w3.org/2000/svg"
+                                             width="16" height="16"
+                                             fill="currentColor"
+                                             viewBox="0 0 16 16"
+                                             style="width: 16px; height: 16px; flex-shrink: 0;">
+                                            <path d="M5 10.5a.5.5 0 0 1 .5-.5h2a.5.5 0 0 1 0 1h-2a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5m0-2a.5.5 0 0 1 .5-.5h5a.5.5 0 0 1 0 1h-5a.5.5 0 0 1-.5-.5"/>
+                                            <path d="M3 0h10a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-1h1v1a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3a1 1 0 0 0-1 1v1H1V2a2 2 0 0 1 2-2"/>
+                                            <path d="M1 5v-.5a.5.5 0 0 1 1 0V5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0V8h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1zm0 3v-.5a.5.5 0 0 1 1 0v.5h.5a.5.5 0 0 1 0 1h-2a.5.5 0 0 1 0-1z"/>
+                                        </svg>
+                                    </a>
+
+                                    <!-- EDITAR (amarillo) -->
+                                    <a href="{{ url_for('archivos.editar_egresado', id=eg.id) }}"
+                                       class="btn btn-sm btn-warning"
+                                       title="Editar">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </a>
+
+                                    <!-- ELIMINAR (rojo) -->
+                                    <form method="POST"
+                                          action="{{ url_for('archivos.eliminar_egresado', id=eg.id) }}"
+                                          class="d-inline"
+                                          onsubmit="return confirm('¿Eliminar este egresado y todo su historial?');">
+                                        <button type="submit"
+                                                class="btn btn-sm btn-danger"
+                                                title="Eliminar">
+                                            <i class="bi bi-trash-fill"></i>
+                                        </button>
+                                    </form>
+
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% else %}
+            <div class="alert alert-info">
+                No hay egresados registrados.
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,87 @@
+{% extends "layouts/print.html" %}
+
+{% block title %}Comprobante de Egreso #{{ gasto.id }}{% endblock %}
+
+{% block content %}
+<!-- BARRA DE ACCIÓN SUPERIOR (Oculta al imprimir) -->
+<div style="margin-bottom: 20px;" class="no-print">
+    <a href="/caja/" class="btn btn-outline-secondary rounded-pill px-4" style="background-color: #f8f9fa; color: #2c3e50; border: 1px solid #bdc3c7; padding: 6px 15px; text-decoration: none; font-size: 13px; font-weight: bold; display: inline-block;">
+        <i class="bi bi-arrow-left me-1"></i> Volver a Caja y Pagos
+    </a>
+</div>
+
+<!-- Cabecera propia del modelo de Gastos -->
+<div style="width: 100%; border-bottom: 2px solid #2c3e50; padding-bottom: 15px; margin-bottom: 20px; display: table;">
+    <div style="display: table-cell; vertical-align: middle; width: 20%; text-align: center; font-weight: bold; font-size: 11px; border: 1px dashed #7f8c8d; padding: 10px; background: #fdfdfd;">
+        VACA DÍEZ<br>BENI - BOLIVIA
+    </div>
+    <div style="display: table-cell; vertical-align: middle; width: 60%; text-align: center;">
+        <h2 style="font-size: 16px; color: #2c3e50; margin: 0 0 4px 0;">COLEGIO DR. ANTONIO VACA DÍEZ</h2>
+        <p style="font-size: 12px; color: #555; margin: 2px 0;">Riberalta - Beni - Bolivia</p>
+        <p style="font-size: 12px; color: #555; margin: 2px 0;"><strong>COMPROBANTE DE EGRESO / GASTO</strong></p>
+    </div>
+    <div style="display: table-cell; vertical-align: middle; width: 20%; text-align: right; font-size: 12px;">
+        Nº Registro:
+        <span style="display: block; font-size: 15px; font-weight: bold; color: #c0392b; margin-top: 2px;">#{{ "%05d"|format(gasto.id) }}</span>
+    </div>
+</div>
+
+<!-- Datos Principales -->
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 13px;">
+    <tr>
+        <td style="padding: 8px 10px; border: 1px solid #e0e0e0; font-weight: bold; background-color: #f8f9fa; width: 22%; color: #2c3e50;">Fecha:</td>
+        <td style="padding: 8px 10px; border: 1px solid #e0e0e0;">{{ gasto.fecha.strftime('%d/%m/%Y') if gasto.fecha else 'N/D' }}</td>
+        <td style="padding: 8px 10px; border: 1px solid #e0e0e0; font-weight: bold; background-color: #f8f9fa; width: 22%; color: #2c3e50;">Categoría:</td>
+        <td style="padding: 8px 10px; border: 1px solid #e0e0e0;">{{ gasto.categoria }}</td>
+    </tr>
+    <tr>
+        <td style="padding: 8px 10px; border: 1px solid #e0e0e0; font-weight: bold; background-color: #f8f9fa; color: #2c3e50;">Proveedor:</td>
+        <td style="padding: 8px 10px; border: 1px solid #e0e0e0;">{{ gasto.proveedor or 'Varios / General' }}</td>
+        <td style="padding: 8px 10px; border: 1px solid #e0e0e0; font-weight: bold; background-color: #f8f9fa; color: #2c3e50;">Responsable:</td>
+        <td style="padding: 8px 10px; border: 1px solid #e0e0e0;">{{ gasto.responsable or 'Administración' }}</td>
+    </tr>
+</table>
+
+<!-- Detalle del Concepto -->
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 25px;">
+    <thead>
+        <tr>
+            <th style="border: 1px solid #bdc3c7; padding: 10px; text-align: left; font-size: 13px; background-color: #2c3e50; color: white; width: 75%;">Concepto / Descripción del Gasto</th>
+            <th style="border: 1px solid #bdc3c7; padding: 10px; text-align: right; font-size: 13px; background-color: #2c3e50; color: white; width: 25%;">Monto (Bs.)</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td style="border: 1px solid #bdc3c7; padding: 10px; font-size: 13px;">{{ gasto.descripcion }}</td>
+            <td style="border: 1px solid #bdc3c7; padding: 10px; text-align: right; font-weight: bold; font-size: 13px;">Bs. {{ "%.2f"|format(gasto.monto) }}</td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- Total Pagado -->
+<div style="text-align: right; font-size: 16px; font-weight: bold; background: #f1f4f6; padding: 12px 15px; border: 1px solid #bdc3c7; margin-bottom: 40px; color: #2c3e50;">
+    TOTAL PAGADO: Bs. {{ "%.2f"|format(gasto.monto) }}
+</div>
+
+<!-- Bloque de Firmas -->
+<div style="width: 100%; display: table; margin-top: 30px;">
+    <div style="display: table-cell; width: 50%; text-align: center; padding: 0 30px;">
+        <div style="border-top: 1px solid #333; margin-bottom: 5px;"></div>
+        <p style="font-size: 12px; color: #555; margin: 2px 0;"><strong>Entregué Conforme</strong></p>
+        <p style="font-size: 12px; color: #555; margin: 2px 0;">Caja / Tesorería</p>
+    </div>
+    <div style="display: table-cell; width: 50%; text-align: center; padding: 0 30px;">
+        <div style="border-top: 1px solid #333; margin-bottom: 5px;"></div>
+        <p style="font-size: 12px; color: #555; margin: 2px 0;"><strong>Recibí Conforme / Autorizado</strong></p>
+        <p style="font-size: 12px; color: #555; margin: 2px 0;">Firma y Sello</p>
+    </div>
+</div>
+
+<script>
+    // Asegurar que el botón de retroceso global o específico apunte a caja
+    const btnBack = document.querySelector('.btn-back');
+    if (btnBack) {
+        btnBack.setAttribute('href', "/caja/");
+    }
+</script>
+{% endblock %}

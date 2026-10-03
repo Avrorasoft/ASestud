@@ -1,0 +1,82 @@
+{% extends "base_padres.html" %}
+{% block title %}Boletín - Portal de Padres{% endblock %}
+{% block page_title %}Boletín de Calificaciones{% endblock %}
+
+{% block content %}
+</div></div> <!-- Solución para romper el contenedor del logo de la plantilla base -->
+
+<style id="estilo-hoja-carta-estandar">
+    /* BLOQUEO DE MÁRGENES Y MEDIDAS ESTÁNDAR TAMAÑO CARTA */
+    @page {
+        size: letter portrait !important;
+        margin: 10mm !important;
+    }
+    @media screen {
+        body {
+            background-color: #f8fafc !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        .documento-hoja, .boletin-container, .card-boletin, .sheet, .hoja-impresion {
+            background: transparent !important;
+            width: 100% !important;
+            min-height: auto !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            box-sizing: border-box !important;
+        }
+    }
+    @media print {
+        body {
+            background: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .no-print, .btn, .botonera {
+            display: none !important;
+        }
+        .documento-hoja, .boletin-container, .card-boletin, .sheet, .hoja-impresion {
+            width: 100% !important;
+            min-height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+    }
+    .dashboard-wrapper {
+        padding: 20px 15px;
+        background-color: #f8fafc;
+        min-height: calc(100vh - 60px);
+    }
+</style>
+
+<div class="dashboard-wrapper">
+    <div class="container-fluid p-0">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0 text-dark"><i class="bi bi-journal-text text-primary me-2"></i>Boletín de Calificaciones</h2>
+            <div class="d-flex gap-2">
+                <a href="{{ boletin_url }}" download class="btn btn-success shadow-sm">
+                    <i class="bi bi-download me-1"></i>Descargar PDF
+                </a>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 text-dark">
+                    <i class="bi bi-person-fill text-primary me-2"></i>
+                    {{ estudiante.apellidos }}, {{ estudiante.nombres }} - {{ estudiante.curso }}
+                </h5>
+            </div>
+            <div class="card-body p-0">
+                <iframe src="{{ boletin_url }}" width="100%" height="900px" style="border: none; display: block;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

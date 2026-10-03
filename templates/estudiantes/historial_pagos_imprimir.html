@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Historial de Pagos - {{ est.apellidos }} {{ est.nombres }}</title>
+    <style>
+        @page { size: letter portrait; margin: 12mm; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1e293b; margin: 0; padding: 20px; font-size: 12px; }
+        .documento { max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; border: 1px solid #cbd5e1; border-radius: 8px; }
+        .header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #0f172a; padding-bottom: 10px; margin-bottom: 15px; }
+        .header h2 { margin: 0; font-size: 17px; text-transform: uppercase; }
+        .header p { margin: 2px 0 0; color: #475569; font-size: 11px; }
+        .datos-estudiante { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; background: #f8fafc; padding: 12px; border-radius: 6px; border: 1px solid #e2e8f0; margin-bottom: 15px; }
+        .label { font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: bold; display: block; }
+        .valor { font-weight: bold; font-size: 12px; color: #0f172a; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        th { background: #0f172a; color: white; padding: 7px 8px; font-size: 11px; text-transform: uppercase; }
+        td { padding: 7px 8px; border-bottom: 1px solid #e2e8f0; }
+        tr:nth-child(even) { background: #f8fafc; }
+        .resumen { display: flex; justify-content: flex-end; margin-bottom: 30px; }
+        .resumen-tabla { width: 300px; border-collapse: collapse; }
+        .resumen-tabla td { padding: 6px 10px; }
+        .total-destacado { background: #0f172a; color: #fff; font-weight: bold; font-size: 13px; }
+        .firmas { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; font-size: 11px; color: #475569; margin-top: 40px; }
+        .linea-firma { border-top: 1px dashed #64748b; padding-top: 5px; width: 80%; margin: 0 auto; }
+        .no-print { text-align: center; margin-bottom: 15px; }
+        .btn-print { background: #0284c7; color: white; border: none; padding: 9px 18px; font-size: 13px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        @media print { .no-print { display: none; } body { padding: 0; } .documento { border: none; padding: 0; } }
+    </style>
+</head>
+<body>
+    <div class="no-print">
+        <button class="btn-print" onclick="window.print()">🖨️ Imprimir Historial Completo</button>
+        <button class="btn-print" style="background:#64748b; margin-left: 8px;" onclick="window.close()">Cerrar</button>
+    </div>
+
+    <div class="documento">
+        <div class="header">
+            <div>
+                <h2>Colegio Dr. Antonio Vaca Díez</h2>
+                <p>Sistema Integrado de Gestión Institucional | Riberalta - Beni</p>
+                <p><strong>ESTADO DE CUENTA / HISTORIAL GENERAL DE PAGOS</strong></p>
+            </div>
+            <div style="text-align: right; font-size: 11px; color: #64748b;">
+                Fecha de Emisión:<br>
+                <strong style="color: #0f172a; font-size: 12px;">{{ now().strftime('%d/%m/%Y %H:%M') }}</strong>
+            </div>
+        </div>
+
+        <div class="datos-estudiante">
+            <div>
+                <span class="label">Estudiante</span>
+                <span class="valor">{{ est.apellidos }}, {{ est.nombres }}</span>
+            </div>
+            <div>
+                <span class="label">Curso</span>
+                <span class="valor">{{ est.curso or 'No asignado' }}</span>
+            </div>
+            <div>
+                <span class="label">Tutor / Apoderado</span>
+                <span class="valor">{{ padre.nombre if padre else 'No registrado' }}</span>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="text-align: center;">N° Recibo</th>
+                    <th style="text-align: center;">Fecha</th>
+                    <th style="text-align: left;">Concepto</th>
+                    <th style="text-align: center;">Mes/Año</th>
+                    <th style="text-align: center;">Turno</th>
+                    <th style="text-align: center;">Método</th>
+                    <th style="text-align: right;">Monto (Bs.)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set total_acumulado = namespace(monto=0) %}
+                {% for p in pagos %}
+                {% set total_acumulado.monto = total_acumulado.monto + (p.monto_pagado or 0) %}
+                <tr>
+                    <td style="text-align: center; font-weight: bold;">#{{ p.id }}</td>
+                    <td style="text-align: center;">{{ p.fecha_pago.strftime('%d/%m/%Y') if p.fecha_pago else '-' }}</td>
+                    <td>{{ p.concepto or 'Pensión Escolar' }}</td>
+                    <td style="text-align: center;">{{ p.mes or '-' }}/{{ p.anio or '-' }}</td>
+                    <td style="text-align: center;"><small>{{ p.turno or 'Caja' }}</small></td>
+                    <td style="text-align: center;"><small>{{ p.metodo_pago or 'Efectivo' }}</small></td>
+                    <td style="text-align: right; font-weight: 600;">{{ "%.2f"|format(p.monto_pagado or 0) }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 15px; color: #94a3b8;">No se registran pagos efectuados en el sistema.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="resumen">
+            <table class="resumen-tabla">
+                <tr>
+                    <td style="text-align: right; font-weight: bold;">Total Transacciones:</td>
+                    <td style="text-align: right;">{{ pagos|length }}</td>
+                </tr>
+                <tr class="total-destacado">
+                    <td style="text-align: right;">TOTAL GENERAL CANCELADO:</td>
+                    <td style="text-align: right;">Bs. {{ "%.2f"|format(total_acumulado.monto) }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <div class="firmas">
+            <div>
+                <div class="linea-firma">Firma y Sello de Administración / Caja</div>
+            </div>
+            <div>
+                <div class="linea-firma">Firma Padre / Tutor de Conformidad</div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                Editar Datos del Estudiante
+            </h4>
+
+            <a href="{{ url_for('estudiantes.ver_estudiante', id=est.id) }}"
+               class="btn btn-sm btn-light">
+                Volver al Cardex
+            </a>
+        </div>
+
+        <div class="card-body">
+
+            <form method="POST">
+
+                <div class="row">
+
+                    <!-- =================================================== -->
+                    <!-- C.I. IDENTIFICADOR PRINCIPAL -->
+                    <!-- =================================================== -->
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            C.I. *
+                        </label>
+
+                        <input type="text"
+                               name="ci"
+                               class="form-control"
+                               value="{{ est.ci }}"
+                               required>
+                    </div>
+
+                    <!-- =================================================== -->
+                    <!-- RUDE SOLO INFORMATIVO -->
+                    <!-- =================================================== -->
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            RUDE (solo informativo)
+                        </label>
+
+                        <input type="text"
+                               name="rude"
+                               class="form-control"
+                               value="{{ est.rude or '' }}">
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            Fecha de Nacimiento
+                        </label>
+
+                        <input type="date"
+                               name="fecha_nacimiento"
+                               class="form-control"
+                               value="{{ est.fecha_nacimiento.strftime('%Y-%m-%d') if est.fecha_nacimiento else '' }}">
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            Apellidos *
+                        </label>
+
+                        <input type="text"
+                               name="apellidos"
+                               class="form-control"
+                               value="{{ est.apellidos }}"
+                               required>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            Nombres *
+                        </label>
+
+                        <input type="text"
+                               name="nombres"
+                               class="form-control"
+                               value="{{ est.nombres }}"
+                               required>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            Curso *
+                        </label>
+
+                        {% set cursos_base = [
+                            '1ro Primaria',
+                            '2do Primaria',
+                            '3ro Primaria',
+                            '4to Primaria',
+                            '5to Primaria',
+                            '6to Primaria',
+                            '1ro Secundaria',
+                            '2do Secundaria',
+                            '3ro Secundaria',
+                            '4to Secundaria',
+                            '5to Secundaria',
+                            '6to Secundaria'
+                        ] %}
+
+                        <select name="curso"
+                                class="form-select"
+                                required>
+
+                            {% for c in cursos_base %}
+                            <option value="{{ c }}"
+                                {% if est.curso == c %}selected{% endif %}>
+                                {{ c }}
+                            </option>
+                            {% endfor %}
+
+                        </select>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            Pensión Mensual (Bs.) *
+                        </label>
+
+                        <input type="number"
+                               name="pension"
+                               class="form-control"
+                               step="0.01"
+                               min="0"
+                               value="{{ est.pension or 0 }}"
+                               required>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            Estado
+                        </label>
+
+                        <select name="estado" class="form-select">
+                            <option value="Activo"
+                                {% if est.estado == 'Activo' %}selected{% endif %}>
+                                Activo
+                            </option>
+
+                            <option value="Inactivo"
+                                {% if est.estado == 'Inactivo' %}selected{% endif %}>
+                                Inactivo
+                            </option>
+
+                            <option value="Archivado"
+                                {% if est.estado == 'Archivado' %}selected{% endif %}>
+                                Archivado
+                            </option>
+                        </select>
+                    </div>
+
+                </div>
+
+                <hr>
+
+                <h5>Dirección</h5>
+
+                <div class="row">
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            Dirección
+                        </label>
+
+                        <input type="text"
+                               name="direccion"
+                               class="form-control"
+                               value="{{ est.direccion or '' }}">
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            Zona
+                        </label>
+
+                        <input type="text"
+                               name="zona"
+                               class="form-control"
+                               value="{{ est.zona or '' }}">
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            Ciudad
+                        </label>
+
+                        <input type="text"
+                               name="ciudad"
+                               class="form-control"
+                               value="{{ est.ciudad or '' }}">
+                    </div>
+
+                </div>
+
+                <div class="d-flex justify-content-between">
+
+                    <a href="{{ url_for('estudiantes.ver_estudiante', id=est.id) }}"
+                       class="btn btn-secondary">
+                        Cancelar
+                    </a>
+
+                    <button type="submit" class="btn btn-primary">
+                        Guardar Cambios
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

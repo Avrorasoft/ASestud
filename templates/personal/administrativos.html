@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- ENCABEZADO CON BOTÓN NUEVO ADMINISTRATIVO -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="bi bi-person-badge-fill"></i> Personal Administrativo
+        </h2>
+        <a href="{{ url_for('personal.nuevo_administrativo') }}" class="btn btn-primary btn-lg">
+            <i class="bi bi-person-plus-fill"></i> Nuevo Administrativo
+        </a>
+    </div>
+
+    <!-- TABLA DE PERSONAL ADMINISTRATIVO -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            {% if administrativos %}
+                <div class="table-responsive">
+                    <table class="table table-hover table-bordered align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>CI</th>
+                                <th>Apellidos y Nombres</th>
+                                <th>Cargo</th>
+                                <th>Salario Base</th>
+                                <th>Adelanto</th>
+                                <th>Neto</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for a in administrativos %}
+                            <tr>
+                                <td>{{ a.ci or '-' }}</td>
+                                <td><strong>{{ a.apellidos }}, {{ a.nombres }}</strong></td>
+                                <td>{{ a.cargo }}</td>
+                                <td>Bs. {{ '%.2f'|format(a.salario_base or 0) }}</td>
+                                <td>Bs. {{ '%.2f'|format(a.adelanto or 0) }}</td>
+                                <td><strong>Bs. {{ '%.2f'|format(a.salario_neto or 0) }}</strong></td>
+                                <td class="text-center">
+                                    <a href="{{ url_for('personal.cardex_personal', tipo='admin', id=a.id) }}"
+                                       class="btn btn-sm btn-primary">
+                                        <i class="bi bi-folder2-open"></i> Cardex
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info text-center">
+                    <h5>No hay personal administrativo registrado todavía.</h5>
+                    <p>Haga clic en el botón <strong>"Nuevo Administrativo"</strong> para registrar el primero.</p>
+                    <a href="{{ url_for('personal.nuevo_administrativo') }}" class="btn btn-primary">
+                        <i class="bi bi-person-plus-fill"></i> Registrar el primer administrativo
+                    </a>
+                </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

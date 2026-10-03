@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}Gestión de Gastos{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="text-dark"><i class="bi bi-receipt me-2"></i>Gestión de Gastos</h2>
+    <div>
+        <a href="{{ url_for('gastos.reporte') }}" class="btn btn-info me-2"><i class="bi bi-bar-chart me-1"></i>Ver Reporte</a>
+        <a href="{{ url_for('gastos.nuevo') }}" class="btn btn-primary"><i class="bi bi-plus-circle me-1"></i>Nuevo Gasto</a>
+    </div>
+</div>
+
+<!-- Tarjeta de Total -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card bg-danger">
+            <div class="card-body text-black">
+                <h5 class="card-title text-white">Total Gastado (Filtrado)</h5>
+                <h2 class="display-6 text-white">Bs. {{ "%.2f"|format(total_general) }}</h2>
+                <p class="card-text small text-white">{{ gastos|length }} registros encontrados</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body text-dark">
+                <h5 class="card-title text-dark">Top 3 Categorías</h5>
+                {% set top_cats = resumen.items()|sort(attribute='1', reverse=True)|list %}
+                {% for cat, monto in top_cats[:3] %}
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="text-dark"><strong>{{ cat }}</strong></span>
+                    <span class="badge bg-secondary">Bs. {{ "%.2f"|format(monto) }}</span>
+                </div>
+                {% endfor %}
+                {% if not top_cats %}
+                <p class="text-muted mb-0">Sin datos</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body text-dark">
+        <form method="GET" class="row g-3">
+            <div class="col-md-4">
+                <input type="text" name="search" class="form-control text-dark" placeholder="Buscar descripción o proveedor..." value="{{ search }}">
+            </div>
+            <div class="col-md-3">
+                <select name="mes" class="form-select text-dark">
+                    <option value="">Todos los meses</option>
+                    {% for i in range(1, 13) %}
+                    <option value="{{ '%02d'|format(i) }}" {% if mes_filtro == '%02d'|format(i) %}selected{% endif %}>{{ ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][i-1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <input type="number" name="anio" class="form-control text-dark" placeholder="Año" value="{{ anio_filtro or '' }}">
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary w-100"><i class="bi bi-funnel me-1"></i>Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla de Gastos -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 text-dark">
+                <thead class="table-light text-dark">
+                    <tr>
+                        <th class="text-dark">Fecha</th>
+                        <th class="text-dark">Categoría</th>
+                        <th class="text-dark">Descripción</th>
+                        <th class="text-dark">Proveedor</th>
+                        <th class="text-dark">Responsable</th>
+                        <th class="text-dark">Monto</th>
+                        <th class="text-end text-dark">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for g in gastos %}
+                    <tr>
+                        <td class="text-dark">{{ g.fecha.strftime('%d/%m/%Y') }}</td>
+                        <td><span class="badge bg-warning text-dark">{{ g.categoria }}</span></td>
+                        <td class="text-dark">{{ g.descripcion }}</td>
+                        <td class="text-dark">{{ g.proveedor or '-' }}</td>
+                        <td class="text-dark">{{ g.responsable or '-' }}</td>
+                        <td class="text-dark"><strong>Bs. {{ "%.2f"|format(g.monto) }}</strong></td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <!-- Botón para ver comprobante impreso -->
+                                <a href="{{ url_for('gastos.comprobante_gasto', gasto_id=g.id) }}" class="btn btn-outline-secondary" title="Imprimir Comprobante" target="_blank"><i class="bi bi-printer"></i></a>
+                                
+                                <!-- Ícono directo para ver el archivo adjunto -->
+                                <!-- Ícono directo para ver el archivo adjunto (Ruta Blindada) -->
+								{% if g.archivo %}
+								{% set nombre_archivo_limpio = g.archivo.replace('\\', '/').split('/')[-1] %}
+								<a href="{{ url_for('static', filename='uploads/gastos/' + nombre_archivo_limpio) }}" class="btn btn-outline-info" title="Ver Comprobante Adjunto" target="_blank">
+									<i class="bi bi-paperclip"></i>
+								</a>
+								{% endif %}
+
+                                {% set es_super = session.get('es_superadmin') or session.get('rol') == 'superadmin' %}
+                                {% if es_super %}
+                                    {% if session.get('rol') == 'superadmin' %}
+                                    <a href="{{ url_for('gastos.editar', id=g.id) }}" class="btn btn-outline-warning" title="Editar Gasto"><i class="bi bi-pencil"></i></a>
+                                    <button class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#delGasto{{ g.id }}" title="Eliminar Gasto"><i class="bi bi-trash"></i></button>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                            
+                            {% if es_super %}
+                            <div class="modal fade" id="delGasto{{ g.id }}">
+                                <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content">
+                                        <div class="modal-header bg-danger text-white">
+                                            {% if session.get('rol') == 'superadmin' %}<h5 class="modal-title text-white">Eliminar Gasto</h5>{% endif %}
+                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                        </div>
+                                        {% if session.get('rol') == 'superadmin' %}<div class="modal-body text-dark">¿Eliminar el gasto de <strong>{{ g.categoria }}</strong> por Bs. {{ "%.2f"|format(g.monto) }}?</div>{% endif %}
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                            {% if session.get('rol') == 'superadmin' %}
+                                            <form action="{{ url_for('gastos.eliminar', id=g.id) }}" method="POST">
+                                                <button type="submit" class="btn btn-danger">Eliminar</button>
+                                            </form>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="7" class="text-center py-4 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                            No hay gastos registrados con estos filtros.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %} 

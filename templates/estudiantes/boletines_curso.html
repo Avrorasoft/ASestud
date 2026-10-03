@@ -1,0 +1,177 @@
+<style id="estilo-impresion-boletin-definitivo">
+    @page {
+        size: letter portrait !important;
+        margin: 10mm !important;
+    }
+
+    /* ELIMINAR COLAPSO DE SCROLL EN IMPRESIÓN */
+    @media print {
+        html, body {
+            height: auto !important;
+            min-height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            display: block !important;
+            background: #fff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        * {
+            overflow: visible !important;
+            max-height: none !important;
+        }
+        nav, header, footer, .sidebar, #sidebar-wrapper, .navbar, .btn, .no-print, button {
+            display: none !important;
+        }
+        #wrapper, #page-content-wrapper, .container, .container-fluid, main {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            overflow: visible !important;
+            position: static !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        table {
+            page-break-inside: auto !important;
+            background-color: transparent !important;
+        }
+        tr {
+            page-break-inside: avoid !important;
+            page-break-after: auto !important;
+        }
+        thead {
+            display: table-header-group !important;
+        }
+        .watermark-segura {
+            display: block !important;
+        }
+    }
+
+    /* MARCA DE AGUA DIAGONAL CON ALTA VISIBILIDAD (18% DE OPACIDAD) */
+    .watermark-segura {
+        position: fixed;
+        top: 45%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-30deg);
+        width: 85%;
+        text-align: center;
+        pointer-events: none;
+        z-index: 9999;
+        user-select: none;
+    }
+    .wm-nombre-txt {
+        font-size: 36px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        line-height: 1.15;
+        color: rgba(0, 0, 0, 0.18) !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        margin-bottom: 5px;
+    }
+    .wm-datos-txt {
+        font-size: 16px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: rgba(0, 0, 0, 0.15) !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+</style>
+        
+{% extends "base.html" %}
+{% block title %}Boletines PDF - {{ curso }} - Sistema de Gestión Escolar
+{% endblock %}
+{% block content %}
+{# MARCA DE AGUA VISIBLE CON NOMBRE Y DOCUMENTO DEL ESTUDIANTE #}
+{% set _est = est if (est is defined and est) else (estudiante if (estudiante is defined and estudiante) else (alumno if (alumno is defined and alumno) else None)) %}
+{% if _est %}
+<div class="watermark-segura">
+    <div class="wm-nombre-txt">{{ _est.apellidos }} {{ _est.nombres }}</div>
+    <div class="wm-datos-txt">C.I. {{ _est.ci }} {{ _est.expedido or 'BN' }} &bull; RUDE: {{ _est.rude or '-' }} &bull; SISTEMA ESCOLAR</div>
+</div>
+{% endif %}
+{# MARCA DE AGUA INTEGRADA DE FONDO (DETRÁS DEL TEXTO) #}
+    {% set _est = est if (est is defined and est) else (estudiante if (estudiante is defined and estudiante) else (alumno if (alumno is defined and alumno) else None)) %}
+    {% if _est %}
+    {% endif %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-dark"><i class="bi bi-file-earmark-pdf me-2"></i>Generación de Boletines PDF - {{ curso }}</h2>
+        <a href="{{ url_for('estudiantes.index') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <div class="alert alert-info text-dark">
+        <i class="bi bi-info-circle-fill"></i> 
+        <strong>Instrucciones:</strong> Haga clic en "Generar Boletín" para crear el PDF localmente. 
+        Los boletines se generan dinámicamente y pueden descargarse posteriormente[cite: 3].
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header bg-light text-dark">
+            <h5 class="mb-0 text-dark">Estudiantes de {{ curso }} ({{ estudiantes|length }})[cite: 3]</h5>
+        </div>
+        <div class="card-body text-dark">
+            {% if estudiantes %}
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered text-dark">
+                    <thead class="table-light text-dark">
+                        <tr>
+                            <th class="text-dark">RUDE</th>
+                            <th class="text-dark">Apellidos y Nombres</th>
+                            <th class="text-dark">Tutor</th>
+                            <th class="text-dark">Teléfono</th>
+                            <th class="text-center text-dark">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for est in estudiantes %}
+                        <tr>
+                            <td class="text-dark">{{ est.rude }}</td>
+                            <td class="text-dark">{{ est.apellidos }}, {{ est.nombres }}</td>
+                            <td class="text-dark">
+                                {% if est.padres and est.padres|length > 0 %}
+                                    {{ est.padres[0].nombres }}
+                                {% else %}
+                                    <span class="text-muted">Sin tutor</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-dark">
+                                {% if est.padres and est.padres|length > 0 and (est.padres[0].telefono1 or est.padres[0].telefono2) %}
+                                    {{ est.padres[0].telefono1 or est.padres[0].telefono2 }}
+                                {% else %}
+                                    <span class="text-muted">Sin teléfono</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center">
+                                <a href="{{ url_for('estudiantes.ver_boletin', id=est.id) }}" class="btn btn-sm btn-primary text-white" title="Generar PDF">
+                                    <i class="bi bi-file-earmark-pdf"></i> Generar
+                                </a>
+                                <a href="{{ url_for('estudiantes.descargar_boletin', id=est.id) }}" class="btn btn-sm btn-success text-white" title="Descargar PDF">
+                                    <i class="bi bi-download"></i> Descargar
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-warning text-dark">
+                No hay estudiantes activos registrados en este curso[cite: 3].
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+
+{% block title %}Registrar Pago - Colegio Vaca Díez{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">💰 Registrar Nuevo Pago</h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('pagos.registrar') }}" id="formPago">
+                        
+                        <div class="form-group mb-3">
+                            <label for="ci_estudiante">C.I. del Estudiante <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="ci_estudiante" name="ci_estudiante" 
+                                       placeholder="Ej: 1234567" required>
+                                <button class="btn btn-outline-secondary" type="button" id="btnBuscar">
+                                    🔍 Buscar
+                                </button>
+                            </div>
+                            <small class="text-muted">Ingresa la cédula del estudiante</small>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label>Estudiante</label>
+                            <input type="text" class="form-control" id="nombre_estudiante" 
+                                   placeholder="Nombre del estudiante" readonly>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label>RUDE</label>
+                            <input type="text" class="form-control" id="rude_estudiante" 
+                                   placeholder="RUDE del estudiante" readonly>
+                        </div>
+
+                        <hr>
+
+                        <div class="form-group mb-3">
+                            <label for="tipo_pago">Tipo de Pago <span class="text-danger">*</span></label>
+                            <select class="form-control" id="tipo_pago" name="tipo_pago" required>
+                                <option value="">Seleccione un tipo de pago</option>
+                                {% if tipos_pago %}
+                                    {% for value, label in tipos_pago %}
+                                    <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                {% else %}
+                                    <option value="Pensión">Pensión Mensual</option>
+                                    <option value="Inscripción">Inscripción</option>
+                                    <option value="Matrícula">Matrícula</option>
+                                    <option value="Varios">Varios</option>
+                                {% endif %}
+                            </select>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="descripcion">Descripción (opcional)</label>
+                            <input type="text" class="form-control" id="descripcion" name="descripcion" 
+                                   placeholder="Ej: Pago de pensión mes de marzo, Inscripción 2026, etc.">
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="mes">Mes <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="mes" name="mes" required>
+                                        <option value="">Seleccione mes</option>
+                                        {% set lista_meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] %}
+                                        {% for m in lista_meses %}
+                                        <option value="{{ m }}" {% if m == mes_actual %}selected{% endif %}>{{ m }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="anio">Año <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="anio" name="anio" required>
+                                        <option value="">Seleccione año</option>
+                                        {% set lista_anios = [2025, 2026, 2027] %}
+                                        {% for a in lista_anios %}
+                                        <option value="{{ a }}" {% if a == anio_actual %}selected{% endif %}>{{ a }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Bloque de Montos Separados: Monto Base, Adelanto/Descuento y Neto -->
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label for="monto_total">Monto Base (Bs.) <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control" id="monto_total" name="monto_total" 
+                                           step="0.01" min="0.01" placeholder="4000.00" required>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label for="descuento">Adelanto (Bs.)</label>
+                                    <input type="number" class="form-control" id="descuento" name="descuento" 
+                                           step="0.01" min="0.0" value="0.00" placeholder="0.00">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group mb-3">
+                                    <label for="monto_pagado">Neto Pagado (Bs.) <span class="text-danger">*</span></label>
+                                    <input type="number" class="form-control bg-light" id="monto_pagado" name="monto_pagado" 
+                                           step="0.01" min="0.01" placeholder="0.00" readonly required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="metodo_pago">Método de Pago</label>
+                            <select class="form-control" id="metodo_pago" name="metodo_pago">
+                                <option value="Efectivo">💵 Efectivo</option>
+                                <option value="Bancario">🏦 Bancario</option>
+                            </select>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="{{ url_for('pagos.index') }}" class="btn btn-secondary me-md-2">Cancelar</a>
+                            <button type="submit" class="btn btn-primary">💾 Registrar Pago</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ciInput = document.getElementById('ci_estudiante');
+    const btnBuscar = document.getElementById('btnBuscar');
+    const nombreInput = document.getElementById('nombre_estudiante');
+    const rudeInput = document.getElementById('rude_estudiante');
+    
+    // Elementos de cálculo de montos
+    const inputBase = document.getElementById('monto_total');
+    const inputAdelanto = document.getElementById('descuento');
+    const inputNeto = document.getElementById('monto_pagado');
+
+    function calcularNeto() {
+        const base = parseFloat(inputBase.value) || 0;
+        const adelanto = parseFloat(inputAdelanto.value) || 0;
+        const neto = Math.max(0, base - adelanto);
+        inputNeto.value = neto.toFixed(2);
+    }
+
+    if (inputBase && inputAdelanto && inputNeto) {
+        inputBase.addEventListener('input', calcularNeto);
+        inputAdelanto.addEventListener('input', calcularNeto);
+    }
+    
+    function buscarEstudiante() {
+        const ci = ciInput.value.trim();
+        if (ci.length === 0) {
+            nombreInput.value = '';
+            rudeInput.value = '';
+            return;
+        }
+        
+        fetch(`/pagos/api/buscar_estudiante?ci=${ci}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.encontrado) {
+                    nombreInput.value = data.nombre_completo;
+                    rudeInput.value = data.rude || '';
+                    nombreInput.classList.remove('border-danger');
+                    nombreInput.classList.add('border-success');
+                } else {
+                    nombreInput.value = '⚠️ Estudiante no encontrado';
+                    rudeInput.value = '';
+                    nombreInput.classList.remove('border-success');
+                    nombreInput.classList.add('border-danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                nombreInput.value = '❌ Error al buscar';
+            });
+    }
+    
+    ciInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            buscarEstudiante();
+        }
+    });
+    
+    if (btnBuscar) {
+        btnBuscar.addEventListener('click', buscarEstudiante);
+    }
+    if (ciInput) {
+        ciInput.addEventListener('blur', buscarEstudiante);
+    }
+});
+</script>
+{% endblock %}
+{% endblock %}

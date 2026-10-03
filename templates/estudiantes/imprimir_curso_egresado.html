@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Certificación de Calificaciones - {{ curso_nombre }} - {{ est.apellidos }} {{ est.nombres }}</title>
+    <style>
+        @page { size: letter portrait; margin: 15mm; }
+        body { 
+            font-family: 'Segoe UI', Arial, sans-serif; 
+            color: #0f172a; 
+            margin: 0; 
+            padding: 20px; 
+            font-size: 12px; 
+            background: #fff;
+            position: relative;
+        }
+
+        /* CONTENEDOR FLOTANTE DE MARCA DE AGUA (POR ENCIMA DE TABLAS Y FONDOS) */
+        .watermark-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: none;
+            z-index: 9999;
+            user-select: none;
+        }
+
+        .watermark-box {
+            transform: rotate(-30deg);
+            text-align: center;
+            color: rgba(15, 23, 42, 0.15);
+            border: 4px dashed rgba(15, 23, 42, 0.15);
+            padding: 25px 45px;
+            border-radius: 12px;
+            pointer-events: none;
+            max-width: 85%;
+        }
+
+        .wm-nombre {
+            font-size: 36px;
+            font-weight: 900;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            line-height: 1.15;
+            margin-bottom: 6px;
+        }
+
+        .wm-documento {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .wm-institucion {
+            font-size: 14px;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: rgba(15, 23, 42, 0.12);
+        }
+
+        .documento {
+            max-width: 760px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+        .header h2 { margin: 0; font-size: 17px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .header h3 { margin: 3px 0 0; font-size: 13px; color: #334155; font-weight: normal; }
+        .header p { margin: 2px 0 0; font-size: 10px; color: #64748b; }
+
+        .titulo-certificado {
+            text-align: center;
+            background: #0f172a;
+            color: #fff;
+            padding: 6px;
+            font-weight: bold;
+            font-size: 13px;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            border-radius: 4px;
+        }
+
+        .grid-filiacion {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr;
+            gap: 8px;
+            background: #f8fafc;
+            border: 1px solid #cbd5e1;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        .label { font-size: 9px; color: #475569; text-transform: uppercase; font-weight: bold; display: block; }
+        .valor { font-weight: bold; font-size: 12px; color: #0f172a; }
+
+        table { width: 100%; border-collapse: collapse; margin-bottom: 12px; background: #fff; }
+        th { background: #1e293b; color: #fff; padding: 6px 8px; font-size: 10px; text-transform: uppercase; border: 1px solid #1e293b; }
+        td { padding: 6px 8px; border: 1px solid #cbd5e1; font-size: 11px; }
+        tr:nth-child(even) { background-color: #f8fafc; }
+
+        .resumen-promedio {
+            display: flex;
+            justify-content: flex-end;
+            margin-bottom: 25px;
+        }
+        .caja-promedio {
+            border: 2px solid #0f172a;
+            background: #f8fafc;
+            padding: 8px 15px;
+            border-radius: 4px;
+            text-align: right;
+            font-size: 13px;
+        }
+
+        .firmas {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            text-align: center;
+            font-size: 11px;
+            color: #334155;
+            margin-top: 55px;
+            padding: 0 40px;
+        }
+        .linea-firma { 
+            border-top: 1px dashed #64748b; 
+            padding-top: 6px; 
+            width: 90%; 
+            margin: 0 auto; 
+            font-weight: 600;
+        }
+
+        .no-print { text-align: center; margin-bottom: 15px; }
+        .btn-print { background: #0284c7; color: white; border: none; padding: 8px 18px; font-size: 13px; font-weight: bold; border-radius: 4px; cursor: pointer; }
+        .btn-close { background: #475569; color: white; border: none; padding: 8px 18px; font-size: 13px; font-weight: bold; border-radius: 4px; cursor: pointer; margin-left: 8px; }
+
+        @media print {
+            .no-print { display: none !important; }
+            body { padding: 0; background: #fff; }
+            .watermark-box {
+                color: rgba(0, 0, 0, 0.16) !important;
+                border-color: rgba(0, 0, 0, 0.16) !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .wm-institucion {
+                color: rgba(0, 0, 0, 0.12) !important;
+            }
+        }
+    </style>
+<style id="estilo-impresion-boletin-definitivo">
+    @page {
+        size: letter portrait !important;
+        margin: 10mm !important;
+    }
+
+    /* ELIMINAR COLAPSO DE SCROLL EN IMPRESIÓN */
+    @media print {
+        html, body {
+            height: auto !important;
+            min-height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            display: block !important;
+            background: #fff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        * {
+            overflow: visible !important;
+            max-height: none !important;
+        }
+        nav, header, footer, .sidebar, #sidebar-wrapper, .navbar, .btn, .no-print, button {
+            display: none !important;
+        }
+        #wrapper, #page-content-wrapper, .container, .container-fluid, main {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            overflow: visible !important;
+            position: static !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        table {
+            page-break-inside: auto !important;
+            background-color: transparent !important;
+        }
+        tr {
+            page-break-inside: avoid !important;
+            page-break-after: auto !important;
+        }
+        thead {
+            display: table-header-group !important;
+        }
+        .watermark-segura {
+            display: block !important;
+        }
+    }
+
+    /* MARCA DE AGUA DIAGONAL CON ALTA VISIBILIDAD (18% DE OPACIDAD) */
+    .watermark-segura {
+        position: fixed;
+        top: 45%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-30deg);
+        width: 85%;
+        text-align: center;
+        pointer-events: none;
+        z-index: 9999;
+        user-select: none;
+    }
+    .wm-nombre-txt {
+        font-size: 36px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        line-height: 1.15;
+        color: rgba(0, 0, 0, 0.18) !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        margin-bottom: 5px;
+    }
+    .wm-datos-txt {
+        font-size: 16px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: rgba(0, 0, 0, 0.15) !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+</style>
+</head>
+<body>
+{# MARCA DE AGUA VISIBLE CON NOMBRE Y DOCUMENTO DEL ESTUDIANTE #}
+{% set _est = est if (est is defined and est) else (estudiante if (estudiante is defined and estudiante) else (alumno if (alumno is defined and alumno) else None)) %}
+{% if _est %}
+<div class="watermark-segura">
+    <div class="wm-nombre-txt">{{ _est.apellidos }} {{ _est.nombres }}</div>
+    <div class="wm-datos-txt">C.I. {{ _est.ci }} {{ _est.expedido or 'BN' }} &bull; RUDE: {{ _est.rude or '-' }} &bull; COL. DR. ANTONIO VACA DÍEZ</div>
+</div>
+{% endif %}
+    <!-- SELLO DE MARCA DE AGUA VISIBLE (FLOTANTE CON Z-INDEX SUPERIOR Y POINTER-EVENTS NONE) -->
+    
+    </div>
+
+    <div class="no-print">
+        <button type="button" class="btn-print" onclick="window.print()">🖨️ Imprimir Certificación de {{ curso_nombre }}</button>
+        <button type="button" class="btn-close" onclick="window.close()">Cerrar</button>
+    </div>
+
+    <div class="documento">
+        <div class="header">
+            <h2>Colegio Dr. Antonio Vaca Díez</h2>
+            <h3>Sistema de Archivo Institucional y Cárdex de Calificaciones</h3>
+            <p>Distrito Educativo Riberalta | Departamento del Beni - Bolivia</p>
+        </div>
+
+        <div class="titulo-certificado">
+            CERTIFICACIÓN ACADÉMICA OFICIAL - {{ curso_nombre|upper }}
+        </div>
+
+        <!-- FILIACIÓN DEL ESTUDIANTE -->
+        <div class="grid-filiacion">
+            <div>
+                <span class="label">Estudiante</span>
+                <span class="valor">{{ est.apellidos }}, {{ est.nombres }}</span>
+            </div>
+            <div>
+                <span class="label">Cédula de Identidad</span>
+                <span class="valor">{{ est.ci }} {{ est.expedido or 'BN' }}</span>
+            </div>
+            <div>
+                <span class="label">Código RUDE</span>
+                <span class="valor">{{ est.rude or '-' }}</span>
+            </div>
+            <div>
+                <span class="label">Año de Escolaridad</span>
+                <span class="valor">{{ curso_nombre }}</span>
+            </div>
+            <div>
+                <span class="label">Gestión Lectiva</span>
+                <span class="valor">{{ gestion_curso }}</span>
+            </div>
+            <div>
+                <span class="label">Turno</span>
+                <span class="valor">{{ est.turno or 'Mañana' }}</span>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 5%; text-align: center;">#</th>
+                    <th style="width: 30%;">Campo / Área de Formación</th>
+                    <th style="width: 45%;">Asignatura Oficial</th>
+                    <th style="width: 20%; text-align: right;">Nota Final (/100)</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in notas %}
+                <tr>
+                    <td style="text-align: center; color: #64748b;">{{ loop.index }}</td>
+                    <td><small>{{ item.area }}</small></td>
+                    <td><strong>{{ item.nombre }}</strong></td>
+                    <td style="text-align: right; font-weight: bold; font-size: 13px;">
+                        {{ "%.0f"|format(item.nota) if item.nota is not none else '-' }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+
+        <div class="resumen-promedio">
+            <div class="caja-promedio">
+                <span style="color: #475569; font-weight: bold; text-transform: uppercase;">Promedio Anual del Curso:</span>
+                <strong style="color: #047857; font-size: 16px; margin-left: 10px;">{{ "%.2f"|format(promedio_curso) }} pts.</strong>
+            </div>
+        </div>
+
+        <!-- PIE DE FIRMAS FORMAL: SECRETARÍA Y DIRECCIÓN CON SELLO -->
+        <div class="firmas">
+            <div>
+                <div class="linea-firma">
+                    Secretaría de Registro y Archivo
+                </div>
+            </div>
+            <div>
+                <div class="linea-firma">
+                    Dirección General / Sello Institucional
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+
+

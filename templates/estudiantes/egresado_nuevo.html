@@ -1,0 +1,275 @@
+{% extends "base.html" %}
+{% block title %}Registro de Nuevo Egresado - Cárdex Académico{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 1100px; font-size: 14px;">
+    <!-- ENCABEZADO SUPERIOR -->
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+        <div>
+            <h4 class="fw-bold mb-0 text-dark" style="font-size: 22px;">🎓 Registro de Cárdex de Egresado</h4>
+            <small class="text-muted" style="font-size: 13px;">Colegio Dr. Antonio Vaca Díez | Apertura de Historial de Calificaciones (3º a 6º)</small>
+        </div>
+        <a href="{{ url_for('estudiantes.lista_egresados') }}" class="btn btn-outline-secondary btn-sm py-1 px-3" style="font-size: 13px;">
+            <i class="bi bi-arrow-left"></i> Volver a la Lista
+        </a>
+    </div>
+
+    <form method="POST" action="{{ url_for('estudiantes.nuevo_egresado') }}">
+        <!-- 1. IDENTIFICACIÓN PERSONAL -->
+        <div class="card shadow-sm border-0 mb-3" style="border-radius: 6px;">
+            <div class="card-header bg-dark text-white fw-bold py-2 px-3" style="font-size: 14px;">
+                1. Datos de Identificación Personal (Base del Cárdex)
+            </div>
+            <div class="card-body p-3">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <label class="form-label mb-1" style="font-size: 13px; font-weight: 600;">Cédula de Identidad (C.I.) *</label>
+                        <input type="text" id="input_ci" name="ci" class="form-control fw-bold" placeholder="Ej. 6859403" oninput="sincronizarControlEstudiante()" required style="font-size: 14px;">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label mb-1" style="font-size: 13px; font-weight: 600;">Expedido</label>
+                        <select id="input_exp" name="expedido" class="form-select" onchange="sincronizarControlEstudiante()" style="font-size: 14px;">
+                            <option value="BN" selected>BN (Beni)</option>
+                            <option value="PD">PD (Pando)</option>
+                            <option value="LP">LP (La Paz)</option>
+                            <option value="SC">SC (Santa Cruz)</option>
+                            <option value="CB">CB (Cochabamba)</option>
+                            <option value="CH">CH (Chuquisaca)</option>
+                            <option value="OR">OR (Oruro)</option>
+                            <option value="PT">PT (Potosí)</option>
+                            <option value="TJ">TJ (Tarija)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label mb-1" style="font-size: 13px; font-weight: 600;">Código RUDE *</label>
+                        <input type="text" id="input_rude" name="rude" class="form-control" placeholder="Código RUDE" oninput="sincronizarControlEstudiante()" required style="font-size: 14px;">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-1" style="font-size: 13px; font-weight: 600;">Fecha de Nacimiento</label>
+                        <input type="date" name="fecha_nacimiento" class="form-control" style="font-size: 14px;">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label mb-1" style="font-size: 13px; font-weight: 600;">Apellidos Completos *</label>
+                        <input type="text" id="input_apellidos" name="apellidos" class="form-control text-uppercase fw-bold" placeholder="Apellidos" oninput="sincronizarControlEstudiante()" required style="font-size: 14px;">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label mb-1" style="font-size: 13px; font-weight: 600;">Nombres Completos *</label>
+                        <input type="text" id="input_nombres" name="nombres" class="form-control text-uppercase fw-bold" placeholder="Nombres" oninput="sincronizarControlEstudiante()" required style="font-size: 14px;">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label mb-1" style="font-size: 13px; font-weight: 600;">Turno Cursado *</label>
+                        <select id="input_turno" name="turno_egreso" class="form-select fw-bold" onchange="sincronizarControlEstudiante()" style="font-size: 14px;">
+                            <option value="Mañana" selected>🌅 Turno Mañana</option>
+                            <option value="Tarde">🌇 Turno Tarde</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-1" style="font-size: 13px; font-weight: 600;">Gestión / Año de Egreso *</label>
+                        <input type="number" id="input_anio" name="anio_egreso" class="form-control fw-bold text-primary" value="2026" oninput="sincronizarControlEstudiante()" required style="font-size: 14px;">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-1" style="font-size: 13px; font-weight: 600;">N° Diploma de Bachiller</label>
+                        <input type="text" name="nro_diploma" class="form-control" placeholder="N° de Registro" style="font-size: 14px;">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label mb-1" style="font-size: 13px; font-weight: 600;">Libro y Folio</label>
+                        <input type="text" name="libro_registro" class="form-control" placeholder="Libro / Folio" style="font-size: 14px;">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. MATRIZ DE CALIFICACIONES DINÁMICA -->
+        <div class="card shadow-sm border-0 mb-3" style="border-radius: 6px;">
+            <div class="card-header text-white fw-bold py-2 px-3 d-flex justify-content-between align-items-center" style="background-color: #0f172a; font-size: 14px;">
+                <span>2. Historial de Calificaciones (3º, 4º, 5º y 6º de Secundaria)</span>
+                <span class="badge bg-primary" style="font-size: 12px;">Escala: 1 a 100 pts.</span>
+            </div>
+            <div class="card-body p-3">
+                <ul class="nav nav-pills mb-3 nav-fill" id="pills-tab" role="tablist">
+                    <li class="nav-item">
+                        <button class="nav-link active fw-bold py-2 px-3" id="tab-3ro" data-bs-toggle="pill" data-bs-target="#curso-3ro" type="button" style="font-size: 14px;">📘 3º de Secundaria</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold py-2 px-3" id="tab-4to" data-bs-toggle="pill" data-bs-target="#curso-4to" type="button" style="font-size: 14px;">📙 4º de Secundaria</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold py-2 px-3" id="tab-5to" data-bs-toggle="pill" data-bs-target="#curso-5to" type="button" style="font-size: 14px;">📗 5º de Secundaria</button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link fw-bold py-2 px-3" id="tab-6to" data-bs-toggle="pill" data-bs-target="#curso-6to" type="button" style="font-size: 14px;">🎓 6º de Secundaria</button>
+                    </li>
+                </ul>
+
+                {% set materias_default = [
+                    ('Comunicación y Lenguajes (Castellana)', 'Comunidad y Sociedad'),
+                    ('Lengua Extranjera (Inglés)', 'Comunidad y Sociedad'),
+                    ('Ciencias Sociales (Historia/Cívica)', 'Comunidad y Sociedad'),
+                    ('Educación Física y Deportes', 'Comunidad y Sociedad'),
+                    ('Educación Musical', 'Comunidad y Sociedad'),
+                    ('Artes Plásticas y Visuales', 'Comunidad y Sociedad'),
+                    ('Matemática', 'Ciencia, Tecnología y Producción'),
+                    ('Técnica Tecnológica General / Especializada', 'Ciencia, Tecnología y Producción'),
+                    ('Biología - Geografía', 'Vida, Tierra y Territorio'),
+                    ('Física', 'Vida, Tierra y Territorio'),
+                    ('Química', 'Vida, Tierra y Territorio'),
+                    ('Cosmovisiones, Filosofía y Psicología', 'Cosmos y Pensamiento'),
+                    ('Valores, Espiritualidades y Religiones', 'Cosmos y Pensamiento')
+                ] %}
+
+                <div class="tab-content border rounded p-3 bg-light" id="pills-tabContent">
+                    {% for curso_key, curso_label in [('3ro', '3º de Secundaria'), ('4to', '4º de Secundaria'), ('5to', '5º de Secundaria'), ('6to', '6º de Secundaria')] %}
+                    <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="curso-{{ curso_key }}" role="tabpanel">
+
+                        <!-- BANNER DE CONTROL -->
+                        <div class="border rounded mb-3 bg-white px-3 py-2 d-flex justify-content-between align-items-center" style="font-size: 14px; border-left: 5px solid #0284c7 !important;">
+                            <div>
+                                <span class="badge bg-primary me-2" style="font-size: 13px;">{{ curso_label }}</span>
+                                <strong class="text-dark ctrl-nombre">ESTUDIANTE NO DEFINIDO</strong>
+                                <span class="text-muted ms-2">| C.I.: <span class="ctrl-ci">---</span></span>
+                                <span class="text-muted ms-2">| Gestión: <strong class="text-primary ctrl-gestion-{{ curso_key }}">---</strong></span>
+                                <span class="text-muted ms-2">| Turno: <span class="ctrl-turno">Mañana</span></span>
+                            </div>
+                            <div>
+                                <span class="badge bg-dark" id="promedio-badge-{{ curso_key }}" style="font-size: 13px;">0.00</span>
+                            </div>
+                        </div>
+
+                        <!-- TABLA DINÁMICA EDITABLE -->
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover align-middle bg-white mb-3" id="tabla-materias-{{ curso_key }}" style="font-size: 14px;">
+                                <thead class="table-secondary" style="font-size: 14px;">
+                                    <tr>
+                                        <th style="width: 50px;" class="text-center">#</th>
+                                        <th style="width: 250px;">Campo / Área de Formación</th>
+                                        <th>Asignatura Oficial</th>
+                                        <th style="width: 130px;" class="text-center">Nota Anual</th>
+                                        <th style="width: 55px;" class="text-center">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbody-{{ curso_key }}">
+                                    {% for mat_nombre, mat_area in materias_default %}
+                                    <tr>
+                                        <td class="text-center text-muted py-2 fila-num">{{ loop.index }}</td>
+                                        <td class="py-2">
+                                            <input type="text" name="area_{{ curso_key }}[]" class="form-control text-muted" value="{{ mat_area }}" placeholder="Área de formación" required style="font-size: 14px;">
+                                        </td>
+                                        <td class="py-2">
+                                            <input type="text" name="asignatura_{{ curso_key }}[]" class="form-control fw-semibold text-dark" value="{{ mat_nombre }}" placeholder="Asignatura oficial" required style="font-size: 14px;">
+                                        </td>
+                                        <td class="text-center py-2">
+                                            <input type="number" name="nota_{{ curso_key }}[]" class="form-control text-center fw-bold input-nota input-{{ curso_key }}" min="0" max="100" placeholder="0" style="max-width: 85px; margin: 0 auto; font-size: 14px;" data-curso="{{ curso_key }}" oninput="recalcularPromedios()">
+                                        </td>
+                                        <td class="text-center py-2">
+                                            <button type="button" class="btn btn-outline-danger btn-sm py-1 px-2" onclick="eliminarFila(this)" title="Eliminar materia" style="font-size: 13px;"><i class="bi bi-trash"></i></button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- BOTÓN AÑADIR MATERIA -->
+                        <div class="mb-2">
+                            <button type="button" class="btn btn-outline-primary btn-sm py-2 px-3 fw-bold" onclick="agregarFila('{{ curso_key }}')" style="font-size: 14px;">
+                                <i class="bi bi-plus-circle">+ Añadir Materia / Asignatura</i>
+                            </button>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+
+                <!-- SCRIPT DE GESTIÓN DINÁMICA -->
+                <script>
+                function agregarFila(cursoKey) {
+                    const tbody = document.getElementById('tbody-' + cursoKey);
+                    const totalFilas = tbody.rows.length + 1;
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td class="text-center text-muted py-2 fila-num">${totalFilas}</td>
+                        <td class="py-2">
+                            <input type="text" name="area_${cursoKey}[]" class="form-control text-muted" value="Comunidad y Sociedad" placeholder="Área de formación" required style="font-size: 14px;">
+                        </td>
+                        <td class="py-2">
+                            <input type="text" name="asignatura_${cursoKey}[]" class="form-control fw-semibold text-dark" placeholder="Nueva Asignatura Oficial" required style="font-size: 14px;">
+                        </td>
+                        <td class="text-center py-2">
+                            <input type="number" name="nota_${cursoKey}[]" class="form-control text-center fw-bold input-nota input-${cursoKey}" min="0" max="100" placeholder="0" style="max-width: 85px; margin: 0 auto; font-size: 14px;" data-curso="${cursoKey}" oninput="recalcularPromedios()">
+                        </td>
+                        <td class="text-center py-2">
+                            <button type="button" class="btn btn-outline-danger btn-sm py-1 px-2" onclick="eliminarFila(this)" title="Eliminar materia" style="font-size: 13px;"><i class="bi bi-trash"></i></button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                    actualizarNumeracion(cursoKey);
+                }
+
+                function eliminarFila(btn) {
+                    const tr = btn.closest('tr');
+                    const tbody = tr.closest('tbody');
+                    const cursoKey = tbody.id.replace('tbody-', '');
+                    if (tbody.rows.length <= 1) {
+                        alert("Debe mantener al menos una materia en el curso.");
+                        return;
+                    }
+                    tr.remove();
+                    actualizarNumeracion(cursoKey);
+                    recalcularPromedios();
+                }
+
+                function actualizarNumeracion(cursoKey) {
+                    const tbody = document.getElementById('tbody-' + cursoKey);
+                    Array.from(tbody.rows).forEach((row, index) => {
+                        row.querySelector('.fila-num').textContent = index + 1;
+                    });
+                }
+                </script>
+
+                <!-- RESUMEN DE PROMEDIOS -->
+                <div class="row g-3 mt-3" style="font-size: 14px;">
+                    <div class="col-md-2">
+                        <div class="p-2 border rounded bg-white text-center">
+                            <span class="text-muted d-block" style="font-size: 12px; font-weight: 600;">Prom. 3º Sec.</span>
+                            <strong class="text-dark" id="txt-prom-3ro" style="font-size: 16px;">0.00</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-2 border rounded bg-white text-center">
+                            <span class="text-muted d-block" style="font-size: 12px; font-weight: 600;">Prom. 4º Sec.</span>
+                            <strong class="text-dark" id="txt-prom-4to" style="font-size: 16px;">0.00</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-2 border rounded bg-white text-center">
+                            <span class="text-muted d-block" style="font-size: 12px; font-weight: 600;">Prom. 5º Sec.</span>
+                            <strong class="text-dark" id="txt-prom-5to" style="font-size: 16px;">0.00</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="p-2 border rounded bg-white text-center">
+                            <span class="text-muted d-block" style="font-size: 12px; font-weight: 600;">Prom. 6º Sec.</span>
+                            <strong class="text-dark" id="txt-prom-6to" style="font-size: 16px;">0.00</strong>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="p-2 border rounded bg-dark text-white text-center">
+                            <span class="text-white-50 d-block" style="font-size: 12px; font-weight: 600; text-transform: uppercase;">Promedio General de Egreso</span>
+                            <strong class="text-warning" id="txt-prom-general" style="font-size: 18px;">0.00 pts</strong>
+                            <input type="hidden" name="promedio_general" id="input-promedio-general" value="0.00">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. BOTÓN FINAL -->
+        <div class="text-end">
+            <button type="submit" class="btn btn-primary px-4 py-2 fw-bold" style="font-size: 15px;">
+                <i class="bi bi-save me-1"></i> Guardar Cárdex de Egresado
+            </button>
+        </div>
+    </form>
+</div>
+{% endblock %}

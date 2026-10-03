@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block title %}Caja y Pagos - Gestión Escolar{% endblock %}
+
+{% block page_title %}Caja y Pagos{% endblock %}
+
+{% block content %}
+<!-- CONTENEDOR PRINCIPAL DE LA PÁGINA AZUL -->
+<div class="container-fluid d-flex flex-column h-100" style="background-color: #0f172a; color: #f8fafc; margin: -20px; padding: 20px !important; max-height: calc(100vh - 80px); overflow: hidden;">
+    
+    <!-- ========================================================= -->
+    <!-- MEMBRETE INSTITUCIONAL EXCLUSIVO PARA IMPRESIÓN (ARRIBA)  -->
+    <!-- ========================================================= -->
+    <div class="d-none d-print-block mb-3" style="background: #ffffff !important; color: #000000 !important; border-bottom: 2px solid #000000; padding-bottom: 8px; width: 100%;">
+        <table style="width: 100%; border-collapse: collapse; background: #ffffff !important;">
+            <tr>
+                <td style="width: 75%; text-align: left; vertical-align: middle; background: #ffffff !important;">
+                    <h3 style="font-size: 16px; font-weight: bold; margin: 0; color: #000000 !important;">COLEGIO DR. ANTONIO VACA DÍEZ</h3>
+                    <p style="font-size: 11px; margin: 2px 0; color: #000000 !important;">Riberalta - Beni - Bolivia</p>
+                    <p style="font-size: 12px; font-weight: bold; margin: 2px 0 0 0; color: #000000 !important;">REPORTE CONSOLIDADO DE CAJA Y TESORERÍA</p>
+                </td>
+                <td style="width: 25%; text-align: right; vertical-align: middle; font-size: 11px; color: #000000 !important; background: #ffffff !important;">
+                    <strong>Fecha:</strong> {{ now().strftime('%d/%m/%Y') if now else 'Actual' }}
+                </td>
+            </tr>
+        </table>
+    </div>
+
+    <!-- ENCABEZADO SUPERIOR CON BOTONES DE ACCIÓN (Oculto al imprimir) -->
+    <div class="row mb-3 align-items-center no-print flex-shrink-0">
+        <div class="col-md-6">
+            <h2 class="fw-bold text-white mb-1">
+                <i class="bi bi-wallet2 text-info me-2"></i> Resumen de Caja y Tesorería
+            </h2>
+            <p class="text-light opacity-75 mb-0">Balance financiero de ingresos y egresos institucionales.</p>
+        </div>
+        <div class="col-md-6 text-md-end mt-2 mt-md-0 d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+            <!-- Estado del Turno -->
+            {% if session.get('turno_activo') %}
+                <span class="badge bg-success px-3 py-2 shadow-sm text-white">
+                    <i class="bi bi-unlock-fill me-1"></i> Turno: {{ session.get('turno_activo') }}
+                </span>
+            {% else %}
+                <span class="badge bg-danger px-3 py-2 shadow-sm text-white">
+                    <i class="bi bi-lock-fill me-1"></i> Sin Turno Activo
+                </span>
+            {% endif %}
+
+            <!-- BOTÓN IMPRIMIR REPORTE CONSOLIDADO -->
+            <button onclick="window.print();" class="btn btn-outline-light px-3 py-2 rounded-pill fw-semibold shadow-sm">
+                <i class="bi bi-printer-fill me-1"></i> Imprimir Reporte Total
+            </button>
+
+            <!-- BOTÓN PAGO NUEVO (EGRESO / GASTO) -->
+            <a href="/gastos/nuevo" class="btn btn-success px-4 py-2 rounded-pill fw-bold shadow text-white" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); border: none;">
+                <i class="bi bi-plus-circle-fill me-1"></i> Pago Nuevo
+            </a>
+        </div>
+    </div>
+
+    <!-- TARJETAS DE INGRESOS Y EGRESOS POR PERIODOS -->
+    <div class="row g-3 mb-3 flex-shrink-0">
+        
+        <!-- DIARIO -->
+        <div class="col-lg-4 col-md-6">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100 border-start border-4 border-primary" style="background-color: #1e293b; color: #f8fafc;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold text-white mb-0">Flujo Diario</h6>
+                    <span class="badge bg-primary bg-opacity-25 text-info px-2 py-1">Hoy</span>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-light opacity-75 small">Ingresos:</span>
+                    <span class="fw-bold text-success fs-6" style="color: #4ade80 !important;">Bs. {{ "%.2f"|format(ingresos_dia or 0) }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-light opacity-75 small">Egresos:</span>
+                    <span class="fw-bold fs-6" style="color: #fb923c !important;">Bs. {{ "%.2f"|format(egresos_dia or 0) }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- SEMANAL -->
+        <div class="col-lg-4 col-md-6">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100 border-start border-4 border-info" style="background-color: #1e293b; color: #f8fafc;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold text-white mb-0">Flujo Semanal</h6>
+                    <span class="badge bg-info bg-opacity-25 text-info px-2 py-1">Esta Semana</span>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-light opacity-75 small">Ingresos:</span>
+                    <span class="fw-bold text-success fs-6" style="color: #4ade80 !important;">Bs. {{ "%.2f"|format(ingresos_semana or 0) }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-light opacity-75 small">Egresos:</span>
+                    <span class="fw-bold fs-6" style="color: #fb923c !important;">Bs. {{ "%.2f"|format(egresos_semana or 0) }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- MENSUAL -->
+        <div class="col-lg-4 col-md-12">
+            <div class="card border-0 shadow-sm rounded-4 p-3 h-100 border-start border-4 border-success" style="background-color: #1e293b; color: #f8fafc;">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold text-white mb-0">Flujo Mensual</h6>
+                    <span class="badge bg-success bg-opacity-25 text-success px-2 py-1">Este Mes</span>
+                </div>
+                <div class="d-flex justify-content-between mb-1">
+                    <span class="text-light opacity-75 small">Ingresos:</span>
+                    <span class="fw-bold text-success fs-6" style="color: #4ade80 !important;">Bs. {{ "%.2f"|format(ingresos_mes or 0) }}</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                    <span class="text-light opacity-75 small">Egresos (Gastos):</span>
+                    <span class="fw-bold fs-6" style="color: #fb923c !important;">Bs. {{ "%.2f"|format(total_egresos_mes or 0) }}</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SECCIÓN INFERIOR: HISTORIAL DE EGRESOS Y PAGOS CON SCROLL EXCLUSIVO -->
+    <div class="row flex-grow-1 overflow-hidden">
+        <div class="col-lg-12 h-100 d-flex flex-column">
+            <div class="card border-0 shadow-lg rounded-4 p-3 h-100 d-flex flex-column" style="background-color: #1e293b; color: #f8fafc;">
+                
+                <!-- Encabezado fijo de la tarjeta -->
+                <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
+                    <h5 class="fw-bold text-white mb-0">
+                        <i class="bi bi-receipt text-warning me-2"></i> Historial de Egresos y Pagos Institucionales
+                    </h5>
+                    <span class="badge bg-secondary text-light no-print">Listado y Acciones</span>
+                </div>
+                <p class="text-light opacity-75 mb-2 no-print small">Detalle completo de los pagos realizados por la institución, con opción de comprobante individual y archivo adjunto.</p>
+                
+                <!-- CONTENEDOR CON SCROLL EXCLUSIVO PARA LA TABLA -->
+                <div class="table-responsive flex-grow-1 overflow-auto" style="scrollbar-width: thin; scrollbar-color: #475569 #1e293b;">
+                    <table class="table table-dark table-hover align-middle mb-0" style="background-color: transparent;">
+                        <thead style="position: sticky; top: 0; background-color: #1e293b; z-index: 10;">
+                            <tr class="text-muted border-secondary small text-uppercase">
+                                <th>Fecha</th>
+                                <th>Categoría</th>
+                                <th>Descripción / Proveedor</th>
+                                <th>Método</th>
+                                <th class="text-end">Monto</th>
+                                <th class="text-center no-print">Comprobante / Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% set ns = namespace(total_tabla=0) %}
+                            {% if gastos_recientes %}
+                                {% for g in gastos_recientes %}
+                                {% set ns.total_tabla = ns.total_tabla + g.monto %}
+                                <tr>
+                                    <td class="text-light">{{ g.fecha.strftime('%d/%m/%Y') if g.fecha else '--/--/----' }}</td>
+                                    <td>
+                                        <span class="badge bg-primary bg-opacity-50 text-white border border-primary">
+                                            {{ g.categoria }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span class="fw-bold text-white d-block">{{ g.descripcion }}</span>
+                                        <small class="text-muted">Proveedor: {{ g.proveedor or 'No especificado' }}</small>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary bg-opacity-75 text-light">
+                                            {{ g.metodo_pago or 'Efectivo' }}
+                                        </span>
+                                    </td>
+                                    <td class="text-end fw-bold fs-6" style="color: #fb923c !important;">Bs. {{ "%.2f"|format(g.monto) }}</td>
+                                    <td class="text-center no-print">
+                                        <div class="d-flex justify-content-center gap-2 align-items-center">
+                                            <!-- Botón Imprimir Transacción Individual -->
+                                            <a href="{{ url_for('gastos.comprobante_gasto', gasto_id=g.id) }}" target="_blank" class="btn btn-sm btn-outline-warning rounded-pill px-2 py-1" title="Imprimir Comprobante Individual">
+                                                <i class="bi bi-printer"></i> Imprimir
+                                            </a>
+                                            
+                                            <!-- Botón Ver Archivo Adjunto -->
+                                            {% if g.archivo %}
+                                                <a href="{{ url_for('static', filename='uploads/gastos/' + g.archivo) }}" target="_blank" class="btn btn-sm btn-outline-info rounded-pill px-2 py-1" title="Ver Archivo">
+                                                    <i class="bi bi-paperclip"></i> Archivo
+                                                </a>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                                <!-- FILA DE TOTAL GENERAL DE LA TABLA -->
+                                <tr class="border-top border-secondary fw-bold" style="position: sticky; bottom: 0; background-color: #1e293b; z-index: 10;">
+                                    <td colspan="4" class="text-end text-light pt-3">TOTAL GENERAL MOSTRADO:</td>
+                                    <td class="text-end fs-5 pt-3" style="color: #fb923c !important;">Bs. {{ "%.2f"|format(ns.total_tabla) }}</td>
+                                    <td class="no-print"></td>
+                                </tr>
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-5">
+                                        <div class="my-2">
+                                            <i class="bi bi-wallet2 display-5 text-secondary opacity-50"></i>
+                                        </div>
+                                        <p class="mb-0 text-light fw-medium">No se registran egresos o pagos institucionales todavía.</p>
+                                        <small class="text-muted">Utiliza el botón "Pago Nuevo" arriba a la derecha para registrar el primeiro.</small>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+</div>
+{% endblock %}

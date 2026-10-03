@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <!-- ⭐ OBLIGATORIO PARA MÓVIL -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+    <title>
+        {% block title %}
+        {% if institucion and institucion.get('institucion_linea1') %}{{ institucion.get('institucion_linea1') }}{% else %}Sistema de Gestión Escolar{% endif %}
+        {% endblock %}
+    </title>
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+
+    <style>
+        body {
+            background-color: #f1f5f9;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .wrapper {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        #sidebar {
+            min-width: 260px;
+            max-width: 260px;
+            background: #0f172a;
+            color: #ffffff;
+            transition: margin-left 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #sidebar.active {
+            margin-left: -260px;
+        }
+
+        .sidebar-brand {
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            text-align: center;
+        }
+
+        .sidebar-brand .logo-img {
+            max-width: 60px;
+            max-height: 60px;
+            border-radius: 8px;
+            margin-bottom: 5px;
+            display: block;
+            margin-left: auto;
+            margin-right: auto;
+            border: 2px solid rgba(255,255,255,0.15);
+        }
+
+        .sidebar-brand h5 {
+            margin: 0;
+            font-size: 13px;
+            font-weight: bold;
+            line-height: 1.2;
+        }
+
+        .sidebar-brand small {
+            color: #94a3b8;
+            font-size: 10px;
+        }
+
+        /* ⭐ SIN GRUPOS - MENÚ COMPACTO */
+        .sidebar-menu {
+            flex-grow: 1;
+            padding: 8px 0;
+        }
+
+        #sidebar .nav-link {
+            color: #e2e8f0;
+            padding: 7px 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border-left: 3px solid transparent;
+            font-size: 18px;
+            text-decoration: none;
+        }
+
+        #sidebar .nav-link:hover {
+            background: #1e293b;
+            color: #ffffff;
+            border-left: 3px solid #38bdf8;
+        }
+
+        #sidebar .nav-link i {
+            width: 20px;
+            text-align: center;
+            font-size: 15px;
+        }
+
+        /* ⭐ SEPARADOR SUTIL ENTRE SECCIONES (SIN TEXTO) */
+        .sidebar-separator {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.08);
+            margin: 6px 15px;
+        }
+
+        .main-content {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .topbar {
+            background: #ffffff;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 12px 20px;
+        }
+
+        .topbar .logo-mini {
+            max-width: 40px;
+            max-height: 40px;
+            border-radius: 4px;
+        }
+
+        .content-area {
+            padding: 20px;
+            flex-grow: 1;
+        }
+
+        .footer {
+            background: #ffffff;
+            border-top: 1px solid #e2e8f0;
+            padding: 10px 20px;
+            font-size: 13px;
+            color: #64748b;
+        }
+
+        /* ===================================================== */
+        /* SOMBRAS MARCADAS PARA TODAS LAS TARJETAS DEL SISTEMA */
+        /* ===================================================== */
+
+        .card {
+            box-shadow: 0 0.5rem 0.5rem rgba(0, 0, 0, 0.35) !important;
+            border: 1px solid rgba(0, 0, 0, 0.12) !important;
+        }
+
+        .card-header {
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+        }
+
+        /* =============================================================== */
+        /* ESCRITORIO: LAYOUT FIJO CON SCROLL INTERNO */
+        /* =============================================================== */
+
+        @media (min-width: 768px) {
+            html, body {
+                height: 100%;
+                overflow: hidden;
+            }
+
+            .wrapper {
+                height: 100vh;
+                overflow: hidden;
+            }
+
+            #sidebar {
+                overflow-y: auto;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+
+            #sidebar::-webkit-scrollbar {
+                display: none;
+                width: 0;
+                height: 0;
+            }
+
+            .content-area {
+                overflow-y: auto;
+                scrollbar-width: none;
+                -ms-overflow-style: none;
+            }
+
+            .content-area::-webkit-scrollbar {
+                display: none;
+                width: 0;
+                height: 0;
+            }
+        }
+
+        /* =============================================================== */
+        /* MÓVIL: LAYOUT NORMAL CON SCROLL DE PÁGINA COMPLETA */
+        /* =============================================================== */
+
+        @media (max-width: 767.98px) {
+
+            html, body {
+                height: auto !important;
+                overflow: visible !important;
+                overflow-x: hidden !important;
+                max-width: 100vw !important;
+            }
+
+            .wrapper {
+                height: auto !important;
+                overflow: visible !important;
+                display: block !important;
+            }
+
+            #sidebar {
+                position: fixed;
+                top: 0;
+                left: 0;
+                height: 100vh;
+                z-index: 1050;
+                margin-left: -260px;
+                overflow-y: auto;
+            }
+
+            #sidebar.active {
+                margin-left: 0;
+            }
+
+            #sidebarOverlay {
+                display: none;
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.5);
+                z-index: 1040;
+            }
+
+            #sidebarOverlay.active {
+                display: block;
+            }
+
+            .main-content {
+                width: 100% !important;
+                min-height: 100vh;
+            }
+
+            .content-area {
+                overflow: visible !important;
+                padding: 10px !important;
+            }
+
+            .topbar {
+                padding: 10px 12px !important;
+                position: sticky;
+                top: 0;
+                z-index: 1030;
+            }
+
+            .topbar h5 {
+                font-size: 0.9rem !important;
+            }
+
+            .container,
+            .container-fluid {
+                padding-left: 8px !important;
+                padding-right: 8px !important;
+                max-width: 100% !important;
+            }
+
+            .card {
+                margin-left: 0 !important;
+                margin-right: 0 !important;
+                border-radius: 8px !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+
+            .card-body {
+                padding: 10px !important;
+            }
+
+            .card-header {
+                padding: 8px 10px !important;
+                font-size: 0.9rem !important;
+            }
+
+            [class*="col-"] {
+                flex: 0 0 100% !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                padding-left: 4px !important;
+                padding-right: 4px !important;
+            }
+
+            .d-flex > [class*="col-"],
+            .btn-group > [class*="col-"] {
+                flex: 0 0 auto !important;
+                max-width: none !important;
+                width: auto !important;
+            }
+
+            .btn {
+                min-height: 44px;
+                font-size: 0.9rem;
+                padding: 8px 12px;
+            }
+
+            .btn-sm {
+                min-height: 38px;
+                font-size: 0.85rem;
+            }
+
+            .btn-group {
+                flex-wrap: wrap !important;
+                gap: 4px;
+            }
+
+            .btn-group > .btn {
+                flex: 1 1 45% !important;
+                min-width: 45% !important;
+                margin-bottom: 4px;
+                font-size: 0.8rem !important;
+            }
+
+            .form-control,
+            .form-select {
+                min-height: 44px;
+                font-size: 16px !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+            }
+
+            .table-responsive {
+                display: block !important;
+                width: 100% !important;
+                overflow-x: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+            }
+
+            .table {
+                min-width: 500px;
+                font-size: 0.8rem;
+            }
+
+            .table th,
+            .table td {
+                padding: 6px 4px !important;
+                white-space: nowrap;
+            }
+
+            h2 { font-size: 1.2rem !important; }
+            h3 { font-size: 1.05rem !important; }
+            h4 { font-size: 0.95rem !important; }
+            h5 { font-size: 0.9rem !important; }
+            h6 { font-size: 0.85rem !important; }
+
+            .img-thumbnail {
+                max-width: 120px !important;
+            }
+
+            .alert {
+                padding: 8px 10px !important;
+                font-size: 0.85rem !important;
+            }
+
+            .badge {
+                font-size: 0.75rem !important;
+                padding: 4px 8px !important;
+            }
+
+            pre {
+                white-space: pre-wrap !important;
+                word-wrap: break-word !important;
+                max-width: 100% !important;
+                overflow-x: auto !important;
+                font-size: 0.75rem !important;
+            }
+
+            img {
+                max-width: 100% !important;
+                height: auto !important;
+            }
+
+            .form-label {
+                font-size: 0.85rem !important;
+                margin-bottom: 2px !important;
+            }
+
+            .input-group {
+                width: 100% !important;
+            }
+
+            .input-group-text {
+                font-size: 0.85rem !important;
+            }
+
+            .footer {
+                padding: 8px 10px !important;
+                font-size: 0.75rem !important;
+                text-align: center;
+            }
+
+            #sidebar .nav-link {
+                padding: 7px 15px;
+                font-size: 16px;
+            }
+        }
+
+        /* Pantallas MUY pequeñas (< 380px) */
+        @media (max-width: 379.98px) {
+
+            .btn-group > .btn {
+                flex: 1 1 100% !important;
+                min-width: 100% !important;
+            }
+
+            .table {
+                min-width: 400px;
+                font-size: 0.75rem;
+            }
+
+            h2 { font-size: 1.1rem !important; }
+            h3 { font-size: 0.95rem !important; }
+        }
+
+        /* ORIENTACIÓN VERTICAL EXPLÍCITA */
+        @media (orientation: portrait) and (max-width: 767.98px) {
+
+            .row {
+                flex-direction: column !important;
+            }
+
+            [class*="col-md-"],
+            [class*="col-lg-"],
+            [class*="col-sm-"] {
+                flex: 0 0 100% !important;
+                max-width: 100% !important;
+                width: 100% !important;
+            }
+
+            .card-body > .row {
+                flex-direction: column !important;
+            }
+
+            .card-body > .row > .col-md-3 {
+                text-align: center !important;
+                margin-bottom: 10px !important;
+            }
+
+            .card-body > .row > .col-md-9 {
+                width: 100% !important;
+            }
+        }
+
+        /* ===================================================== */
+        /* IMPRESIÓN PROFESIONAL EN BLANCO Y NEGRO CON MEMBRETE */
+        /* ===================================================== */
+
+        @media print {
+            .no-print,
+            nav, .navbar, #sidebar, .sidebar, footer, .footer,
+            .btn, .btn-group, form button, a.btn,
+            .topbar, #sidebarOverlay, .badge {
+                display: none !important;
+            }
+
+            .print-institutional-header {
+                display: block !important;
+            }
+
+            @page {
+                margin: 1cm;
+                size: auto;
+            }
+
+            html, body {
+                background: #ffffff !important;
+                color: #000000 !important;
+                height: auto !important;
+                overflow: visible !important;
+                font-size: 12pt !important;
+            }
+
+            .wrapper, .main-content, .content-area, .container, .container-fluid {
+                background: #ffffff !important;
+                color: #000000 !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                display: block !important;
+            }
+
+            /* Forzar tarjetas y contenedores a fondo blanco y bordes negros limpios */
+            .card, .card-body, .card-header {
+                background: #ffffff !important;
+                color: #000000 !important;
+                box-shadow: none !important;
+                border: 1px solid #000000 !important;
+                border-radius: 0 !important;
+            }
+
+            /* Tablas en formato clásico de impresión B/N */
+            table, .table {
+                width: 100% !important;
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                border-collapse: collapse !important;
+            }
+
+            .table th, .table td {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                border: 1px solid #000000 !important;
+                padding: 8px !important;
+            }
+
+            h1, h2, h3, h4, h5, h6, p, span, td, th {
+                color: #000000 !important;
+            }
+        }
+
+        /* Encabezado institucional exclusivo para impresión (oculto en pantalla normal) */
+        .print-institutional-header {
+            display: none;
+            width: 100%;
+            border-bottom: 2px solid #000000;
+            padding-bottom: 12px;
+            margin-bottom: 20px;
+        }
+    </style>
+
+    {% block extra_head %}{% endblock %}
+
+    <!-- PWA -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#1a237e">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="{{ institucion.get('institucion_linea1', 'Sistema Escolar') if institucion else 'Sistema Escolar' }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
+
+    <!-- Registrar Service Worker -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                navigator.serviceWorker.register('{{ url_for("static", filename="sw.js") }}')
+                    .then(function(registration) {
+                        console.log('Service Worker registrado:', registration.scope);
+                    })
+                    .catch(function(error) {
+                        console.log('Error registrando Service Worker:', error);
+                    });
+            });
+        }
+    </script>
+</head>
+
+<body>
+
+    <!-- Overlay oscuro para móvil cuando el sidebar está abierto -->
+    <div id="sidebarOverlay"></div>
+
+    <div class="wrapper">
+
+        <!-- =============================================================== -->
+        <!-- MENÚ LATERAL SIN GRUPOS (COMPACTO) -->
+        <!-- =============================================================== -->
+
+        <nav id="sidebar">
+            <!-- LOGO Y NOMBRE DE LA INSTITUCIÓN -->
+            <div class="sidebar-brand text-center">
+                <!-- LOGO ESTABILIZADO (Sin pestañeos molestos) -->
+                <img src="{{ url_for('superadmin.ver_logo_institucion') }}?v={{ nombre_logo }}" 
+                     alt="Logo" 
+                     style="width: 90px; height: 90px; object-fit: contain; margin-bottom: 10px;" 
+                     class="bg-white rounded p-1 shadow-sm"
+                     id="logo-institucional-fijo">
+
+                <h5>
+                    {% if institucion %}
+                        {{ institucion.get('institucion_linea1') if institucion.get else (institucion.institucion_linea1 if institucion.institucion_linea1 else 'Sistema de Gestión Escolar') }}
+                    {% else %}
+                        Sistema de Gestión Escolar
+                    {% endif %}
+                </h5>
+
+                {% set linea2 = institucion.get('institucion_linea2') if institucion and institucion.get else (institucion.institucion_linea2 if institucion.institucion_linea2 else '') %}
+                {% if linea2 %}
+                <div style="font-size: 11px; color: #94a3b8; line-height: 1.1;">
+                    {{ linea2 }}
+                </div>
+                {% endif %}
+
+                {% set linea3 = institucion.get('institucion_linea3') if institucion and institucion.get else (institucion.institucion_linea3 if institucion.institucion_linea3 else '') %}
+                {% if linea3 %}
+                <div style="font-size: 10px; color: #64748b; line-height: 1.1;">
+                    {{ linea3 }}
+                </div>
+                {% endif %}
+                <small class="d-block mt-2">Avrora Soft - Vibola LLC</small>
+            </div>
+
+            <!-- ⭐ MENÚ COMPACTO SIN ETIQUETAS DE GRUPO -->
+            <div class="sidebar-menu">
+                <a class="nav-link" href="/dashboard/">
+                    <i class="bi bi-speedometer2"></i>
+                    Dashboard
+                </a>
+
+                <!-- MÓDULO UNIFICADO: ESTUDIANTES Y COBROS -->
+                <a class="nav-link" href="/estudiantes/">
+                    <i class="bi bi-mortarboard-fill"></i>
+                    Estudiantes y Cobros
+                </a>
+                
+                <a class="nav-link text-danger" href="{{ url_for('pagos.reporte_deudores') }}">
+                    <i class="bi bi-exclamation-octagon-fill"></i>
+                    <span>Deudores por Curso</span>
+                </a>
+
+                <a class="nav-link" href="/personal/profesores">
+                    <i class="bi bi-person-workspace"></i>
+                    Profesores
+                </a>
+
+                <a class="nav-link" href="/personal/administrativos">
+                    <i class="bi bi-person-badge-fill"></i>
+                    Personal Admin
+                </a>
+
+                <div class="sidebar-separator"></div>
+
+                <a class="nav-link" href="/faltas/">
+                    <i class="bi bi-calendar-check-fill"></i>
+                    Asistencia
+                </a>
+
+                <!-- Reportes de Caja -->
+                <div class="nav-item dropdown px-3 my-1">
+                    <a class="nav-link dropdown-toggle p-0" href="javascript:void(0);" data-bs-toggle="dropdown">
+                        <i class="bi bi-file-earmark-bar-graph"></i> Reportes de Caja
+                    </a>
+                    <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="{{ url_for('reportes.economico_manana') }}">Cierre Mañana</a></li>
+                        <li><a class="dropdown-item" href="{{ url_for('reportes.economico_tarde') }}">Cierre Tarde</a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="{{ url_for('reportes.economico_general') }}">Reporte General</a></li>
+                    </ul>
+                </div>
+
+                <!-- Control de Turno -->
+                {% if session.get('turno_activo') %}
+                <div class="nav-link text-warning fw-bold px-3">
+                    <i class="bi bi-clock-history"></i> Turno: {{ session['turno_activo'] }}
+                </div>
+                <div class="px-3 my-1">
+                    <form action="{{ url_for('auth.logout_turno') }}" method="POST" class="m-0 p-0" onsubmit="return confirm('¿Está seguro de cerrar el turno de caja?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="nav-link text-danger btn btn-link p-0 border-0 d-flex align-items-center gap-2" style="text-decoration: none; background: none; box-shadow: none;">
+                            <i class="bi bi-stop-circle"></i>
+                            <span>Cerrar Turno</span>
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <a class="nav-link text-primary fw-bold" href="{{ url_for('auth.login_turno') }}">
+                    <i class="bi bi-play-circle"></i> Iniciar Turno
+                </a>
+                {% endif %}
+
+                <!-- ⭐ BOTÓN UNIFICADO MAESTRO -->
+                <a class="nav-link fw-bold text-info" href="/caja/">
+                    <i class="bi bi-wallet2"></i>
+                    Caja y Pagos
+                </a>
+
+                <!-- ⭐ NUEVO BOTÓN: PLANILLAS DE PAGO -->
+                <a class="nav-link fw-bold text-success" href="/personal/planillas">
+                    <i class="bi bi-cash-stack"></i>
+                    Planillas de pago
+                </a>
+
+                <div class="sidebar-separator"></div>
+
+                <!-- MÓDULOS DE COMUNICACIÓN RESCATADOS -->
+                <a class="nav-link text-warning" href="{{ url_for('admin_profesores_chat.gestionar_chat_profesores') }}">
+                    <i class="bi bi-chat-heart-fill"></i>
+                    <span>Chat con Profesores</span>
+                </a>
+
+                <a class="nav-link" href="{{ url_for('chat.index') }}">
+                    <i class="bi bi-chat-dots-fill"></i>
+                    <span>Chat con Padres</span>
+                </a>
+
+                <a class="nav-link" href="{{ url_for('estudiantes.lista_egresados') }}">
+                    <i class="bi bi-archive-fill"></i>
+                    Registro de Egresados
+                </a>
+
+                <div class="sidebar-separator"></div>
+
+                <!-- CERRAR SESIÓN DEL SISTEMA -->
+                <div class="px-3 my-1">
+                    <form action="{{ url_for('auth.logout') }}" method="POST" class="m-0 p-0" onsubmit="return confirm('¿Cerrar sesión de todo el sistema?');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="nav-link text-danger btn btn-link p-0 border-0 d-flex align-items-center gap-2" style="text-decoration: none; background: none; box-shadow: none;">
+                            <i class="bi bi-box-arrow-left"></i>
+                            <span>Cerrar Sesión</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </nav>
+
+        <!-- =============================================================== -->
+        <!-- CONTENIDO PRINCIPAL -->
+        <!-- =============================================================== -->
+
+        <div class="main-content">
+
+            <!-- Barra superior -->
+            <div class="topbar d-flex justify-content-between align-items-center">
+
+                <div class="d-flex align-items-center gap-3">
+                    <button class="btn btn-outline-secondary btn-sm" type="button" id="sidebarToggle">
+                        <i class="bi bi-list"></i>
+                    </button>
+
+                    <!-- LOGO MINI EN LA TOPBAR (Forzado a crecer) -->
+                    <img src="{{ url_for('superadmin.ver_logo_institucion') }}?v={{ nombre_logo }}" 
+                         alt="Logo" 
+                         class="bg-white rounded-circle p-1 shadow-sm" 
+                         style="width: 60px !important; height: 60px !important; min-width: 60px !important; min-height: 60px !important; max-height: none !important; object-fit: contain;">
+
+                    <h5 class="mb-0">
+                    {% block page_title %}
+                        {{ institucion.get('institucion_linea1', 'Sistema de Gestión Escolar') if institucion else 'Sistema de Gestión Escolar' }}
+                    {% endblock %}
+                    </h5>
+                </div>
+
+                <div class="d-flex align-items-center gap-2 gap-md-3">
+                    
+                    <!-- ⭐ BOTONES DE MONITOR Y CONFIGURACIÓN JUNTOS -->
+                    <div class="btn-group shadow-sm">
+                        <a href="{{ url_for('reportes.monitor_config') }}" class="btn btn-outline-secondary btn-sm fw-bold d-flex align-items-center gap-1" title="Configurar Textos y Fotos del Monitor">
+                            <i class="bi bi-gear-fill"></i>
+                            <span class="d-none d-md-inline">Configurar</span>
+                        </a>
+                        <a href="{{ url_for('reportes.monitor_direccion') }}" target="_blank" class="btn btn-info text-white btn-sm fw-bold d-flex align-items-center gap-1 border-info" title="Abrir Monitor Externo de Dirección">
+                            <i class="bi bi-display-fill"></i>
+                            <span class="d-none d-md-inline">Monitor</span>
+                        </a>
+                    </div>
+
+                    <div class="text-muted d-none d-md-block">
+                        <i class="bi bi-calendar-date"></i>
+                        {{ now().strftime('%d/%m/%Y') }}
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Área de trabajo -->
+            <div class="content-area">
+
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                {% for category, message in messages %}
+                <div class="alert alert-{{ category if category in ['success', 'danger', 'warning', 'info'] else 'secondary' }} alert-dismissible fade show" role="alert">
+
+                    {{ message }}
+
+                    <button type="button" class="btn-close" data-bs-dismiss="alert">
+                    </button>
+
+                </div>
+                {% endfor %}
+                {% endif %}
+                {% endwith %}
+
+                {% block content %}{% endblock %}
+
+            </div>
+
+            <!-- Pie de página -->
+            <div class="footer">
+                © 2026 
+                {% if institucion and institucion.get('institucion_linea1') %}
+                    {{ institucion.get('institucion_linea1') }}
+                    {% if institucion.get('institucion_linea2') %} - {{ institucion['institucion_linea2'] }}{% endif %}
+                {% else %}
+                    Sistema de Gestión Escolar
+                {% endif %}
+                | Desarrollado por Avrora Soft - Vibola LLC
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        document.getElementById('sidebarToggle').addEventListener('click', function () {
+            document.getElementById('sidebar').classList.toggle('active');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        });
+
+        document.getElementById('sidebarOverlay').addEventListener('click', function () {
+            document.getElementById('sidebar').classList.remove('active');
+            document.getElementById('sidebarOverlay').classList.remove('active');
+        });
+
+        document.querySelectorAll('#sidebar .nav-link').forEach(function(link) {
+            link.addEventListener('click', function() {
+                if (window.innerWidth < 768) {
+                    document.getElementById('sidebar').classList.remove('active');
+                    document.getElementById('sidebarOverlay').classList.remove('active');
+                }
+            });
+        });
+    </script>
+
+    <!-- ⭐ INYECTAR TOKEN CSRF EN TODOS LOS FORMULARIOS POST -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var csrfToken = "{{ csrf_token() }}";
+            document.querySelectorAll('form').forEach(function(form) {
+                var method = (form.getAttribute('method') || 'get').toLowerCase();
+                if (method === 'post' && !form.querySelector('input[name="csrf_token"]')) {
+                    var input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'csrf_token';
+                    input.value = csrfToken;
+                    form.appendChild(input);
+                }
+            });
+        });
+    </script>
+
+    {% block extra_scripts %}{% endblock %}
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const precargados = new Set();
+
+        function precargarPagina(url) {
+            if (!url || precargados.has(url) || url.startsWith('javascript:') || url.includes('#')) return;
+            precargados.add(url);
+            
+            // Petición silenciosa en segundo plano para almacenar en caché
+            fetch(url, { method: 'GET', mode: 'no-cors' })
+                .catch(() => {
+                    // Silenciar errores de red si la ruta es externa o no disponible temporalmente
+                });
+        }
+
+        // Detectar cuando el usuario pasa el mouse o toca un enlace para precargarlo al instante
+        document.querySelectorAll('a[href]').forEach(function(enlace) {
+            let url = enlace.getAttribute('href');
+            // Solo aplicamos a enlaces internos de la aplicación
+            if (url && (url.startsWith('/') || url.includes(window.location.hostname))) {
+                enlace.addEventListener('mouseenter', function() {
+                    precargarPagina(url);
+                }, { once: true }); // Se ejecuta una sola vez por enlace para optimizar recursos
+                
+                enlace.addEventListener('touchstart', function() {
+                    precargarPagina(url);
+                }, { once: true });
+            }
+        });
+    });
+</script>
+</body>
+
+</html>

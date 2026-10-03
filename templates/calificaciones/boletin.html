@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Avrora Soft - Vibola LLC">
+    <title>Boletín - {{ estudiante.apellidos }}, {{ estudiante.nombres }}</title>
+    
+    <style>
+        /* ========================================
+           CONFIGURACIÓN ESTRICTA A4 VERTICAL
+           ======================================== */
+        @page {
+            size: A4 portrait;
+            margin: 1cm;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            color: #000;
+            background: #e0e0e0;
+        }
+
+        .paper {
+            width: 190mm;
+            min-height: 277mm;
+            margin: 10px auto;
+            background: #fff;
+            padding: 5mm;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ========================================
+           🔒 SELLO DE AGUA DE SEGURIDAD
+           ======================================== */
+        .watermark-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .watermark-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-35deg);
+            font-size: 48pt;
+            font-weight: bold;
+            color: rgba(0, 80, 180, 0.08);
+            white-space: nowrap;
+            letter-spacing: 10px;
+            text-transform: uppercase;
+            user-select: none;
+        }
+
+        .watermark-pattern {
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background-image: 
+                repeating-linear-gradient(
+                    -45deg,
+                    transparent,
+                    transparent 40px,
+                    rgba(0, 80, 180, 0.04) 40px,
+                    rgba(0, 80, 180, 0.04) 41px
+                );
+            transform: rotate(0deg);
+        }
+
+        .watermark-repeated {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(8, 1fr);
+            gap: 0;
+            transform: rotate(-25deg) scale(1.3);
+            opacity: 0.07;
+            font-size: 10pt;
+            font-weight: bold;
+            color: #003366;
+            text-align: center;
+            user-select: none;
+        }
+
+        .watermark-repeated span {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+        }
+
+        /* Contenido por encima del sello de agua */
+        .paper > .content {
+            position: relative;
+            z-index: 2;
+        }
+
+        /* --- ENCABEZADO --- */
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+        }
+        .header h1 { font-size: 16pt; margin-bottom: 2px; text-transform: uppercase; }
+        .header h2 { font-size: 11pt; font-weight: normal; letter-spacing: 1px; }
+        .header p { font-size: 8pt; color: #555; margin-top: 2px; }
+
+        /* --- DATOS DEL ESTUDIANTE --- */
+        .student-info {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 8px;
+            border: 1px solid #ccc;
+            padding: 4px;
+            background: rgba(250, 250, 250, 0.95);
+        }
+        .student-photo {
+            width: 22mm;
+            height: 22mm;
+            object-fit: cover;
+            border: 1px solid #999;
+            margin-right: 8px;
+        }
+        .student-data {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            font-size: 9pt;
+            gap: 2px 10px;
+        }
+        .student-data div { 
+            padding: 1px 0; 
+            border-bottom: 1px dotted #ddd;
+        }
+        .student-data strong { font-weight: bold; }
+
+        /* --- TABLA DE CALIFICACIONES --- */
+        table.grades {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+            margin-bottom: 8px;
+        }
+        table.grades th {
+            background: #333;
+            color: #fff;
+            padding: 4px 5px;
+            text-align: center;
+            font-size: 8.5pt;
+            text-transform: uppercase;
+            border: 1px solid #000;
+        }
+        table.grades td {
+            padding: 3px 5px;
+            border: 1px solid #555;
+            vertical-align: middle;
+        }
+        table.grades tr:nth-child(even) { background: rgba(249, 249, 249, 0.9); }
+        
+        .col-materia { 
+            width: 25%; 
+            font-weight: bold; 
+            text-align: center;
+        }
+        .col-notas { width: 55%; font-size: 8.5pt; color: #333; }
+        .col-prom { width: 20%; text-align: center; font-weight: bold; font-size: 10pt; }
+        
+        .prom-aprobado { color: #006400; background: rgba(230, 255, 230, 0.9); }
+        .prom-reprobado { color: #8b0000; background: rgba(255, 230, 230, 0.9); }
+
+        table.grades tfoot td {
+            background: rgba(238, 238, 238, 0.95);
+            font-weight: bold;
+            padding: 5px;
+            border: 1px solid #000;
+            font-size: 10pt;
+        }
+        table.grades tfoot td:first-child {
+            text-align: left;
+            padding-left: 15px;
+        }
+
+        /* --- RESULTADO FINAL --- */
+        .resultado {
+            text-align: center;
+            padding: 5px;
+            margin-bottom: 10px;
+            font-size: 10pt;
+            font-weight: bold;
+            border: 1px solid #000;
+        }
+        .res-aprobado { background: rgba(212, 237, 218, 0.95); color: #155724; }
+        .res-reprobado { background: rgba(248, 215, 218, 0.95); color: #721c24; }
+        .res-sindatos { background: rgba(255, 243, 205, 0.95); color: #856404; }
+
+        /* --- SECCIÓN DE VERIFICACIÓN CON QR --- */
+        .verification-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            padding: 8px;
+            border: 1px dashed #003366;
+            background: rgba(240, 248, 255, 0.9);
+            font-size: 8.5pt;
+        }
+        .qr-container {
+            text-align: center;
+        }
+        .qr-container img {
+            width: 25mm;
+            height: 25mm;
+            border: 1px solid #003366;
+        }
+        .qr-label {
+            font-size: 7pt;
+            color: #003366;
+            margin-top: 2px;
+            font-weight: bold;
+        }
+        .verification-info {
+            flex: 1;
+            margin-left: 15px;
+            font-size: 8pt;
+        }
+        .verification-info p {
+            margin: 2px 0;
+        }
+        .verification-code {
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            color: #003366;
+            font-size: 10pt;
+            background: #fff;
+            padding: 2px 6px;
+            border: 1px solid #003366;
+            display: inline-block;
+        }
+
+        /* --- FIRMAS --- */
+        .firmas {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 50px;
+            padding-top: 5px;
+            font-size: 8.5pt;
+            text-align: center;
+        }
+        .firma-box {
+            width: 30%;
+            border-top: 1px solid #000;
+            padding-top: 5px;
+        }
+
+        /* --- FOOTER --- */
+        .footer {
+            margin-top: 10px;
+            text-align: center;
+            font-size: 7.5pt;
+            color: #666;
+            border-top: 1px solid #ccc;
+            padding-top: 4px;
+        }
+
+        /* --- BOTONES DE PANTALLA --- */
+        .screen-only {
+            text-align: center;
+            margin: 15px auto;
+            max-width: 190mm;
+        }
+        .btn {
+            padding: 8px 16px;
+            font-size: 12pt;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+            margin: 0 5px;
+            text-decoration: none;
+            color: #fff;
+        }
+        .btn-print { background: #007bff; }
+        .btn-back { background: #6c757d; }
+
+        /* ========================================
+           REGLAS DE IMPRESIÓN
+           ======================================== */
+        @media print {
+            body { background: #fff; }
+            .paper { 
+                width: 100%; 
+                min-height: auto; 
+                margin: 0; 
+                padding: 0; 
+                box-shadow: none; 
+            }
+            .screen-only { display: none !important; }
+            
+            table.grades, table.grades tr, .firmas, .resultado, .verification-section {
+                page-break-inside: avoid;
+            }
+            
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+        }
+    </style>
+    
+    <style id="estilo-impresion-boletin-oficial">
+    @page {
+        size: letter portrait;
+        margin: 10mm 12mm;
+    }
+
+    /* ELIMINAR HOJA EN BLANCO: Desbloquear el DOM de Bootstrap */
+    @media print {
+        html, body {
+            background: #ffffff !important;
+            height: auto !important;
+            min-height: 0 !important;
+            overflow: visible !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        #wrapper, #page-content-wrapper, .container, .container-fluid, main {
+            display: block !important;
+            height: auto !important;
+            overflow: visible !important;
+            position: static !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        .navbar, .sidebar, #sidebar-wrapper, nav, header, footer, .no-print, .btn, button, .alert {
+            display: none !important;
+        }
+        table {
+            page-break-inside: auto !important;
+            width: 100% !important;
+            background-color: transparent !important;
+        }
+        tr {
+            page-break-inside: avoid !important;
+        }
+        /* Forzar impresión de la marca de agua fija en papel */
+        .marca-fija-papel {
+            display: block !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+    }
+
+    /* MARCA DE AGUA FIJA DE FONDO (REPETIDA DETRÁS DE LAS NOTAS) */
+    .marca-fija-papel {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-32deg);
+        width: 85%;
+        text-align: center;
+        pointer-events: none;
+        z-index: 0;
+        user-select: none;
+        color: rgba(15, 23, 42, 0.14) !important;
+    }
+    .mf-nombre {
+        font-size: 36px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        line-height: 1.15;
+        margin-bottom: 5px;
+    }
+    .mf-datos {
+        font-size: 15px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
+
+    .capa-contenido-boletin {
+        position: relative;
+        z-index: 1;
+        background: transparent !important;
+    }
+    .capa-contenido-boletin table td {
+        background-color: transparent !important;
+    }
+</style>
+</head>
+<body>
+<div class="marca-fija-papel">
+    {% set _est = est if (est is defined and est) else (estudiante if (estudiante is defined and estudiante) else (alumno if (alumno is defined and alumno) else None)) %}
+    {% if _est %}
+    <div class="mf-nombre">{{ _est.apellidos }} {{ _est.nombres }}</div>
+    <div class="mf-datos">C.I. {{ _est.ci }} {{ _est.expedido or 'BN' }} &bull; RUDE: {{ _est.rude or '-' }} &bull; COLEGIO DR. ANTONIO VACA DÍEZ</div>
+    {% endif %}
+</div>
+<div class="capa-contenido-boletin">
+
+    {% set _est = est if (est is defined and est) else (estudiante if (estudiante is defined and estudiante) else (alumno if (alumno is defined and alumno) else None)) %}
+    {% if _est %}
+    
+    {% endif %}
+    
+
+    {% set _est = est if (est is defined and est) else (estudiante if (estudiante is defined and estudiante) else (alumno if (alumno is defined and alumno) else None)) %}
+    {% if _est %}
+    
+    {% endif %}
+    
+{# MARCA DE AGUA VISIBLE CON NOMBRE Y DOCUMENTO DEL ESTUDIANTE #}
+{% set _est = est if (est is defined and est) else (estudiante if (estudiante is defined and estudiante) else (alumno if (alumno is defined and alumno) else None)) %}
+{% if _est %}
+{% endif %}
+{# MARCA DE AGUA INTEGRADA DE FONDO (DETRÁS DEL TEXTO) #}
+    {% set _est = est if (est is defined and est) else (estudiante if (estudiante is defined and estudiante) else (alumno if (alumno is defined and alumno) else None)) %}
+    {% if _est %}
+    {% endif %}
+<!-- Botones solo visibles en pantalla -->
+    <div class="screen-only">
+        <button onclick="window.print()" class="btn btn-print">🖨️ Imprimir Boletín (Ctrl+P)</button>
+        <a href="{{ url_for('calificaciones.libro_notas') }}" class="btn btn-back">⬅️ Volver</a>
+    </div>
+
+    <!-- Hoja de papel -->
+    <div class="paper">
+        
+        <!-- 🔒 CAPAS DE SELLO DE AGUA -->
+        <!-- Contenido principal -->
+        <div class="content">
+            
+            <!-- Encabezado -->
+            <div class="header">
+                <h1>🏫 Colegio Dr. Antonio Vaca Díez</h1>
+                <h2>Boletín de Calificaciones</h2>
+                <p>Gestión {{ now.year }} | Emitido: {{ now.strftime('%d/%m/%Y %H:%M') }}</p>
+            </div>
+
+            <!-- Datos del Estudiante -->
+            <div class="student-info">
+                <img src="{{ url_for('static', filename='uploads/' + estudiante.foto_path) }}" 
+                     class="student-photo" 
+                     onerror="this.src='{{ url_for('static', filename='uploads/default.png') }}'">
+                <div class="student-data">
+                    <div><strong>Apellidos:</strong> {{ estudiante.apellidos }}</div>
+                    <div><strong>Curso:</strong> {{ estudiante.curso }}</div>
+                    <div><strong>Nombres:</strong> {{ estudiante.nombres }}</div>
+                    <div><strong>ID Min.:</strong> {{ estudiante.rude }}</div>
+                    <div><strong>Fecha Nac.:</strong> {{ estudiante.fecha_nacimiento.strftime('%d/%m/%Y') }}</div>
+                    <div><strong>Estado:</strong> {{ estudiante.estado }}</div>
+                </div>
+            </div>
+
+            <!-- Tabla de Calificaciones -->
+            <table class="grades">
+                <thead>
+                    <tr>
+                        <th class="col-materia">Materia</th>
+                        <th class="col-notas">Evaluaciones Registradas</th>
+                        <th class="col-prom">Promedio</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in boletin %}
+                    <tr>
+                        <td class="col-materia">{{ item.materia.nombre }}</td>
+                        <td class="col-notas">
+                            {% if item.calificaciones %}
+                                {% for c in item.calificaciones %}
+                                    {{ c.tipo }}: <strong>{{ "%.0f"|format(c.nota) }}</strong>{% if not loop.last %} &nbsp;|&nbsp; {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <em style="color:#999;">Sin evaluaciones</em>
+                            {% endif %}
+                        </td>
+                        <td class="col-prom {% if item.promedio >= 51 %}prom-aprobado{% elif item.promedio > 0 %}prom-reprobado{% endif %}">
+                            {% if item.promedio > 0 %}{{ "%.0f"|format(item.promedio) }}{% else %}-{% endif %}
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="3" style="text-align:center; padding:10px; color:#999;">No hay materias registradas para este curso.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="2">PROMEDIO GENERAL DEL CURSO:</td>
+                        <td class="col-prom {% if promedio_general >= 51 %}prom-aprobado{% elif promedio_general > 0 %}prom-reprobado{% endif %}">
+                            {% if promedio_general > 0 %}{{ "%.1f"|format(promedio_general) }}{% else %}-{% endif %}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <!-- Resultado Final -->
+            <div class="resultado {% if promedio_general >= 51 %}res-aprobado{% elif promedio_general > 0 %}res-reprobado{% else %}res-sindatos{% endif %}">
+                {% if promedio_general >= 51 %}
+                    ✅ PROMOCIONA al siguiente curso (Promedio mínimo requerido: 51)
+                {% elif promedio_general > 0 %}
+                    ❌ NO PROMOCIONA al siguiente curso (Promedio insuficiente)
+                {% else %}
+                    ⚠️ SIN DATOS SUFICIENTES para determinar promoción
+                {% endif %}
+            </div>
+
+            <!-- 🔒 SECCIÓN DE VERIFICACIÓN CON QR -->
+            <div class="verification-section">
+                <div class="qr-container">
+                    <img src="{{ qr_imagen }}" alt="Código QR de Verificación">
+                    <div class="qr-label">🔒 Escanee para verificar</div>
+                </div>
+                <div class="verification-info">
+                    <p><strong>🔐 Documento Verificable Oficialmente</strong></p>
+                    <p>Este boletín puede ser verificado en cualquier momento escaneando el código QR o ingresando el siguiente código único:</p>
+                    <p>Código: <span class="verification-code">{{ codigo_verificacion }}</span></p>
+                    <p style="font-size: 7pt; color: #666; margin-top: 4px;">
+                        URL de verificación: {{ url_verificacion }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- Firmas -->
+            <div class="firmas">
+                <div class="firma-box">Profesor(a) de Materia</div>
+                <div class="firma-box">Director(a) de Curso</div>
+                <div class="firma-box">Padre / Madre / Tutor</div>
+            </div>
+
+            <!-- Footer Institucional -->
+            <div class="footer">
+                Documento oficial generado por el Sistema de Gestión Escolar | 
+                <strong>Avrora Soft - Vibola LLC</strong> | 
+                Colegio Dr. Antonio Vaca Díez © {{ now.year }} | 
+                Verificable en: {{ url_verificacion }}
+            </div>
+
+        </div>
+    </div>
+
+
+</div></div>
+
+</div>
+</body>
+</html>
+
+
+
+
+

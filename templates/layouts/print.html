@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}Documento Oficial - Colegio Vaca Díez{% endblock %}</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 13px;
+            color: #333;
+            background-color: #eef2f5;
+            margin: 0;
+            padding: 20px;
+        }
+        .sheet {
+            width: 100%;
+            max-width: 750px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 30px;
+            border: 1px solid #ccc;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .no-print {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 10px;
+            background: #fff;
+            border: 1px solid #ddd;
+        }
+        .btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            margin: 0 5px;
+        }
+        .btn-print { background: #0056b3; color: white; }
+        .btn-back { background: #6c757d; color: white; }
+
+        /* Estándar de Impresión con Márgenes Automáticos para Archivo */
+        @media print {
+            @page {
+                size: letter;
+                margin: 15mm 10mm 15mm 20mm; /* Margen izquierdo de archivo automático */
+            }
+            body {
+                background: none;
+                padding: 0;
+                margin: 0;
+            }
+            .sheet {
+                border: none;
+                box-shadow: none;
+                padding: 0;
+                width: 100%;
+                max-width: 100%;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+        
+        {% block extra_css %}{% endblock %}
+    </style>
+</head>
+<body>
+    <div class="sheet">
+        <div class="no-print">
+            <button onclick="window.print();" class="btn btn-print">🖨️ Imprimir Documento</button>
+            {% block back_button %}
+            <a href="{{ url_for('dashboard.index') }}" class="btn btn-back">⬅️ Volver</a>
+            {% endblock %}
+        </div>
+
+        <!-- Cada modelo implementa su propia estructura libre aquí -->
+        {% block content %}{% endblock %}
+    </div>
+</body>
+</html>

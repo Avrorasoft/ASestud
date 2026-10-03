@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>
+            <i class="bi bi-graph-up-arrow text-danger"></i>
+            Informes Económicos Confidenciales
+        </h2>
+        
+        <div>
+            <a href="{{ url_for('auth.logout') }}" class="btn btn-outline-danger">
+                <i class="bi bi-box-arrow-right"></i> Cerrar Sesión
+            </a>
+        </div>
+    </div>
+    
+    <!-- Generar Informes -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-calendar-day"></i> Informe Diario</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('superadmin.generar_informe', tipo='diario') }}">
+                        <div class="mb-3">
+                            <label class="form-label">Fecha</label>
+                            <input type="date" name="fecha" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-plus-circle"></i> Generar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-calendar-week"></i> Informe Semanal</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('superadmin.generar_informe', tipo='semanal') }}">
+                        <div class="mb-3">
+                            <label class="form-label">Fecha Fin (último día)</label>
+                            <input type="date" name="fecha_fin" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-plus-circle"></i> Generar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4">
+            <div class="card shadow-sm">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-calendar-month"></i> Informe Mensual</h5>
+                </div>
+                <div class="card-body">
+                    <form method="POST" action="{{ url_for('superadmin.generar_informe', tipo='mensual') }}">
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Año</label>
+                                <input type="number" name="anio" class="form-control" 
+                                       value="{{ now().year }}" required>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label">Mes</label>
+                                <select name="mes" class="form-select" required>
+                                    <option value="1">Enero</option>
+                                    <option value="2">Febrero</option>
+                                    <option value="3">Marzo</option>
+                                    <option value="4">Abril</option>
+                                    <option value="5">Mayo</option>
+                                    <option value="6">Junio</option>
+                                    <option value="7">Julio</option>
+                                    <option value="8">Agosto</option>
+                                    <option value="9">Septiembre</option>
+                                    <option value="10">Octubre</option>
+                                    <option value="11">Noviembre</option>
+                                    <option value="12">Diciembre</option>
+                                </select>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-info w-100">
+                            <i class="bi bi-plus-circle"></i> Generar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filtros -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-body">
+            <form method="GET" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Filtrar por tipo</label>
+                    <select name="tipo" class="form-select" onchange="this.form.submit()">
+                        <option value="">Todos</option>
+                        <option value="Diario" {% if tipo_filtro == 'Diario' %}selected{% endif %}>Diario</option>
+                        <option value="Semanal" {% if tipo_filtro == 'Semanal' %}selected{% endif %}>Semanal</option>
+                        <option value="Mensual" {% if tipo_filtro == 'Mensual' %}selected{% endif %}>Mensual</option>
+                    </select>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Lista de Informes -->
+    <div class="card shadow">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">Informes Generados</h5>
+        </div>
+        <div class="card-body">
+            {% if informes %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Período</th>
+                                <th>Total Ingresos</th>
+                                <th>Total Gastos</th>
+                                <th>Saldo Total</th>
+                                <th>Generado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for informe in informes %}
+                            <tr>
+                                <td>
+                                    {% if informe.tipo_informe == 'Diario' %}
+                                        <span class="badge bg-primary">Diario</span>
+                                    {% elif informe.tipo_informe == 'Semanal' %}
+                                        <span class="badge bg-success">Semanal</span>
+                                    {% else %}
+                                        <span class="badge bg-info">Mensual</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ informe.fecha_inicio.strftime('%d/%m/%Y') }}
+                                    {% if informe.fecha_inicio != informe.fecha_fin %}
+                                        - {{ informe.fecha_fin.strftime('%d/%m/%Y') }}
+                                    {% endif %}
+                                </td>
+                                <td class="text-success">
+                                    <strong>Bs. {{ '%.2f'|format(informe.total_ingresos) }}</strong>
+                                </td>
+                                <td class="text-danger">
+                                    <strong>Bs. {{ '%.2f'|format(informe.total_gastos) }}</strong>
+                                </td>
+                                <td>
+                                    <strong class="{% if informe.saldo_total >= 0 %}text-success{% else %}text-danger{% endif %}">
+                                        Bs. {{ '%.2f'|format(informe.saldo_total) }}
+                                    </strong>
+                                </td>
+                                <td>
+                                    <small>{{ informe.fecha_generacion.strftime('%d/%m/%Y %H:%M') }}</small>
+                                </td>
+                                <td>
+                                    <a href="{{ url_for('superadmin.ver_informe', id=informe.id) }}" 
+                                       class="btn btn-sm btn-primary">
+                                        <i class="bi bi-eye"></i> Ver
+                                    </a>
+                                    
+                                    <form method="POST" 
+                                          action="{{ url_for('superadmin.eliminar_informe', id=informe.id) }}"
+                                          class="d-inline"
+                                          onsubmit="return confirm('¿Está seguro de eliminar este informe?');">
+                                        <button type="submit" class="btn btn-sm btn-danger">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    No hay informes generados todavía.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Cambiar Contraseña -->
+    <div class="card shadow mt-4">
+        <div class="card-header bg-warning">
+            <h5 class="mb-0"><i class="bi bi-key-fill"></i> Cambiar Contraseña</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('superadmin.cambiar_password') }}">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Contraseña Actual</label>
+                        <input type="password" name="password_actual" class="form-control" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Nueva Contraseña</label>
+                        <input type="password" name="password_nueva" class="form-control" required minlength="6">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Confirmar Nueva</label>
+                        <input type="password" name="password_confirmar" class="form-control" required minlength="6">
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-warning">
+                    <i class="bi bi-check-circle"></i> Cambiar Contraseña
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

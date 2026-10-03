@@ -1,0 +1,249 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <!-- =============================================================== -->
+    <!-- ENCABEZADO -->
+    <!-- =============================================================== -->
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0">
+            <i class="bi bi-mortarboard-fill"></i>
+            Registro de Egresado: {{ egresado.apellidos }}, {{ egresado.nombres }}
+        </h3>
+
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('archivos.gestionar_notas', id=egresado.id) }}"
+               class="btn btn-success">
+                <i class="bi bi-journal-check"></i> Gestionar Notas
+            </a>
+
+            <a href="{{ url_for('archivos.editar_egresado', id=egresado.id) }}"
+               class="btn btn-primary">
+                <i class="bi bi-pencil"></i> Editar
+            </a>
+
+            <a href="{{ url_for('archivos.lista_egresados') }}"
+               class="btn btn-secondary">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+        </div>
+    </div>
+
+    <!-- =============================================================== -->
+    <!-- DATOS PERSONALES -->
+    <!-- =============================================================== -->
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-person-badge"></i> Datos Personales
+            </h5>
+        </div>
+
+        <div class="card-body">
+            <div class="row">
+
+                <!-- ⭐ C.I. COMO IDENTIFICADOR PRINCIPAL -->
+                <div class="col-md-3 mb-2">
+                    <strong>C.I.:</strong>
+                    <br>
+                    <span class="text-primary fw-bold fs-5">
+                        {{ egresado.ci }}
+                    </span>
+                </div>
+
+                <!-- RUDE COMO DATO INFORMATIVO -->
+                {% if egresado.rude %}
+                <div class="col-md-3 mb-2">
+                    <strong>RUDE (informativo):</strong>
+                    <br>
+                    <span class="text-muted">{{ egresado.rude }}</span>
+                </div>
+                {% endif %}
+
+                <div class="col-md-3 mb-2">
+                    <strong>Año de Egreso:</strong>
+                    <br>
+                    {{ egresado.anio_egreso }}
+                </div>
+
+                <div class="col-md-3 mb-2">
+                    <strong>Curso Final:</strong>
+                    <br>
+                    {{ egresado.curso_final }}
+                </div>
+
+                <div class="col-md-3 mb-2">
+                    <strong>Estado:</strong>
+                    <br>
+
+                    {% if egresado.estado_egreso == 'Graduado' %}
+                    <span class="badge bg-success fs-6">
+                        {{ egresado.estado_egreso }}
+                    </span>
+                    {% elif egresado.estado_egreso == 'No Graduado' %}
+                    <span class="badge bg-danger fs-6">
+                        {{ egresado.estado_egreso }}
+                    </span>
+                    {% elif egresado.estado_egreso == 'Retirado' %}
+                    <span class="badge bg-warning text-dark fs-6">
+                        {{ egresado.estado_egreso }}
+                    </span>
+                    {% elif egresado.estado_egreso == 'Trasladado' %}
+                    <span class="badge bg-info text-dark fs-6">
+                        {{ egresado.estado_egreso }}
+                    </span>
+                    {% else %}
+                    <span class="badge bg-secondary fs-6">
+                        {{ egresado.estado_egreso }}
+                    </span>
+                    {% endif %}
+                </div>
+
+                {% if egresado.nombre_tutor %}
+                <div class="col-md-3 mb-2">
+                    <strong>Tutor:</strong>
+                    <br>
+                    {{ egresado.nombre_tutor }}
+                </div>
+                {% endif %}
+
+                {% if egresado.telefono_tutor %}
+                <div class="col-md-3 mb-2">
+                    <strong>Tel. Tutor:</strong>
+                    <br>
+                    {{ egresado.telefono_tutor }}
+                </div>
+                {% endif %}
+
+            </div>
+        </div>
+    </div>
+
+    <!-- =============================================================== -->
+    <!-- PROMEDIO FINAL -->
+    <!-- =============================================================== -->
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-award"></i>
+                Promedio Final de Toda la Vida Académica
+            </h5>
+        </div>
+
+        <div class="card-body text-center">
+            <h1 class="display-4 fw-bold text-primary">
+                {{ "%.2f"|format(promedio_final) }}
+            </h1>
+
+            <p class="text-muted mb-0">
+                Escala 0-100
+            </p>
+        </div>
+    </div>
+
+    <!-- =============================================================== -->
+    <!-- HISTORIAL POR AÑO -->
+    <!-- =============================================================== -->
+
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0">
+                <i class="bi bi-journal-text"></i> Historial Académico por Gestión
+            </h5>
+        </div>
+
+        <div class="card-body">
+
+            {% if promedios_por_anio %}
+                {% for anio, datos in promedios_por_anio.items() %}
+                <div class="mb-4">
+
+                    <h4 class="border-bottom pb-2">
+                        <i class="bi bi-calendar-event"></i>
+                        Gestión {{ anio }}
+
+                        <small class="text-muted float-end">
+                            Promedio Anual:
+                            <span class="badge bg-primary fs-6">
+                                {{ "%.2f"|format(datos.promedio_anual) }}
+                            </span>
+                        </small>
+                    </h4>
+
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Materia</th>
+                                    <th>Promedio Bimestral</th>
+                                    <th>Promedio Trimestral</th>
+                                    <th>Promedio Semestral</th>
+                                    <th>Promedio Materia</th>
+                                </tr>
+                            </thead>
+
+                            <tbody>
+                                {% for materia, info in datos.materias.items() %}
+                                <tr>
+                                    <td>
+                                        <strong>{{ materia }}</strong>
+                                    </td>
+
+                                    <td>
+                                        {% for bim, prom in info.bimestres.items() %}
+                                        <span class="badge bg-info text-dark me-1 mb-1">
+                                            B{{ bim }}: {{ "%.1f"|format(prom) }}
+                                        </span>
+                                        {% endfor %}
+                                    </td>
+
+                                    <td>
+                                        {% for tri, prom in info.trimestres.items() %}
+                                        <span class="badge bg-warning text-dark me-1 mb-1">
+                                            T{{ tri }}: {{ "%.1f"|format(prom) }}
+                                        </span>
+                                        {% endfor %}
+                                    </td>
+
+                                    <td>
+                                        {% for sem, prom in info.semestres.items() %}
+                                        <span class="badge bg-success me-1 mb-1">
+                                            S{{ sem }}: {{ "%.1f"|format(prom) }}
+                                        </span>
+                                        {% endfor %}
+                                    </td>
+
+                                    <td class="text-center">
+                                        <strong class="fs-5 text-primary">
+                                            {{ "%.2f"|format(info.promedio_materia) }}
+                                        </strong>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+                {% endfor %}
+
+            {% else %}
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle"></i>
+                No hay calificaciones registradas.
+
+                <a href="{{ url_for('archivos.gestionar_notas', id=egresado.id) }}">
+                    Agregar Calificaciones
+                </a>
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

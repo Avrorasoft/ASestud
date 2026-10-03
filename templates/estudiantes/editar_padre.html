@@ -1,0 +1,211 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="card shadow">
+        <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                Editar Datos del Tutor
+            </h4>
+
+            <a href="{{ url_for('estudiantes.ver_estudiante', id=est.id) }}"
+               class="btn btn-sm btn-light">
+                Volver al Cardex
+            </a>
+        </div>
+
+        <div class="card-body">
+
+            <div class="alert alert-info">
+                Editando información del tutor del estudiante:
+                <strong>{{ est.apellidos }}, {{ est.nombres }}</strong>
+                <br>
+                <strong>C.I.:</strong> {{ est.ci }}
+
+                {% if est.rude %}
+                | <strong>RUDE (informativo):</strong> {{ est.rude }}
+                {% endif %}
+            </div>
+
+            <form method="POST">
+
+                <h5>
+                    Información del Tutor
+                </h5>
+
+                <div class="row">
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            Nombre Completo del Tutor *
+                        </label>
+
+                        <input type="text"
+                               name="nombres"
+                               class="form-control"
+                               value="{{ padre.nombres or '' }}"
+                               required>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">
+                            Parentesco *
+                        </label>
+
+                        {% set parentescos = [
+                            'Padre',
+                            'Madre',
+                            'Tutor',
+                            'Tía',
+                            'Tío',
+                            'Abuelo',
+                            'Abuela',
+                            'Hermano',
+                            'Hermana',
+                            'Otro'
+                        ] %}
+
+                        <select name="parentesco"
+                                class="form-select"
+                                required>
+
+                            {% for p in parentescos %}
+                            <option value="{{ p }}"
+                                {% if padre.parentesco == p %}selected{% endif %}>
+                                {{ p }}
+                            </option>
+                            {% endfor %}
+
+                        </select>
+                    </div>
+
+                    <!-- =================================================== -->
+                    <!-- C.I. DEL TUTOR: IDENTIFICADOR PRINCIPAL -->
+                    <!-- =================================================== -->
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">
+                            C.I. del Tutor *
+                        </label>
+
+                        <input type="text"
+                               name="ci"
+                               class="form-control"
+                               value="{{ padre.ci or '' }}"
+                               required>
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            Ocupación
+                        </label>
+
+                        <input type="text"
+                               name="ocupacion"
+                               class="form-control"
+                               value="{{ padre.ocupacion or '' }}">
+                    </div>
+
+                </div>
+
+                <hr>
+
+                <h5>
+                    Teléfonos de Contacto
+                </h5>
+
+                <div class="alert alert-secondary">
+                    El primer teléfono disponible se usará para enviar mensajes por WhatsApp.
+                </div>
+
+                <div class="row">
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">
+                            Teléfono Principal *
+                        </label>
+
+                        <input type="text"
+                               name="telefono1"
+                               class="form-control"
+                               value="{{ padre.telefono1 or '' }}"
+                               placeholder="Será usado para WhatsApp">
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">
+                            Teléfono Secundario
+                        </label>
+
+                        <input type="text"
+                               name="telefono2"
+                               class="form-control"
+                               value="{{ padre.telefono2 or '' }}">
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">
+                            Teléfono Adicional 1
+                        </label>
+
+                        <input type="text"
+                               name="telefono3"
+                               class="form-control"
+                               value="{{ padre.telefono3 or '' }}">
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">
+                            Teléfono Adicional 2
+                        </label>
+
+                        <input type="text"
+                               name="telefono4"
+                               class="form-control"
+                               value="{{ padre.telefono4 or '' }}">
+                    </div>
+
+                </div>
+
+                <hr>
+
+                <h5>
+                    Correo Electrónico
+                </h5>
+
+                <div class="row">
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            Email
+                        </label>
+
+                        <input type="email"
+                               name="email"
+                               class="form-control"
+                               value="{{ padre.email or '' }}">
+                    </div>
+
+                </div>
+
+                <div class="d-flex justify-content-between">
+
+                    <a href="{{ url_for('estudiantes.ver_estudiante', id=est.id) }}"
+                       class="btn btn-secondary">
+                        Cancelar
+                    </a>
+
+                    <button type="submit" class="btn btn-primary">
+                        Guardar Cambios del Tutor
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

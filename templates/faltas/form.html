@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}{% if falta %}Editar Registro de Asistencia{% else %}Registrar Asistencia{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card p-4 shadow-sm border-0" style="max-width: 600px; margin: auto;">
+        <h3 class="mb-4 text-dark fw-bold">
+            <i class="bi bi-calendar-check text-primary me-2"></i>
+            {% if falta %}Editar Registro de Asistencia{% else %}Nuevo Registro de Asistencia{% endif %}
+        </h3>
+        
+        <form method="POST" enctype="multipart/form-data">
+            
+            {% if falta and estudiante_actual %}
+            <div class="mb-3 alert alert-light border">
+                <label class="form-label text-muted small text-uppercase fw-bold d-block mb-1">Estudiante Seleccionado:</label>
+                <div class="fs-5 fw-bold text-dark">
+                    <i class="bi bi-person-badge text-primary me-1"></i>
+                    {{ estudiante_actual.apellidos }}, {{ estudiante_actual.nombres }}
+                </div>
+                <div class="text-muted small mt-1">
+                    <span class="badge bg-secondary">{{ estudiante_actual.curso }}</span>
+                    {% if estudiante_actual.rude %} &bull; RUDE: {{ estudiante_actual.rude }}{% endif %}
+                </div>
+                <input type="hidden" name="estudiante_id" value="{{ estudiante_actual.id }}">
+            </div>
+            
+            {% else %}
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Curso</label>
+                <select name="curso_filtro" class="form-select" onchange="window.location.href='{{ url_for('faltas.nueva_falta') }}?curso=' + this.value">
+                    <option value="">Seleccione un curso...</option>
+                    {% for c in cursos %}
+                    <option value="{{ c }}" {% if curso_actual == c %}selected{% endif %}>{{ c }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Estudiante *</label>
+                <select name="estudiante_id" class="form-select" required>
+                    <option value="">Seleccione un estudiante...</option>
+                    {% for est in estudiantes %}
+                    <option value="{{ est.id }}">{{ est.apellidos }}, {{ est.nombres }} ({{ est.curso }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            {% endif %}
+            
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Fecha *</label>
+                <input type="date" name="fecha" class="form-control" required value="{{ falta.fecha.strftime('%Y-%m-%d') if falta else today }}">
+            </div>
+            
+            <!-- ⭐ TODOS LOS ESTADOS DE ASISTENCIA INTEGRADOS -->
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Estado de Asistencia *</label>
+                <select name="tipo_falta" class="form-select" required>
+                    <option value="Presente" {% if falta and falta.tipo_falta == 'Presente' %}selected{% endif %}>Presente</option>
+                    <option value="Falta Injustificada" {% if falta and falta.tipo_falta == 'Falta Injustificada' %}selected{% endif %}>Falta Injustificada</option>
+                    <option value="Falta Justificada" {% if falta and falta.tipo_falta in ['Justificada', 'Falta Justificada'] %}selected{% endif %}>Falta Justificada</option>
+                    <option value="Atraso" {% if falta and falta.tipo_falta == 'Atraso' %}selected{% endif %}>Atraso</option>
+                    <option value="Licencia" {% if falta and falta.tipo_falta in ['Licencia', 'Licencia Médica', 'Permiso'] %}selected{% endif %}>Licencia / Permiso</option>
+                </select>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Observaciones / Motivo</label>
+                <textarea name="observaciones" class="form-control" rows="3" 
+                          placeholder="Detalle o justificación...">{{ falta.observaciones if falta else '' }}</textarea>
+            </div>
+            
+            <div class="mb-3">
+                <label class="form-label fw-semibold">Adjuntar Comprobante / Respaldo (Opcional)</label>
+                <input type="file" name="archivo" class="form-control" accept="image/*,.tiff,.tif,.webp,.gif,.pdf">
+                {% if falta and falta.archivo_adjunto %}
+                <div class="form-text text-info mt-1">
+                    <i class="bi bi-paperclip"></i> Archivo actual: <strong>{{ falta.archivo_adjunto }}</strong>
+                </div>
+                {% endif %}
+            </div>
+            
+            <div class="d-grid gap-2 mt-4">
+                <button type="submit" class="btn btn-primary shadow-sm">
+                    <i class="bi bi-save me-1"></i> Guardar Registro
+                </button>
+                <a href="{{ url_for('faltas.lista_faltas') }}" class="btn btn-outline-secondary">
+                    <i class="bi bi-x-circle me-1"></i> Cancelar
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

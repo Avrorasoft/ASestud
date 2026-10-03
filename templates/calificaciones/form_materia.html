@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if materia else 'Nueva' }} Materia{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-journal-plus me-2"></i>{{ 'Editar' if materia else 'Nueva' }} Materia</h2>
+    <a href="{{ url_for('calificaciones.lista_materias') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Volver
+    </a>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <form method="POST" class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-book me-2"></i>Datos de la Materia</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-8">
+                        <label class="form-label">Nombre de la Materia <span class="text-danger">*</span></label>
+                        <input type="text" name="nombre" class="form-control" 
+                               value="{{ materia.nombre if materia else '' }}" 
+                               placeholder="Ej: MATEMÁTICAS" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Curso <span class="text-danger">*</span></label>
+                        <select name="curso_id" class="form-select" required>
+                            <option value="">Seleccionar...</option>
+                            {% for curso in ['1ro Primaria','2do Primaria','3ro Primaria','4to Primaria','5to Primaria','6to Primaria','1ro Secundaria','2do Secundaria','3ro Secundaria','4to Secundaria','5to Secundaria','6to Secundaria'] %}
+                            <option value="{{ curso }}" {% if materia and materia.curso_id == curso %}selected{% endif %}>{{ curso }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Profesor Asignado <span class="text-danger">*</span></label>
+                        <select name="profesor_id" class="form-select" required>
+                            <option value="">Seleccionar profesor...</option>
+                            {% for p in profesores %}
+                            <option value="{{ p.id }}" {% if materia and materia.profesor_id == p.id %}selected{% endif %}>
+                                {{ p.apellidos }}, {{ p.nombres }} ({{ p.especialidad }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">Solo se muestran profesores activos.</small>
+                    </div>
+                </div>
+            </div>
+            <div class="card-footer text-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-save me-1"></i>{{ 'Actualizar' if materia else 'Guardar' }} Materia
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

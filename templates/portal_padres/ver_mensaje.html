@@ -1,0 +1,65 @@
+{% extends "base_padres.html" %}
+{% block title %}Ver Mensaje{% endblock %}
+{% block page_title %}Mensaje{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="mb-0"><i class="bi bi-envelope-fill text-primary me-2"></i>Mensaje</h4>
+        <a href="{{ url_for('portal_padres.mensajes') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver
+        </a>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-white">
+            <span class="badge bg-primary me-2">{{ mensaje.tipo_mensaje }}</span>
+            {{ mensaje.fecha_envio.strftime('%d/%m/%Y %H:%M') }}
+        </div>
+        <div class="card-body">
+            {% set contenido_crudo = mensaje.contenido %}
+            {% set partes = contenido_crudo.split('---ARCHIVO_ADJUNTO---') %}
+
+            {% if partes[0].strip() %}
+                <p style="white-space: pre-wrap; font-size: 1rem;">{{ partes[0].strip() }}</p>
+            {% endif %}
+
+            {% if partes|length > 1 %}
+                {% set url_archivo = partes[1].strip() %}
+
+                <hr>
+                <div class="alert alert-info">
+                    <h5 class="mb-3"><i class="bi bi-paperclip me-2"></i>Archivo Adjunto</h5>
+                    <a href="{{ url_archivo }}" target="_blank" class="btn btn-primary w-100">
+                        <i class="bi bi-box-arrow-up-right me-2"></i>ABRIR ARCHIVO
+                    </a>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {% if mensaje.remitente == 'Colegio' %}
+    <div class="card">
+        <div class="card-header bg-white">
+            <h5 class="mb-0"><i class="bi bi-reply-fill text-success me-2"></i> Responder</h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('portal_padres.responder_mensaje', id=mensaje.id) }}" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Su respuesta:</label>
+                    <textarea name="respuesta" class="form-control" rows="4"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Adjuntar archivo:</label>
+                    <input type="file" name="archivo" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-success w-100">
+                    <i class="bi bi-send"></i> Enviar
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

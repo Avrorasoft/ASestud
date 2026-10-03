@@ -1,0 +1,189 @@
+{% extends "base.html" %}
+{% block title %}Chat Interno - Profesores{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-dark fw-bold">
+            <i class="bi bi-chat-heart-fill me-2 text-warning"></i>Centro de Comunicación con Profesores
+        </h2>
+        <a href="{{ url_for('admin_profesores_chat.gestionar_chat_profesores') }}" class="btn btn-warning text-dark shadow-sm fw-bold">
+            <i class="bi bi-plus-circle me-1"></i>Enviar Nuevo Comunicado
+        </a>
+    </div>
+
+    <!-- Lista de profesores / selección -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-dark text-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class="bi bi-person-workspace me-2"></i>Seleccione un Docente para Comunicarse</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for prof in profesores %}
+                        <a href="{{ url_for('admin_profesores_chat.gestionar_chat_profesores', profesor_id=prof.id) }}" 
+                           class="btn {% if profesor_seleccionado and profesor_seleccionado.id == prof.id %}btn-primary text-white{% else %}btn-outline-dark{% endif %} shadow-sm">
+                            <i class="bi bi-person-fill me-1"></i>{{ prof.apellidos }}, {{ prof.nombres }}
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% if profesor_seleccionado %}
+    <!-- Formulario de Envío con Action Explícito -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header bg-primary text-white py-3">
+            <h5 class="mb-0 fw-bold">
+                <i class="bi bi-send-fill me-2"></i>Enviar Comunicado a: Prof. {{ profesor_seleccionado.nombres }} {{ profesor_seleccionado.apellidos }}
+            </h5>
+        </div>
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('admin_profesores_chat.gestionar_chat_profesores', profesor_id=profesor_seleccionado.id) }}">
+                <input type="hidden" name="profesor_id" value="{{ profesor_seleccionado.id }}">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Tipo de Comunicado</label>
+                        <select name="tipo" class="form-select" required>
+                            <option value="privado">Mensaje Privado (Solo este docente)</option>
+                            <option value="general">Aviso General (Tablón para todos)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold">Asunto</label>
+                        <input type="text" name="asunto" class="form-control" placeholder="Ej. Presentación de Notas Trimestrales" required autocomplete="off">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label fw-bold">Contenido del Mensaje</label>
+                        <textarea name="contenido" rows="3" class="form-control" placeholder="Escriba los detalles del comunicado oficial..." required></textarea>
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-success px-4 fw-bold">
+                            <i class="bi bi-send-check-fill me-1"></i> Enviar Mensaje Oficial
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Lista de mensajes / historial clonado -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-light text-dark d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 text-dark fw-bold">
+                <i class="bi bi-chat-left-text me-2"></i>Historial de Comunicaciones con el Profesorado
+            </h5>
+            <span class="badge bg-primary text-white px-3 py-2">{{ mensajes|length }} mensajes</span>
+        </div>
+        <div class="card-body p-0">
+            {% if mensajes %}
+            <div class="list-group list-group-flush">
+                {% for msg in mensajes %}
+                
+                {% set contenido_str = msg.contenido or '' %}
+                
+                <div class="list-group-item list-group-item-action p-3 border-bottom">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                <i class="bi bi-chat-dots fs-4"></i>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1 text-dark fw-bold">
+                                        <i class="bi bi-person-fill me-1 text-muted"></i>{{ msg.asunto }}
+                                    </h6>
+                                    <span class="badge bg-light text-dark border me-2 mb-1 text-uppercase">{{ msg.tipo }}</span>
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-muted fw-bold">
+                                        <i class="bi bi-clock me-1"></i>{{ msg.fecha_envio.strftime('%d/%m/%Y %H:%M') if msg.fecha_envio else '' }}
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="mt-2 p-2 bg-light rounded text-dark border" style="max-height: 100px; overflow-y: auto;">
+                                <small class="text-dark" style="white-space: pre-line;">{{ contenido_str[:300] }}{% if contenido_str|length > 300 %}...{% endif %}</small>
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <div class="btn-group-vertical btn-group-sm">
+                                <button type="button" class="btn btn-outline-primary mb-1 btn-ver-mensaje"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#modalUnico"
+                                        data-destinatario="Profesor/a"
+                                        data-tipo="{{ msg.tipo }}"
+                                        data-telefono="Institucional"
+                                        data-fecha="{{ msg.fecha_envio.strftime('%d/%m/%Y %H:%M:%S') if msg.fecha_envio else '' }}"
+                                        data-contenido="{{ contenido_str }}"
+                                        title="Ver comunicado completo">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-dark">
+                <i class="bi bi-chat-square-dots fs-1 text-muted d-block mb-3"></i>
+                <h5 class="text-muted fw-bold">No hay comunicados registrados</h5>
+                <p class="text-muted">Seleccione un profesor arriba y envíe su primer mensaje o aviso general.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ÚNICO DINÁMICO IDÉNTICO AL DEL CHAT DE PADRES -->
+<div class="modal fade" id="modalUnico" tabindex="-1" aria-labelledby="modalUnicoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold" id="modalUnicoLabel">
+                    <i class="bi bi-chat-square-text me-2"></i>Comunicado Completo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body text-dark">
+                <div class="row mb-3">
+                    <div class="col-md-6 mb-2">
+                        <strong class="text-dark"><i class="bi bi-tag me-1"></i>Tipo de Envío:</strong> 
+                        <span class="badge bg-primary text-white text-uppercase" id="modalTipo"></span>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <strong class="text-dark"><i class="bi bi-calendar3 me-1"></i>Fecha:</strong> 
+                        <span class="text-dark" id="modalFecha"></span>
+                    </div>
+                </div>
+                <hr class="my-3">
+                <div class="p-3 bg-light rounded text-dark border">
+                    <pre class="mb-0 text-dark" id="modalContenido" style="white-space: pre-wrap; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; font-size: 0.95rem;"></pre>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('modalUnico');
+    modal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        document.getElementById('modalTipo').textContent = button.getAttribute('data-tipo');
+        document.getElementById('modalFecha').textContent = button.getAttribute('data-fecha');
+        document.getElementById('modalContenido').textContent = button.getAttribute('data-contenido');
+    });
+});
+</script>
+{% endblock %}

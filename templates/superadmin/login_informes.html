@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white text-center">
+                    <h3 class="mb-0">
+                        <i class="bi bi-shield-lock-fill"></i>
+                        Acceso Restringido
+                    </h3>
+                    <small>Panel de Informes Económicos Confidenciales</small>
+                </div>
+                
+                <div class="card-body">
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                        <strong>Advertencia:</strong> Esta sección es de acceso exclusivo para el Superadministrador.
+                        Todos los intentos de acceso quedan registrados.
+                    </div>
+                    
+                    <form method="POST">
+                        <div class="mb-3">
+                            <label class="form-label">Contraseña de Superadministrador</label>
+                            <input type="password" 
+                                   name="password" 
+                                   class="form-control form-control-lg"
+                                   placeholder="Ingrese su contraseña especial"
+                                   required
+                                   autofocus>
+                        </div>
+                        
+                        <button type="submit" class="btn btn-danger btn-lg w-100">
+                            <i class="bi bi-unlock-fill"></i> Acceder al Panel
+                        </button>
+                    </form>
+                    
+                    <hr>
+                    
+                    <div class="text-center">
+                        <a href="{{ url_for('dashboard.index') }}" class="btn btn-secondary">
+                            <i class="bi bi-arrow-left"></i> Volver al Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

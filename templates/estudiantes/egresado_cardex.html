@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+{% block title %}Cárdex de Egresado - {{ est.apellidos }} {{ est.nombres }}{% endblock %}
+
+{% block content %}
+<div class="container py-3" style="max-width: 1020px;">
+    <!-- ENCABEZADO SUPERIOR COMPACTO -->
+    <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+        <div>
+            <h4 class="fw-bold mb-0 text-dark" style="font-size: 18px;">📋 Cárdex Institucional de Egresado</h4>
+            <small class="text-muted" style="font-size: 11px;">Colegio Dr. Antonio Vaca Díez | Historial Académico y Calificaciones</small>
+        </div>
+        <div>
+            <a href="{{ url_for('estudiantes.lista_egresados') }}" class="btn btn-outline-secondary btn-sm py-1 px-3" style="font-size: 12px;">
+                <i class="bi bi-arrow-left"></i> Volver a la Lista
+            </a>
+        </div>
+    </div>
+
+    <!-- 1. FILIACIÓN PERSONAL Y REGISTRO -->
+    <div class="card shadow-sm border-0 mb-3" style="border-radius: 6px;">
+        <div class="card-header bg-dark text-white fw-bold py-1 px-3 d-flex justify-content-between align-items-center" style="font-size: 12px;">
+            <span>1. Datos de Identificación y Filiación Personal</span>
+            <span class="badge bg-success" style="font-size: 10px;">Bachiller Egresado</span>
+        </div>
+        <div class="card-body p-3">
+            <div class="row g-2" style="font-size: 12px;">
+                <div class="col-md-3">
+                    <span class="text-muted small d-block" style="font-size: 10px; font-weight: 600;">Cédula de Identidad (C.I.)</span>
+                    <strong class="text-dark">{{ est.ci }} {{ est.expedido or 'BN' }}</strong>
+                </div>
+                <div class="col-md-3">
+                    <span class="text-muted small d-block" style="font-size: 10px; font-weight: 600;">Código RUDE</span>
+                    <strong class="text-dark">{{ est.rude or '-' }}</strong>
+                </div>
+                <div class="col-md-3">
+                    <span class="text-muted small d-block" style="font-size: 10px; font-weight: 600;">Fecha de Nacimiento</span>
+                    <strong class="text-dark">{{ est.fecha_nacimiento or 'No registrada' }}</strong>
+                </div>
+                <div class="col-md-3">
+                    <span class="text-muted small d-block" style="font-size: 10px; font-weight: 600;">Turno Cursado</span>
+                    <span class="badge {{ 'bg-info text-dark' if 'tarde' in (est.turno or '')|lower else 'bg-warning text-dark' }}" style="font-size: 11px;">
+                        {{ '🌇 Turno Tarde' if 'tarde' in (est.turno or '')|lower else '🌅 Turno Mañana' }}
+                    </span>
+                </div>
+
+                <div class="col-md-6 pt-1">
+                    <span class="text-muted small d-block" style="font-size: 10px; font-weight: 600;">Apellidos y Nombres</span>
+                    <strong class="text-uppercase text-primary" style="font-size: 14px;">{{ est.apellidos }}, {{ est.nombres }}</strong>
+                </div>
+                <div class="col-md-2 pt-1">
+                    <span class="text-muted small d-block" style="font-size: 10px; font-weight: 600;">Gestión de Egreso</span>
+                    <strong class="text-dark">{{ gestion_egreso }}</strong>
+                </div>
+                <div class="col-md-2 pt-1">
+                    <span class="text-muted small d-block" style="font-size: 10px; font-weight: 600;">N° Diploma</span>
+                    <strong class="text-dark">{{ est.nro_diploma or 'En trámite' }}</strong>
+                </div>
+                <div class="col-md-2 pt-1">
+                    <span class="text-muted small d-block" style="font-size: 10px; font-weight: 600;">Libro / Folio</span>
+                    <strong class="text-dark">{{ est.libro_registro or '-' }}</strong>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. MATRIZ DE CALIFICACIONES DE LOS 4 CURSOS -->
+    <div class="card shadow-sm border-0 mb-3" style="border-radius: 6px;">
+        <div class="card-header text-white fw-bold py-1 px-3 d-flex justify-content-between align-items-center" style="background-color: #0f172a; font-size: 12px;">
+            <span>2. Historial de Calificaciones de Secundaria (Últimos 4 Cursos)</span>
+            <span class="badge bg-primary" style="font-size: 10px;">Escala: 1 a 100 pts.</span>
+        </div>
+        <div class="card-body p-3">
+            <!-- PESTAÑAS DE CURSOS -->
+            <ul class="nav nav-pills mb-2 nav-fill" id="pills-tab" role="tablist">
+                <li class="nav-item">
+                    <button class="nav-link active fw-bold py-1 px-2" id="tab-3ro" data-bs-toggle="pill" data-bs-target="#curso-3ro" type="button" style="font-size: 12px;">
+                        📘 3º de Secundaria
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link fw-bold py-1 px-2" id="tab-4to" data-bs-toggle="pill" data-bs-target="#curso-4to" type="button" style="font-size: 12px;">
+                        📙 4º de Secundaria
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link fw-bold py-1 px-2" id="tab-5to" data-bs-toggle="pill" data-bs-target="#curso-5to" type="button" style="font-size: 12px;">
+                        📗 5º de Secundaria
+                    </button>
+                </li>
+                <li class="nav-item">
+                    <button class="nav-link fw-bold py-1 px-2" id="tab-6to" data-bs-toggle="pill" data-bs-target="#curso-6to" type="button" style="font-size: 12px;">
+                        🎓 6º de Secundaria
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content border rounded p-2 bg-light" id="pills-tabContent">
+                {% for c_key, c_label, c_gestion in [('3ro', '3º de Secundaria', gestion_egreso - 3), ('4to', '4º de Secundaria', gestion_egreso - 2), ('5to', '5º de Secundaria', gestion_egreso - 1), ('6to', '6º de Secundaria', gestion_egreso)] %}
+                <div class="tab-pane fade {% if loop.first %}show active{% endif %}" id="curso-{{ c_key }}" role="tabpanel">
+                    
+                    <!-- BANNER DE CONTROL POR CURSO -->
+                    <div class="border rounded mb-2 bg-white px-3 py-2 d-flex justify-content-between align-items-center" style="font-size: 11.5px; border-left: 4px solid #0284c7 !important;">
+                        <div>
+                            <span class="badge bg-primary me-2">{{ c_label }}</span>
+                            <strong class="text-dark text-uppercase">{{ est.apellidos }}, {{ est.nombres }}</strong>
+                            <span class="text-muted ms-2">| C.I.: <strong>{{ est.ci }}</strong></span>
+                            <span class="text-muted ms-2">| Gestión: <strong class="text-primary">{{ c_gestion }}</strong></span>
+                            <span class="text-muted ms-2">| Turno: <strong>{{ est.turno or 'Mañana' }}</strong></span>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-dark" style="font-size: 11px;">Promedio: {{ "%.2f"|format(resumen[c_key].promedio) }} pts</span>
+                            <a href="{{ url_for('estudiantes.imprimir_curso_egresado', id=est.id, curso_key=c_key) }}" target="_blank" class="btn btn-sm btn-outline-dark py-0 px-2 fw-semibold" style="font-size: 11px;">
+                                🖨️ Imprimir Curso
+                            </a>
+                        </div>
+                    </div>
+
+                    <!-- TABLA COMPACTA DE MATERIAS -->
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered table-hover align-middle bg-white mb-0" style="font-size: 11px;">
+                            <thead class="table-secondary" style="font-size: 11px;">
+                                <tr>
+                                    <th style="width: 40px;" class="text-center">#</th>
+                                    <th style="width: 220px;">Campo / Área de Formación</th>
+                                    <th>Asignatura Oficial</th>
+                                    <th style="width: 120px;" class="text-center">Nota Anual (/100)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in resumen[c_key].materias %}
+                                <tr>
+                                    <td class="text-center text-muted py-1">{{ loop.index }}</td>
+                                    <td class="py-1 text-muted">{{ item.area }}</td>
+                                    <td class="py-1 fw-semibold text-dark">{{ item.nombre }}</td>
+                                    <td class="text-center py-1 fw-bold {{ 'text-success' if item.nota and item.nota >= 51 else ('text-danger' if item.nota else 'text-muted') }}">
+                                        {{ "%.0f"|format(item.nota) if item.nota is not none else '-' }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- RESUMEN CONSOLIDADO DE PROMEDIOS -->
+            <div class="row g-2 mt-2" style="font-size: 11px;">
+                <div class="col-md-2">
+                    <div class="p-2 border rounded bg-white text-center">
+                        <span class="text-muted d-block" style="font-size: 10px; font-weight: 600;">Prom. 3º Sec.</span>
+                        <strong class="text-dark" style="font-size: 13px;">{{ "%.2f"|format(resumen['3ro'].promedio) }} pts</strong>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="p-2 border rounded bg-white text-center">
+                        <span class="text-muted d-block" style="font-size: 10px; font-weight: 600;">Prom. 4º Sec.</span>
+                        <strong class="text-dark" style="font-size: 13px;">{{ "%.2f"|format(resumen['4to'].promedio) }} pts</strong>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="p-2 border rounded bg-white text-center">
+                        <span class="text-muted d-block" style="font-size: 10px; font-weight: 600;">Prom. 5º Sec.</span>
+                        <strong class="text-dark" style="font-size: 13px;">{{ "%.2f"|format(resumen['5to'].promedio) }} pts</strong>
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <div class="p-2 border rounded bg-white text-center">
+                        <span class="text-muted d-block" style="font-size: 10px; font-weight: 600;">Prom. 6º Sec.</span>
+                        <strong class="text-dark" style="font-size: 13px;">{{ "%.2f"|format(resumen['6to'].promedio) }} pts</strong>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-2 border rounded bg-dark text-white text-center">
+                        <span class="text-white-50 d-block" style="font-size: 10px; font-weight: 600; text-transform: uppercase;">Promedio General de Egreso</span>
+                        <strong class="text-warning" style="font-size: 15px;">{{ "%.2f"|format(promedio_general) }} pts</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. TUTOR Y OBSERVACIONES -->
+    <div class="card shadow-sm border-0 mb-4" style="border-radius: 6px;">
+        <div class="card-header bg-secondary text-white fw-bold py-1 px-3" style="font-size: 12px;">
+            3. Datos de Referencia Familiar y Observaciones de Archivo
+        </div>
+        <div class="card-body p-3" style="font-size: 12px;">
+            <div class="row g-2">
+                <div class="col-md-6">
+                    <span class="text-muted small d-block" style="font-size: 10px; font-weight: 600;">Padre / Madre o Tutor</span>
+                    <strong class="text-dark">{{ padre.nombre if padre else 'No registrado' }}</strong>
+                </div>
+                <div class="col-md-3">
+                    <span class="text-muted small d-block" style="font-size: 10px; font-weight: 600;">C.I. Tutor</span>
+                    <strong class="text-dark">{{ padre.ci if padre and padre.ci else '-' }}</strong>
+                </div>
+                <div class="col-md-3">
+                    <span class="text-muted small d-block" style="font-size: 10px; font-weight: 600;">Teléfono de Contacto</span>
+                    <strong class="text-dark">{{ padre.telefono if padre and padre.telefono else '-' }}</strong>
+                </div>
+                <div class="col-12 pt-1">
+                    <span class="text-muted small d-block" style="font-size: 10px; font-weight: 600;">Observaciones de Archivo</span>
+                    <span class="text-secondary">{{ est.observaciones or 'Sin observaciones adicionales registradas.' }}</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

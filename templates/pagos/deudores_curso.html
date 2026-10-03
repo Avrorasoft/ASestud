@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h2 class="mb-0 fw-bold text-dark">
+            <i class="bi bi-card-checklist text-primary me-2"></i>Reporte de Estudiantes Deudores por Curso
+        </h2>
+        <a href="{{ url_for('pagos.reporte_deudores') }}" class="btn btn-outline-danger">
+            <i class="bi bi-exclamation-octagon-fill me-1"></i> Ver Resumen Global de Morosos
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-4 bg-light">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('pagos.deudores_por_curso') }}" class="row g-3 align-items-end">
+                <div class="col-md-5">
+                    <label for="curso" class="form-label fw-bold">Seleccionar Curso:</label>
+                    <select name="curso" id="curso" class="form-select" required>
+                        <option value="">-- Elija un curso --</option>
+                        {% for c in cursos %}
+                            <option value="{{ c }}" {% if curso_seleccionado == c %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label for="gestion" class="form-label fw-bold">Gestión:</label>
+                    <input type="number" name="gestion" id="gestion" class="form-control" value="{{ gestion }}">
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold">
+                        <i class="bi bi-search me-1"></i> Consultar Deudores
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if curso_seleccionado %}
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+                <h5 class="mb-0 fw-bold">
+                    <i class="bi bi-people-fill text-warning me-2"></i>Curso: {{ curso_seleccionado }} &bull; Gestión {{ gestion }}
+                </h5>
+                <button onclick="window.print();" class="btn btn-sm btn-outline-light">
+                    <i class="bi bi-printer me-1"></i> Imprimir
+                </button>
+            </div>
+            <div class="card-body p-0">
+                {% if deudores %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="text-center" style="width: 40px;">#</th>
+                                    <th>Apellidos y Nombres</th>
+                                    <th>Código RUDE / C.I.</th>
+                                    <th class="text-center">Meses Pagados</th>
+                                    <th class="text-end">Total Pagado</th>
+                                    <th class="text-end">Saldo Pendiente</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in deudores %}
+                                <tr>
+                                    <td class="text-center text-muted fw-bold">{{ loop.index }}</td>
+                                    <td><strong>{{ item.estudiante.apellidos }}, {{ item.estudiante.nombres }}</strong></td>
+                                    <td>{{ item.estudiante.rude or 'S/R' }} / {{ item.estudiante.ci or 'S/C' }}</td>
+                                    <td class="text-center"><span class="badge bg-secondary">{{ item.meses_pagados }} / 10</span></td>
+                                    <td class="text-end">Bs. {{ "%.2f"|format(item.total_pagado) }}</td>
+                                    <td class="text-end"><span class="text-danger fw-bold fs-6">Bs. {{ "%.2f"|format(item.saldo_pendiente) }}</span></td>
+                                    <td class="text-center">
+                                        <a href="{{ url_for('estudiantes.ver_estudiante', id=item.estudiante.id) }}" class="btn btn-sm btn-outline-info">
+                                            <i class="bi bi-eye me-1"></i>Ver Perfil
+                                        </a>
+                                        <a href="{{ url_for('estudiantes.pagar_estudiante', id=item.estudiante.id) }}" class="btn btn-sm btn-success">
+                                            <i class="bi bi-cash-coin me-1"></i>Cobrar
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="alert alert-success text-center m-4 py-4">
+                        <i class="bi bi-check-circle-fill fs-2 d-block mb-2 text-success"></i>
+                        ¡Excelente! No se registran deudores para el curso <strong>{{ curso_seleccionado }}</strong> en la gestión {{ gestion }}.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

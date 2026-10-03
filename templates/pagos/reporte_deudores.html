@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte de Morosidad por Curso - Gestión {{ anio_actual }}{% endblock %}
+
+{% block content %}
+<style>
+    @media print {
+        /* Ocultar elementos de navegación, botones y tarjetas de resumen */
+        nav, header, footer, .sidebar, .d-print-none, .btn, .alert, .resumen-global {
+            display: none !important;
+        }
+        
+        body, .container-fluid, main {
+            background-color: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+        }
+
+        /* Cada bloque de curso inicia en una nueva página */
+        .seccion-curso {
+            page-break-after: always;
+            break-after: page;
+            margin-bottom: 2rem;
+            border: 1px solid #dee2e6 !important;
+            box-shadow: none !important;
+        }
+
+        .seccion-curso:last-child {
+            page-break-after: auto;
+            break-after: auto;
+        }
+
+        .encabezado-impresion-curso {
+            display: block !important;
+        }
+
+        .table {
+            font-size: 11pt;
+            width: 100% !important;
+        }
+
+        .table th, .table td {
+            padding: 6px 8px !important;
+        }
+
+        .badge {
+            border: 1px solid #6c757d;
+            color: #000 !important;
+            background: transparent !important;
+        }
+    }
+
+    .encabezado-impresion-curso {
+        display: none;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Encabezado General del Panel -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 d-print-none">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-exclamation-octagon-fill text-danger me-2"></i>Reporte Institucional de Deudores
+            </h3>
+            <p class="text-muted mb-0">Gestión Escolar {{ anio_actual }} &bull; Meses evaluados: Febrero a Noviembre</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button onclick="window.print();" class="btn btn-outline-secondary">
+                <i class="bi bi-printer me-1"></i> Imprimir Todos los Cursos
+            </button>
+            <a href="/estudiantes/" class="btn btn-primary">
+                <i class="bi bi-people-fill me-1"></i> Ir al Cárdex General
+            </a>
+        </div>
+    </div>
+
+    <!-- Tarjetas de Resumen Global (Ocultas en impresión) -->
+    <div class="row g-3 mb-4 resumen-global d-print-none">
+        <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm rounded-3 border-start border-danger border-4">
+                <div class="card-body">
+                    <span class="text-muted small text-uppercase fw-semibold">Total en Mora Acumulada</span>
+                    <h3 class="fw-bold text-danger mt-1 mb-0">Bs. {{ "{:,.2f}".format(gran_total) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm rounded-3 border-start border-warning border-4">
+                <div class="card-body">
+                    <span class="text-muted small text-uppercase fw-semibold">Estudiantes en Mora</span>
+                    <h3 class="fw-bold text-dark mt-1 mb-0">{{ total_alumnos_deudores }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-4">
+            <div class="card border-0 shadow-sm rounded-3 border-start border-info border-4">
+                <div class="card-body">
+                    <span class="text-muted small text-uppercase fw-semibold">Cursos con Pendientes</span>
+                    <h3 class="fw-bold text-dark mt-1 mb-0">{{ deudores_por_curso|length }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenedor de Cursos -->
+    {% if not deudores_por_curso %}
+        <div class="alert alert-success border-0 shadow-sm text-center py-4">
+            <i class="bi bi-check-circle-fill fs-2 d-block mb-2 text-success"></i>
+            <h5 class="fw-bold">Sin morosidad pendiente</h5>
+            <p class="mb-0 text-muted">Todos los estudiantes inscritos se encuentran al día con sus cuotas.</p>
+        </div>
+    {% else %}
+        {% for curso, data in deudores_por_curso.items()|sort %}
+        {% set curso_id = 'curso_' ~ loop.index %}
+        <div class="card border-0 shadow-sm rounded-3 mb-4 seccion-curso" id="{{ curso_id }}">
+            
+            <!-- Membrete institucional al imprimir solo este curso (Dinámico y Genérico) -->
+            <div class="encabezado-impresion-curso p-3 border-bottom text-center">
+                <h4 class="fw-bold mb-0">
+                    {% if institucion and institucion.get('institucion_linea1') %}
+                        {{ institucion.get('institucion_linea1') }}
+                    {% else %}
+                        SISTEMA DE GESTIÓN ESCOLAR
+                    {% endif %}
+                </h4>
+                <p class="small text-muted mb-1">Reporte Oficial de Estudiantes con Pensiones Pendientes &bull; Gestión {{ anio_actual }}</p>
+                <h5 class="fw-bold text-dark mt-2 mb-0">CURSO: {{ curso|upper }}</h5>
+            </div>
+
+            <!-- Cabecera visible en pantalla -->
+            <div class="card-header bg-light py-3 d-flex justify-content-between align-items-center flex-wrap gap-2 d-print-none">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi bi-mortarboard fs-5 text-primary"></i>
+                    <h5 class="mb-0 fw-bold text-primary">{{ curso|upper }}</h5>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-danger fs-6 px-3 py-2">
+                        Mora: Bs. {{ "{:,.2f}".format(data.subtotal) }} ({{ data.alumnos|length }} deudor{% if data.alumnos|length > 1 %}es{% endif %})
+                    </span>
+                    <button type="button" class="btn btn-sm btn-outline-dark" onclick="imprimirCursoSolo('{{ curso_id }}')">
+                        <i class="bi bi-printer me-1"></i> Imprimir Curso
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Estudiante</th>
+                            <th>C.I.</th>
+                            <th class="text-end">Pensión</th>
+                            <th class="text-center">Meses Mora</th>
+                            <th class="text-end">Monto Adeudado</th>
+                            <th class="pe-3">Detalle de Meses</th>
+                            <th class="text-center d-print-none">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for r in data.alumnos %}
+                        <tr>
+                            <td class="ps-3 fw-semibold text-dark">{{ r.estudiante }}</td>
+                            <td><span class="badge bg-light text-dark border">{{ r.ci }}</span></td>
+                            <td class="text-end">Bs. {{ "{:,.2f}".format(r.pension) }}</td>
+                            <td class="text-center"><span class="badge bg-warning text-dark">{{ r.cant_meses }}</span></td>
+                            <td class="text-end fw-bold text-danger">Bs. {{ "{:,.2f}".format(r.deuda) }}</td>
+                            <td class="pe-3 small text-muted">{{ r.detalle_meses }}</td>
+                            
+                            <td class="text-center d-print-none">
+                                {% set est_id = r.get('estudiante_id') or r.get('id') or r.get('id_estudiante') %}
+                                {% if est_id %}
+                                    <a href="{{ url_for('estudiantes.pagar_estudiante', id=est_id) }}" class="btn btn-sm btn-success shadow-sm" title="Ir a Tarjetas de Pago">
+                                        <i class="bi bi-cash-coin me-1"></i>Cobrar
+                                    </a>
+                                {% else %}
+                                    <a href="/estudiantes/" class="btn btn-sm btn-warning shadow-sm" title="Buscar en cárdex">
+                                        <i class="bi bi-search me-1"></i>Buscar
+                                    </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot class="table-group-divider">
+                        <tr class="fw-bold bg-light">
+                            <td colspan="4" class="text-end ps-3">Total Deuda {{ curso|upper }}:</td>
+                            <td class="text-end text-danger">Bs. {{ "{:,.2f}".format(data.subtotal) }}</td>
+                            <td></td>
+                            <td class="d-print-none"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    {% endif %}
+</div>
+
+<!-- Script para imprimir únicamente el curso seleccionado -->
+<script>
+function imprimirCursoSolo(elementId) {
+    const cursoElem = document.getElementById(elementId);
+    if (!cursoElem) return;
+
+    const ventanaImpresion = window.open('', '_blank', 'width=900,height=650');
+    ventanaImpresion.document.write('<!DOCTYPE html><html><head><title>Impresión de Curso</title>');
+    ventanaImpresion.document.write('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">');
+    ventanaImpresion.document.write('<style>');
+    ventanaImpresion.document.write('body { font-family: sans-serif; padding: 20px; background: #fff; }');
+    ventanaImpresion.document.write('.encabezado-impresion-curso { display: block !important; margin-bottom: 15px; }');
+    ventanaImpresion.document.write('.d-print-none, .btn { display: none !important; }');
+    ventanaImpresion.document.write('.table { font-size: 11pt; }');
+    ventanaImpresion.document.write('.badge { border: 1px solid #aaa; color: #000 !important; background: transparent !important; }');
+    ventanaImpresion.document.write('</style></head><body>');
+    ventanaImpresion.document.write(cursoElem.outerHTML);
+    ventanaImpresion.document.write('</body></html>');
+    ventanaImpresion.document.close();
+    ventanaImpresion.focus();
+
+    setTimeout(function() {
+        ventanaImpresion.print();
+        ventanaImpresion.close();
+    }, 400);
+}
+</script>
+{% endblock %}

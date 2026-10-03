@@ -1,0 +1,350 @@
+    <style id="estilo-boletin-carta-impresion">
+        /* MEDIDAS Y MÁRGENES ESTRICTOS TAMAÑO CARTA */
+        @page {
+            size: letter portrait !important;
+            margin: 8mm 10mm 8mm 10mm !important;
+        }
+
+        /* CONTENEDOR EN PANTALLA: HOJA CENTRADA */
+        @media screen {
+            body {
+                background-color: #cbd5e1 !important;
+                margin: 0 !important;
+                padding: 20px 0 !important;
+            }
+            .hoja-impresion-boletin {
+                background: #ffffff !important;
+                width: 215.9mm !important;
+                min-height: 279.4mm !important;
+                padding: 12mm 15mm !important;
+                margin: 0 auto 20px auto !important;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+                border: 1px solid #94a3b8 !important;
+                box-sizing: border-box !important;
+                position: relative !important;
+            }
+        }
+
+        /* REGLAS OBLIGATORIAS DE IMPRESIÓN: CERO COLAPSO Y CERO SCROLL */
+        @media print {
+            html, body {
+                width: 100% !important;
+                height: auto !important;
+                min-height: auto !important;
+                max-height: none !important;
+                overflow: visible !important;
+                display: block !important;
+                background: #ffffff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            * {
+                overflow: visible !important;
+                float: none !important;
+            }
+            .no-print, nav, header, footer, .sidebar, .btn, button, .botonera {
+                display: none !important;
+            }
+            .hoja-impresion-boletin {
+                width: 100% !important;
+                min-height: auto !important;
+                height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                background: transparent !important;
+                position: relative !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            .table-responsive {
+                overflow: visible !important;
+                display: block !important;
+                width: 100% !important;
+            }
+            table, tr, td, th {
+                page-break-inside: avoid !important;
+                background-color: transparent !important;
+            }
+            .watermark-fondo {
+                display: block !important;
+                color: rgba(0, 0, 0, 0.11) !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+
+        /* MARCA DE AGUA DE FONDO (INTEGRADA, NO FLOTANTE) */
+        .watermark-fondo {
+            position: absolute;
+            top: 48%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            text-align: center;
+            width: 85%;
+            pointer-events: none;
+            z-index: 0;
+            user-select: none;
+            color: rgba(15, 23, 42, 0.09);
+        }
+        .wm-alumno {
+            font-size: 34px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            line-height: 1.15;
+            margin-bottom: 5px;
+        }
+        .wm-datos {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .wm-col {
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        /* CONTENIDO PRINCIPAL SOBRE LA MARCA DE AGUA */
+        .contenido-documento {
+            position: relative;
+            z-index: 1;
+        }
+        .contenido-documento table {
+            background-color: transparent !important;
+        }
+        .contenido-documento table th {
+            background-color: #1e293b !important;
+            color: #ffffff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .contenido-documento table td {
+            background-color: transparent !important;
+        }
+    </style>
+    
+{% extends "base.html" %}
+{% block content %}
+<div class="hoja-impresion-boletin">
+    {# MARCA DE AGUA INTEGRADA DE FONDO (DETRÁS DEL TEXTO) #}
+    {% set _est = est if (est is defined and est) else (estudiante if (estudiante is defined and estudiante) else (alumno if (alumno is defined and alumno) else None)) %}
+    {% if _est %}
+    <div class="watermark-fondo">
+        <div class="wm-alumno">{{ _est.apellidos }} {{ _est.nombres }}</div>
+        <div class="wm-datos">C.I. {{ _est.ci }} {{ _est.expedido or 'BN' }} &bull; RUDE: {{ _est.rude or '-' }}</div>
+        <div class="wm-col">COLEGIO DR. ANTONIO VACA DÍEZ</div>
+    </div>
+    {% endif %}
+<div class="contenido-documento">
+    
+<!-- Librerías para el Buscador Inteligente (Select2) -->
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<div class="container mt-4">
+    <div class="row">
+        <!-- Panel Izquierdo: Configuración -->
+        <div class="col-md-5">
+            <div class="card p-4 shadow-sm">
+                <h4 class="mb-3"><i class="bi bi-send-fill"></i> Redactar Comunicado</h4>
+                
+                <div class="mb-3">
+                    <label class="form-label fw-bold">1. Buscar Estudiante</label>
+                    <select id="estudiante_id" class="form-select" style="width: 100%;">
+                        <option value="">-- Escriba RUDE, apellido o curso --</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">2. Tipo de Comunicado</label>
+                    <select id="tipo_mensaje" class="form-select">
+                        <option value="">-- Seleccione un tipo de comunicado --</option>
+                        <option value="Citacion">📄 Citación a Reunión</option>
+                        <option value="Boletin">📊 Envío de Boletín</option>
+                        <option value="RecordatorioPago">💰 Recordatorio de Pago</option>
+                        <option value="ComprobantePago">✅ Comprobante de Pago</option>
+                        <option value="Inasistencia">⚠️ Inasistencia Injustificada</option>
+                        <option value="FaltaAsistencia">📋 Falta de Asistencia (Formal)</option>
+                        <option value="Felicitacion">🏆 Felicitación al Estudiante</option>
+                    </select>
+                </div>
+
+                <!-- Campos extra para Citación -->
+                <div id="campos_citacion" style="display: none;">
+                    <hr>
+                    <h6 class="text-muted">Detalles de la Citación</h6>
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Fecha</label>
+                            <input type="date" id="fecha_citacion" class="form-control">
+                        </div>
+                        <div class="col-6 mb-3">
+                            <label class="form-label">Hora</label>
+                            <input type="time" id="hora_citacion" class="form-control" value="18:00">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Motivo</label>
+                        <input type="text" id="motivo" class="form-control" value="Seguimiento académico y disciplinario">
+                    </div>
+                </div>
+                
+                <div id="mensaje_estado" class="alert alert-info" style="display: none;"></div>
+            </div>
+        </div>
+
+        <!-- Panel Derecho: Vista Previa y Botón Mágico -->
+        <div class="col-md-7">
+            <div class="card p-4 shadow-sm bg-light h-100 d-flex flex-column">
+                <h4 class="mb-3"><i class="bi bi-eye-fill"></i> Vista Previa Oficial</h4>
+                
+                <div id="preview_contenido" class="p-3 bg-white border rounded shadow-sm flex-grow-1" 
+                     style="white-space: pre-wrap; font-family: 'Segoe UI', sans-serif; font-size: 0.95rem; max-height: 500px; overflow-y: auto; line-height: 1.6; color: #6c757d;">
+                    Seleccione un estudiante y un tipo de comunicado para generar la vista previa automáticamente...
+                </div>
+
+                <!-- BOTÓN MÁGICO: Abre el chat y copia el mensaje -->
+                <button id="btnWhatsapp" class="btn btn-success btn-lg w-100 mt-3" style="display: none;" onclick="abrirChatYCopiar()">
+                    <i class="bi bi-whatsapp"></i> Abrir WhatsApp del Tutor
+                </button>
+                <small class="text-muted text-center mt-2" id="texto_ayuda" style="display: none;">
+                    El chat se abrirá automáticamente. Solo presiona <strong>Ctrl + V</strong> y luego <strong>Enter</strong>.
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // 1. Inicializar Select2
+        $('#estudiante_id').select2({
+            ajax: {
+                url: '/mensajes/api/buscar',
+                dataType: 'json',
+                delay: 250,
+                data: function (params) { return { q: params.term }; },
+                processResults: function (data) { return { results: data.results }; },
+                cache: true
+            },
+            minimumInputLength: 1,
+            placeholder: 'Escriba RUDE, apellido, nombre o curso...',
+            allowClear: true
+        });
+
+        // 2. Función para actualizar la vista previa
+        function actualizarVistaPrevia() {
+            const estId = $('#estudiante_id').val();
+            const tipo = $('#tipo_mensaje').val();
+            const $preview = $('#preview_contenido');
+            const $btn = $('#btnWhatsapp');
+            const $ayuda = $('#texto_ayuda');
+
+            if (!estId || !tipo) {
+                $preview.html('Seleccione un estudiante y un tipo de comunicado...').css('color', '#6c757d');
+                $btn.css('display', 'none');
+                $ayuda.css('display', 'none');
+                return;
+            }
+
+            $preview.html('<div class="text-center"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Generando comunicado oficial...</p></div>').css('color', '#000');
+            $btn.css('display', 'none');
+            
+            const params = new URLSearchParams({
+                estudiante_id: estId,
+                tipo_mensaje: tipo,
+                fecha_citacion: $('#fecha_citacion').val(),
+                hora_citacion: $('#hora_citacion').val(),
+                motivo: $('#motivo').val()
+            });
+
+            fetch(`/mensajes/api/vista_previa?${params.toString()}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        $preview.html(`⚠️ ${data.error}`).css('color', 'red');
+                        $btn.css('display', 'none');
+                        $ayuda.css('display', 'none');
+                    } else {
+                        // Mostrar el contenido
+                        $preview.text(data.contenido).css('color', '#000');
+                        
+                        // Mostrar el botón y guardar los datos en sus atributos
+                        $btn.css('display', 'block');
+                        $ayuda.css('display', 'block');
+                        $btn.attr('data-contenido', data.contenido);
+                        $btn.attr('data-telefono', data.telefono); // Guardamos el teléfono aquí
+                        
+                        // Guardar en segundo plano (historial)
+                        fetch('/mensajes/api/guardar', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                destinatario: data.destinatario,
+                                telefono: data.telefono,
+                                tipo: tipo,
+                                contenido: data.contenido
+                            })
+                        });
+                    }
+                })
+                .catch(err => {
+                    $preview.html('❌ Error de conexión con el servidor.').css('color', 'red');
+                    $btn.css('display', 'none');
+                    $ayuda.css('display', 'none');
+                });
+        }
+
+        // 3. Escuchar cambios en los selectores e inputs
+        $('#estudiante_id').on('select2:select', actualizarVistaPrevia);
+        $('#tipo_mensaje').on('change', function() {
+            const tipo = $(this).val();
+            $('#campos_citacion').toggle(tipo === 'Citacion');
+            actualizarVistaPrevia();
+        });
+        $('#fecha_citacion, #hora_citacion, #motivo').on('input change', actualizarVistaPrevia);
+    });
+
+    // 4. FUNCIÓN MÁGICA: Copiar y abrir el chat directo
+    function abrirChatYCopiar() {
+        const btn = document.getElementById('btnWhatsapp');
+        const texto = btn.getAttribute('data-contenido');
+        const telefono = btn.getAttribute('data-telefono');
+        
+        // Paso A: Copiar el texto al portapapeles (garantiza emojis perfectos)
+        navigator.clipboard.writeText(texto).then(() => {
+            
+            // Paso B: Abrir WhatsApp DIRECTAMENTE en el chat de ese número
+            // Usamos la API universal que abre la app en móvil o web en PC
+            const url = `https://wa.me/${telefono}`;  // SIN ?text= para que abra vacío
+            window.open(url, '_blank');
+
+            // Feedback visual en el botón
+            const textoOriginal = btn.innerHTML;
+            btn.innerHTML = '<i class="bi bi-check-circle-fill"></i> ¡Chat abierto! Presiona Ctrl+V y Enter';
+            btn.classList.replace('btn-success', 'btn-primary');
+            
+            setTimeout(() => {
+                btn.innerHTML = textoOriginal;
+                btn.classList.replace('btn-primary', 'btn-success');
+            }, 4000);
+            
+        }).catch(err => {
+            console.error('Error al copiar: ', err);
+            alert('No se pudo copiar automáticamente. Por favor, selecciona el texto con el mouse y cópialo.');
+        });
+    }
+</script>
+</div></div>
+{% endblock %}
+
+

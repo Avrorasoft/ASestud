@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container mt-4">
+    <div class="card shadow border-danger">
+        <div class="card-header bg-danger text-white text-center">
+            <h4>🔒 INFORME ECONÓMICO DIARIO - USO EXCLUSIVO SUPERADMIN</h4>
+            <p class="mb-0">Fecha de Corte: {{ fecha }}</p>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <!-- CAJA EFECTIVO FÍSICO -->
+                <div class="col-md-6">
+                    <div class="card border-success mb-3">
+                        <div class="card-header bg-success text-white">💵 Caja en Efectivo (Físico)</div>
+                        <div class="card-body">
+                            <p><strong>Ingresos (Cobros):</strong> Bs. {{ "%.2f"|format(ingresos_efectivo) }}</p>
+                            <p><strong>Egresos (Gastos):</strong> Bs. {{ "%.2f"|format(egresos_efectivo) }}</p>
+                            <hr>
+                            <h5 class="text-success">Saldo Neto en Caja: Bs. {{ "%.2f"|format(neto_efectivo) }}</h5>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CUENTA BANCARIA -->
+                <div class="col-md-6">
+                    <div class="card border-primary mb-3">
+                        <div class="card-header bg-primary text-white">🏦 Cuenta Bancaria (Transacciones)</div>
+                        <div class="card-body">
+                            <p><strong>Ingresos (Depósitos/Transferencias):</strong> Bs. {{ "%.2f"|format(ingresos_banco) }}</p>
+                            <p><strong>Egresos (Pagos bancarizados):</strong> Bs. {{ "%.2f"|format(egresos_banco) }}</p>
+                            <hr>
+                            <h5 class="text-primary">Saldo Neto en Banco: Bs. {{ "%.2f"|format(neto_banco) }}</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

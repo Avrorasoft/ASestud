@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+{% block title %}Recibo de Pago - {{ est.apellidos }}, {{ est.nombres }}{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 no-print gap-2">
+        <h4 class="text-dark fw-bold mb-0">
+            <i class="bi bi-receipt-cutoff me-2 text-primary"></i>Recibo Oficial de Pago
+        </h4>
+        <div class="d-flex flex-wrap gap-2">
+            <a href="{{ url_for('estudiantes.ver_estudiante', id=est.id) }}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Volver al Cardex
+            </a>
+            {% if recibo_filename %}
+            <a href="{{ url_for('estudiantes.descargar_recibo', filename=recibo_filename) }}" class="btn btn-success text-white">
+                <i class="bi bi-download"></i> Descargar PDF
+            </a>
+            <form method="POST" action="{{ url_for('estudiantes.enviar_recibo_chat', id=est.id) }}" class="d-inline">
+                <input type="hidden" name="recibo_filename" value="{{ recibo_filename }}">
+                <button type="submit" class="btn btn-primary text-white" onclick="return confirm('¿Enviar este recibo al padre por el chat interno?');">
+                    <i class="bi bi-send"></i> Enviar al Padre
+                </button>
+            </form>
+            {% endif %}
+            <button onclick="window.print()" class="btn btn-warning text-dark">
+                <i class="bi bi-printer"></i> Imprimir
+            </button>
+        </div>
+    </div>
+
+    <div class="receipt-sheet shadow-sm" id="recibo-print">
+        <div class="text-center mb-4">
+            <h3 class="fw-bold text-uppercase mb-1" style="color: #1a237e;">Colegio Dr. Antonio Vaca Díez</h3>
+            <p class="text-muted mb-1 small">Dirección Administrativa y Académica</p>
+            <p class="text-muted mb-3 small">Riberalta, Beni, Bolivia</p>
+            <hr class="border-dark opacity-25">
+            <h5 class="fw-bold text-uppercase mt-3">Recibo Oficial de Pago</h5>
+        </div>
+
+        <div class="row mb-4 small">
+            <div class="col-md-6">
+                <p class="mb-1"><strong>N° de Recibo:</strong> <span class="text-primary">{{ recibo_filename.replace('.pdf', '').replace('recibo_', 'REC-') if recibo_filename else 'N/A' }}</span></p>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <p class="mb-1"><strong>Fecha:</strong> {{ now().strftime('%d/%m/%Y') }}</p>
+            </div>
+        </div>
+
+        <div class="card mb-4 border-0 bg-light">
+            <div class="card-header bg-white border-bottom fw-bold">DATOS DEL ESTUDIANTE</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6 mb-2"><small class="text-muted d-block">Nombre</small><span class="fw-bold">{{ est.apellidos }}, {{ est.nombres }}</span></div>
+                    <div class="col-md-6 mb-2"><small class="text-muted d-block">RUDE</small><span>{{ est.rude }}</span></div>
+                    <div class="col-md-6 mb-2"><small class="text-muted d-block">Curso</small><span>{{ est.curso }}</span></div>
+                    {% if padre %}
+                    <div class="col-md-6 mb-2"><small class="text-muted d-block">Tutor</small><span>{{ padre.nombres or 'No registrado' }}</span></div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4 border-0">
+            <div class="card-header bg-white border-bottom fw-bold">DETALLE FINANCIERO</div>
+            <div class="card-body p-0">
+                {% if pagos %}
+                <table class="table table-bordered mb-0 align-middle">
+                    <thead class="table-dark text-white text-center">
+                        <tr>
+                            <th class="py-2">Concepto / Rubro</th>
+                            <th class="py-2">Mes / Período</th>
+                            <th class="py-2">Monto Total</th>
+                            <th class="py-2">Descuento</th>
+                            <th class="py-2">Monto Pagado</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-center">
+                        {% for p in pagos %}
+                        <tr>
+                            <td class="text-start ps-3">
+                                {% if p.tipo_concepto and p.tipo_concepto != 'Pensión' %}
+                                    <span class="fw-bold text-primary">{{ p.tipo_concepto }}</span>
+                                    {% if p.detalle_concepto %}
+                                        <br><small class="text-muted">{{ p.detalle_concepto }}</small>
+                                    {% endif %}
+                                {% else %}
+                                    <span>Pensión Mensual</span>
+                                    {% if p.estado == 'Abono' %}
+                                        <br><span class="badge bg-warning text-dark">Abono Parcial</span>
+                                    {% endif %}
+                                {% endif %}
+                            </td>
+                            <td>{{ p.mes }} ({{ p.anio }})</td>
+                            <td>Bs. {{ "%.2f"|format(p.monto_total) }}</td>
+                            <td>Bs. {{ "%.2f"|format(p.descuento or 0) }}</td>
+                            <td class="fw-bold text-success">Bs. {{ "%.2f"|format(p.monto_pagado) }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="p-4 text-center text-muted">No hay pagos registrados.</div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="row mt-5 pt-4">
+            <div class="col-md-6 text-center">
+                <div class="border-top border-dark pt-2 mx-auto" style="width: 70%;">
+                    <p class="mb-0 fw-bold">Firma del Administrador</p>
+                </div>
+            </div>
+            <div class="col-md-6 text-center">
+                <div class="border-top border-dark pt-2 mx-auto" style="width: 70%;">
+                    <p class="mb-0 fw-bold">Firma del Tutor</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-5 pt-3 border-top text-center">
+            <p class="small text-muted mb-0 fst-italic">
+                Este documento es un comprobante oficial de pago.<br>
+                Generado el {{ now().strftime('%d/%m/%Y a las %H:%M') }} por el Sistema de Gestión Escolar - Colegio Dr. Antonio Vaca Díez.
+            </p>
+        </div>
+    </div>
+</div>
+
+<style>
+.receipt-sheet { background: #ffffff; max-width: 800px; margin: 0 auto; padding: 40px; border: 1px solid #e0e0e0; border-radius: 8px; }
+@media print {
+    body * { visibility: hidden; }
+    .receipt-sheet, .receipt-sheet * { visibility: visible; }
+    .receipt-sheet { position: absolute; left: 0; top: 0; width: 100%; margin: 0; padding: 20px 40px; border: none; box-shadow: none; }
+    .table-dark, .bg-light { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    @page { size: letter; margin: 0.5in; }
+}
+</style>
+{% endblock %}

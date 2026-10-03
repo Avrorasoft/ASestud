@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <h3 class="mb-4"><i class="bi bi-cash-coin"></i> Pagar Sueldo: {{ persona.apellidos }}, {{ persona.nombres }}</h3>
+    <div class="row">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header bg-primary text-white">Datos del Trabajador</div>
+                <div class="card-body">
+                    <p><strong>Cargo:</strong> {{ persona.especialidad if tipo == 'profesor' else persona.cargo }}</p>
+                    <p><strong>Salario Base:</strong> Bs. {{ '%.2f'|format(persona.salario_base or 0) }}</p>
+                    <hr>
+                    <p class="text-danger mb-0">
+                        <strong>Adelantos Imputados al Periodo:</strong> 
+                        <span id="lbl_total_adelantos" class="fw-bold">Bs. {{ '%.2f'|format(total_adelantos or 0) }}</span>
+                    </p>
+                </div>
+            </div>
+
+            <div class="card mt-3">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-list-ul me-2"></i>Adelantos del Mes Seleccionado</span>
+                    <span id="badge_periodo" class="badge bg-dark"></span>
+                </div>
+                <div class="card-body p-0">
+                    <div id="contenedor_tabla_adelantos">
+                        <table class="table table-sm table-striped mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Motivo / Razón</th>
+                                    <th class="text-end">Monto</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody_adelantos">
+                                <!-- Se llena dinámicamente -->
+                            </tbody>
+                        </table>
+                        <div id="alerta_sin_adelantos" class="p-3 text-center text-muted" style="display: none;">
+                            <small><i class="bi bi-info-circle me-1"></i>No hay adelantos asignados a este periodo.</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-success text-white">Detalles del Pago</div>
+                <div class="card-body">
+                    <form method="POST">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Mes</label>
+                                <select name="mes" id="select_mes" class="form-select" required onchange="actualizarAdelantosPeriodo()">
+                                    {% set meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] %}
+                                    {% for m in meses %}
+                                        <option value="{{ m }}" {% if m == mes_actual %}selected{% endif %}>{{ m }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Año</label>
+                                <input type="number" name="anio" id="input_anio" class="form-control" value="{{ anio_actual }}" required onchange="actualizarAdelantosPeriodo()">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold">Monto Base (Bs.)</label>
+                                <input type="number" step="0.01" name="monto_base" id="monto_base" class="form-control" value="{{ persona.salario_base or 0 }}" required oninput="calcularNeto()">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label fw-bold text-danger">Descuento por Adelantos (Bs.)</label>
+                                <input type="number" step="0.01" name="adelanto" id="adelanto" class="form-control" value="{{ total_adelantos or 0 }}" oninput="calcularNeto()">
+                                <small class="text-muted">Se sincroniza automáticamente con el mes seleccionado. Permite ajuste manual.</small>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info border-primary">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold fs-5">TOTAL NETO A PAGAR:</span>
+                                <span class="fw-bold fs-4 text-success" id="neto_a_pagar">Bs. 0.00</span>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn btn-success btn-lg w-100">Confirmar Pago</button>
+                        <a href="{{ url_for('personal.cardex_personal', tipo=tipo, id=persona.id) }}" class="btn btn-secondary w-100 mt-2">Cancelar</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function calcularNeto() {
+    var montoBase = parseFloat(document.getElementById('monto_base').value) || 0;
+    var adelanto = parseFloat(document.getElementById('adelanto').value) || 0;
+    var neto = Math.max(0, montoBase - adelanto);
+    document.getElementById('neto_a_pagar').textContent = 'Bs. ' + neto.toFixed(2);
+}
+
+function actualizarAdelantosPeriodo() {
+    var mes = document.getElementById('select_mes').value;
+    var anio = document.getElementById('input_anio').value;
+    var badge = document.getElementById('badge_periodo');
+    var tbody = document.getElementById('tbody_adelantos');
+    var alertaVacio = document.getElementById('alerta_sin_adelantos');
+    var lblTotal = document.getElementById('lbl_total_adelantos');
+    var inputAdelanto = document.getElementById('adelanto');
+
+    badge.textContent = mes + ' / ' + anio;
+
+    fetch(`/personal/api/adelantos_periodo/{{ tipo }}/{{ persona.id }}?mes=${mes}&anio=${anio}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                tbody.innerHTML = '';
+                if (data.detalle.length > 0) {
+                    alertaVacio.style.display = 'none';
+                    data.detalle.forEach(function(item) {
+                        var fila = `<tr>
+                            <td>${item.fecha}</td>
+                            <td><span class="badge bg-light text-dark border">${item.motivo}</span></td>
+                            <td class="text-end text-danger fw-bold">Bs. ${item.monto.toFixed(2)}</td>
+                        </tr>`;
+                        tbody.innerHTML += fila;
+                    });
+                } else {
+                    alertaVacio.style.display = 'block';
+                }
+
+                lblTotal.textContent = 'Bs. ' + data.total.toFixed(2);
+                inputAdelanto.value = data.total.toFixed(2);
+                calcularNeto();
+            }
+        })
+        .catch(err => {
+            console.error("Error al cargar adelantos del periodo:", err);
+        });
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    actualizarAdelantosPeriodo();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,529 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+ <!-- Encabezado del Panel Superadmin con Navegación y Salida -->
+ <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 pb-3 border-bottom">
+ <div>
+ <h2 class="fw-bold text-dark mb-1">
+ <i class="fas fa-user-shield text-danger me-2"></i>Panel de Control Superadmin
+ </h2>
+ <p class="text-muted mb-0">Gestión de parámetros institucionales, configuración académica y auditoría del sistema.</p>
+ </div>
+ <div class="d-flex align-items-center gap-2 mt-3 mt-md-0">
+ <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary fw-bold">
+ <i class="fas fa-arrow-left me-1"></i> Ir al Dashboard
+ </a>
+ <a href="{{ url_for('superadmin.logout') }}" class="btn btn-danger fw-bold shadow-sm">
+ <i class="fas fa-power-off me-1"></i> Salir de Superadmin
+ </a>
+ </div>
+ </div>
+
+ <!-- Rejilla de Módulos de Configuración (10 Tarjetas) -->
+ <div class="row g-4">
+ 
+<!-- MÓDULO: CATÁLOGO DE RÚBRICAS Y EVALUACIÓN -->
+ <div class="col-md-6 col-lg-4">
+ <div class="card h-100 border-0 shadow-sm border-start border-4 border-primary p-3">
+ <div class="d-flex align-items-center mb-3">
+ <div class="bg-primary-subtle text-primary p-3 rounded-3 me-3">
+ <i class="fas fa-sliders-h fa-2x"></i>
+ </div>
+ <div>
+ <h5 class="fw-bold mb-1 text-dark">Rúbricas de Evaluación</h5>
+ <span class="badge bg-primary">Gestión Académica</span>
+ </div>
+ </div>
+ <p class="text-muted small flex-grow-1">
+ Configure la sumatoria oficial sobre 100 puntos en Primaria y Secundaria (Asistencia, Participación, Evaluaciones) o las dimensiones cualitativas de Nidito.
+ </p>
+ <a href="{{ url_for('rubricas.index') }}" class="btn btn-primary fw-bold w-100">
+ <i class="fas fa-cog me-1"></i> Configurar Rúbricas
+ </a>
+ </div>
+ </div>
+
+ <!-- Módulo: Configuración Institucional -->
+ <div class="col-md-6 col-lg-4">
+ <div class="card h-100 border-0 shadow-sm border-start border-4 border-info p-3">
+ <div class="d-flex align-items-center mb-3">
+ <div class="bg-info-subtle text-info p-3 rounded-3 me-3">
+ <i class="fas fa-university fa-2x"></i>
+ </div>
+ <div>
+ <h5 class="fw-bold mb-1 text-dark">Institución Escolar</h5>
+ <span class="badge bg-info text-dark">Datos Generales</span>
+ </div>
+ </div>
+ <p class="text-muted small flex-grow-1">
+ Edite el nombre oficial del plantel, ciudad, membretes, escudo institucional y parámetros generales del colegio.
+ </p>
+ <a href="{{ url_for('superadmin.configuracion_institucion') }}" class="btn btn-outline-info fw-bold w-100">
+ <i class="fas fa-edit me-1"></i> Datos Institucionales
+ </a>
+ </div>
+ </div>
+
+ <!-- Módulo: Año Escolar -->
+ <div class="col-md-6 col-lg-4">
+ <div class="card h-100 border-0 shadow-sm border-start border-4 border-success p-3">
+ <div class="d-flex align-items-center mb-3">
+ <div class="bg-success-subtle text-success p-3 rounded-3 me-3">
+ <i class="fas fa-calendar-check fa-2x"></i>
+ </div>
+ <div>
+ <h5 class="fw-bold mb-1 text-dark">Gestión y Año Escolar</h5>
+ <span class="badge bg-success">Periodos</span>
+ </div>
+ </div>
+ <p class="text-muted small flex-grow-1">
+ Apertura de trimestres, control del calendario escolar activo y cierre oficial de gestión académica.
+ </p>
+ <a href="{{ url_for('superadmin.configuracion_anio_escolar') }}" class="btn btn-outline-success fw-bold w-100">
+ <i class="fas fa-calendar-alt me-1"></i> Gestionar Calendario
+ </a>
+ </div>
+ </div>
+
+ <!-- Módulo: Informes Económicos Confidenciales -->
+ <div class="col-md-6 col-lg-4">
+ <div class="card h-100 border-0 shadow-sm border-start border-4 border-warning p-3">
+ <div class="d-flex align-items-center mb-3">
+ <div class="bg-warning-subtle text-warning p-3 rounded-3 me-3">
+ <i class="fas fa-chart-line fa-2x"></i>
+ </div>
+ <div>
+ <h5 class="fw-bold mb-1 text-dark">Informes de Caja</h5>
+ <span class="badge bg-warning text-dark">Auditoría Financiera</span>
+ </div>
+ </div>
+ <p class="text-muted small flex-grow-1">
+ Cierres confidenciales de caja, balance por turnos (Mañana/Tarde), conciliación de cobros en efectivo y transferencias.
+ </p>
+ <a href="{{ url_for('superadmin.informes_lista') }}" class="btn btn-outline-warning fw-bold w-100">
+ <i class="fas fa-file-invoice-dollar me-1"></i> Informes Económicos
+ </a>
+ </div>
+ </div>
+
+ <!-- ⭐ Módulo: Edición Forzada de Notas con Buscador -->
+ <div class="col-md-6 col-lg-4">
+ <div class="card h-100 border-0 shadow-sm border-start border-4 border-dark p-3">
+ <div class="d-flex align-items-center mb-3">
+ <div class="bg-dark-subtle text-dark p-3 rounded-3 me-3">
+ <i class="fas fa-pen-fancy fa-2x"></i>
+ </div>
+ <div>
+ <h5 class="fw-bold mb-1 text-dark">Auditoría de Calificaciones</h5>
+ <span class="badge bg-dark">Buscador por Alumno</span>
+ </div>
+ </div>
+ <p class="text-muted small flex-grow-1">
+ Busque al estudiante por C.I. o Apellidos para localizar y modificar cualquier nota asentada en el sistema.
+ </p>
+ <button type="button" class="btn btn-outline-dark fw-bold w-100" data-bs-toggle="modal" data-bs-target="#modalBuscarNota">
+ <i class="fas fa-search me-1"></i> Buscar y Modificar Nota
+ </button>
+ </div>
+ </div>
+
+ <!-- ⭐ Módulo: Edición Forzada de Pagos con Buscador -->
+ <div class="col-md-6 col-lg-4">
+ <div class="card h-100 border-0 shadow-sm border-start border-4 border-danger p-3">
+ <div class="d-flex align-items-center mb-3">
+ <div class="bg-danger-subtle text-danger p-3 rounded-3 me-3">
+ <i class="fas fa-hand-holding-usd fa-2x"></i>
+ </div>
+ <div>
+ <h5 class="fw-bold mb-1 text-dark">Corrección de Recibos</h5>
+ <span class="badge bg-danger">Buscador por Alumno</span>
+ </div>
+ </div>
+ <p class="text-muted small flex-grow-1">
+ Busque por C.I. o Apellidos para corregir turnos, montos o métodos de pago de transacciones de caja.
+ </p>
+ <button type="button" class="btn btn-outline-danger fw-bold w-100" data-bs-toggle="modal" data-bs-target="#modalBuscarPago">
+ <i class="fas fa-search me-1"></i> Buscar y Modificar Pago
+ </button>
+ </div>
+ </div>
+
+ <!-- Módulo: Seguridad PWA y Claves -->
+ <div class="col-md-6 col-lg-4">
+ <div class="card h-100 border-0 shadow-sm border-start border-4 border-secondary p-3">
+ <div class="d-flex align-items-center mb-3">
+ <div class="bg-secondary-subtle text-secondary p-3 rounded-3 me-3">
+ <i class="fas fa-key fa-2x"></i>
+ </div>
+ <div>
+ <h5 class="fw-bold mb-1 text-dark">Acceso Tutores PWA</h5>
+ <span class="badge bg-secondary">Seguridad</span>
+ </div>
+ </div>
+ <p class="text-muted small flex-grow-1">
+ Gestión global de credenciales y reseteo de claves de ingreso para los padres de familia.
+ </p>
+ <a href="{{ url_for('superadmin.cambiar_password_pwa') }}" class="btn btn-outline-secondary fw-bold w-100">
+ <i class="fas fa-user-lock me-1"></i> Seguridad PWA
+ </a>
+ </div>
+ </div>
+
+ <!-- Módulo: Respaldo del Sistema AVR -->
+ <div class="col-md-6 col-lg-4">
+ <div class="card h-100 border-0 shadow-sm border-start border-4 border-info p-3">
+ <div class="d-flex align-items-center mb-3">
+ <div class="bg-info-subtle text-info p-3 rounded-3 me-3">
+ <i class="fas fa-database fa-2x"></i>
+ </div>
+ <div>
+ <h5 class="fw-bold mb-1 text-dark">Copias de Respaldo</h5>
+ <span class="badge bg-info text-dark">Archivos AVR</span>
+ </div>
+ </div>
+ <p class="text-muted small flex-grow-1">
+ Generación inmediata de copias de seguridad de la base de datos y archivos institucionales.
+ </p>
+ <div class="d-flex gap-2">
+ <a href="{{ url_for('superadmin.generar_db') }}" class="btn btn-outline-info fw-bold w-50">
+ <i class="fas fa-download me-1"></i> Respaldar
+ </a>
+ <form id="formRestaurarDb" action="{{ url_for('superadmin.restaurar_db') }}" method="POST" enctype="multipart/form-data" style="display: none;">
+ <input type="file" id="input_restaurar_db" name="archivo_db" accept=".db" onchange="document.getElementById('formRestaurarDb').submit();">
+ </form>
+ <button type="button" class="btn btn-outline-secondary fw-bold w-50" onclick="document.getElementById('input_restaurar_db').click();">
+ <i class="fas fa-upload me-1"></i> Restaurar
+ </button>
+ </div>
+ </div>
+ </div>
+
+ <!-- 9. MÓDULO NUEVO: GESTIÓN DE TÚNEL CLOUDFLARE -->
+ <div class="col-md-6 col-lg-4">
+ <div class="card h-100 border-0 shadow-sm border-start border-4 border-dark p-3" style="background: #1e293b; color: white;">
+ <div class="d-flex align-items-center mb-3">
+ <div class="bg-dark-subtle text-white p-3 rounded-3 me-3">
+ <i class="fas fa-globe fa-2x"></i>
+ </div>
+ <div>
+ <h5 class="fw-bold mb-1 text-white">9. Túnel Cloudflare</h5>
+ <span class="badge bg-info text-dark">Red y Acceso</span>
+ </div>
+ </div>
+ <p class="text-white-50 small flex-grow-1">
+ Gestión del Token y la dirección URL proporcionada por Cloudflared para habilitar la comunicación remota o trabajar en modo offline.
+ </p>
+ <button type="button" class="btn btn-info fw-bold w-100" data-bs-toggle="modal" data-bs-target="#modalCloudflare">
+ <i class="fas fa-cog me-1"></i> Configurar Túnel
+ </button>
+ </div>
+ </div>
+
+ <!-- 10. MÓDULO: MIGRACIÓN MASIVA Y CIERRE DE GESTIÓN -->
+ <div class="col-md-6 col-lg-4">
+ <div class="card h-100 border-0 shadow-sm border-start border-4 border-warning p-3 bg-warning-subtle bg-opacity-10">
+ <div class="d-flex align-items-center mb-3">
+ <div class="bg-warning text-dark p-3 rounded-3 me-3">
+ <i class="fas fa-users-cog fa-2x"></i>
+ </div>
+ <div>
+ <h5 class="fw-bold mb-1 text-dark">10. Migración Masiva</h5>
+ <span class="badge bg-warning text-dark">Cierre de Gestión</span>
+ </div>
+ </div>
+ <p class="text-muted small flex-grow-1">
+ Promueve automáticamente a todos los estudiantes aprobados al curso inmediato superior y traslada a los alumnos de 6º de Secundaria al Registro de Egresados.
+ </p>
+ <button type="button" class="btn btn-warning fw-bold w-100 text-dark shadow-sm" data-bs-toggle="modal" data-bs-target="#modalMigracionSuper">
+ <i class="fas fa-bolt me-1"></i> Ejecutar Migración Masiva
+ </button>
+ </div>
+ </div>
+
+ </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL 1: BÚSQUEDA EN VIVO DE CALIFICACIONES (POR C.I. O APELLIDOS) -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="modalBuscarNota" tabindex="-1" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered modal-lg">
+ <div class="modal-content border-0 shadow">
+ <div class="modal-header bg-dark text-white">
+ <h5 class="modal-title fw-bold"><i class="fas fa-search me-2"></i>Buscar Calificación por Estudiante</h5>
+ <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+ </div>
+ <div class="modal-body p-4">
+ <div class="input-group mb-3">
+ <span class="input-group-text bg-white"><i class="fas fa-user text-muted"></i></span>
+ <input type="text" id="inputBuscarNota" class="form-control form-control-lg" placeholder="Escriba C.I. o Apellidos del estudiante..." onkeyup="ejecutarBusquedaNotas()">
+ </div>
+
+ <div id="spinnerNotas" class="text-center py-3 d-none">
+ <div class="spinner-border text-dark" role="status"></div>
+ </div>
+
+ <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+ <table class="table table-hover align-middle mb-0" id="tablaResultadosNotas">
+ <thead class="table-light sticky-top">
+ <tr>
+ <th>Estudiante</th>
+ <th>Materia</th>
+ <th>Periodo</th>
+ <th>Evaluación</th>
+ <th class="text-center">Nota</th>
+ <th class="text-end pe-3">Acción</th>
+ </tr>
+ </thead>
+ <tbody id="tbodyNotas">
+ <tr>
+ <td colspan="6" class="text-center py-4 text-muted">
+ Ingrese al menos 2 letras o números para buscar.
+ </td>
+ </tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ <div class="modal-footer bg-light">
+ <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+ </div>
+ </div>
+ </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL 2: BÚSQUEDA EN VIVO DE PAGOS (POR C.I. O APELLIDOS) -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="modalBuscarPago" tabindex="-1" aria-hidden="true">
+ <div class="modal-dialog modal-dialog-centered modal-lg">
+ <div class="modal-content border-0 shadow">
+ <div class="modal-header bg-danger text-white">
+ <h5 class="modal-title fw-bold"><i class="fas fa-receipt me-2"></i>Buscar Recibo de Pago por Estudiante</h5>
+ <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+ </div>
+ <div class="modal-body p-4">
+ <div class="input-group mb-3">
+ <span class="input-group-text bg-white"><i class="fas fa-id-card text-muted"></i></span>
+ <input type="text" id="inputBuscarPago" class="form-control form-control-lg" placeholder="Escriba C.I. o Apellidos del estudiante..." onkeyup="ejecutarBusquedaPagos()">
+ </div>
+
+ <div id="spinnerPagos" class="text-center py-3 d-none">
+ <div class="spinner-border text-danger" role="status"></div>
+ </div>
+
+ <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+ <table class="table table-hover align-middle mb-0" id="tablaResultadosPagos">
+ <thead class="table-light sticky-top">
+ <tr>
+ <th>Estudiante</th>
+ <th>Mes / Gestión</th>
+ <th>Monto</th>
+ <th>Método</th>
+ <th>Fecha</th>
+ <th class="text-end pe-3">Acción</th>
+ </tr>
+ </thead>
+ <tbody id="tbodyPagos">
+ <tr>
+ <td colspan="6" class="text-center py-4 text-muted">
+ Ingrese al menos 2 letras o números para buscar transacciones.
+ </td>
+ </tr>
+ </tbody>
+ </table>
+ </div>
+ </div>
+ <div class="modal-footer bg-light">
+ <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+ </div>
+ </div>
+ </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL 9: CONFIGURACIÓN DE TÚNEL CLOUDFLARE -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="modalCloudflare" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold"><i class="fas fa-globe me-2"></i>Gestión de Túnel Cloudflare</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="POST" action="{{ url_for('superadmin.guardar_config_cloudflare_avanzada') }}">
+                <div class="modal-body p-4">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Token del Túnel de Cloudflare</label>
+                        <input type="text" name="cloudflare_token" class="form-control" 
+                               value="{{ configs.get('cloudflare_tunnel_token', '') }}" 
+                               placeholder="Ej: eyJ0eXAiOiJKV1QiLCJhbGci..." autocomplete="off">
+                        <small class="text-muted">Token oficial para levantar el túnel de forma persistente.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">URL Pública del Túnel (Quick Tunnel)</label>
+                        <input type="text" name="cloudflare_url" class="form-control" 
+                               value="{{ configs.get('cloudflare_tunnel_url', '') }}" 
+                               placeholder="Ej: https://tu-sitio.trycloudflare.com" autocomplete="off">
+                        <small class="text-muted">Dirección web activa proporcionada por Cloudflare.</small>
+                    </div>
+
+                    {% if configs.get('cloudflare_tunnel_token') or configs.get('cloudflare_tunnel_url') %}
+                    <div class="alert alert-success mt-3 mb-0 text-center py-2" style="font-size: 0.85rem;">
+                        <i class="bi bi-check-circle-fill me-1"></i> <strong>Conexión Configurada:</strong> Su conexión a Cloudflare ha sido exitosa. Ahora usted tiene comunicación a través de Cloudflared.
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning mt-3 mb-0 text-center py-2" style="font-size: 0.85rem;">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>Modo Local:</strong> No se detectó configuración. El sistema opera en <strong>trabajo offline</strong>.
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-info fw-bold">Guardar Configuración</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODAL 10: SEGURIDAD PARA LA MIGRACIÓN MASIVA -->
+<!-- ========================================================================= -->
+<div class="modal fade" id="modalMigracionSuper" tabindex="-1" aria-labelledby="modalMigracionSuperLabel" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <form action="{{ url_for('estudiantes.migracion_masiva') }}" method="POST">
+        <div class="modal-header bg-dark text-white">
+          <h5 class="modal-title fs-6 fw-bold" id="modalMigracionSuperLabel">🔐 Autorización de Cierre y Migración</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4">
+          <p class="text-muted mb-3" style="font-size: 13px;">
+            ⚠️ <strong>Atención:</strong> Esta acción ejecutará la promoción general de todos los estudiantes aprobados y graduará a los de 6º de Secundaria. Ingrese su clave administrativa de Superadmin para autorizar el proceso:
+          </p>
+          <div class="mb-3">
+            <label for="clave_migracion" class="form-label fw-bold" style="font-size: 13px;">Clave de Seguridad *</label>
+            <input type="password" class="form-control" id="clave_migracion" name="clave_migracion" placeholder="Ingrese su clave" required>
+          </div>
+        </div>
+        <div class="modal-footer bg-light">
+          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-warning fw-bold text-dark btn-sm shadow-sm">Autorizar y Ejecutar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<script>
+ let timerNotas = null;
+ let timerPagos = null;
+
+ function ejecutarBusquedaNotas() {
+ clearTimeout(timerNotas);
+ const q = document.getElementById('inputBuscarNota').value.trim();
+ const tbody = document.getElementById('tbodyNotas');
+ const spinner = document.getElementById('spinnerNotas');
+
+ if (q.length < 2) {
+ tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Ingrese al menos 2 letras o números para buscar.</td></tr>';
+ return;
+ }
+
+ spinner.classList.remove('d-none');
+
+ timerNotas = setTimeout(() => {
+ fetch('/superadmin/api/buscar_calificaciones?q=' + encodeURIComponent(q))
+ .then(r => r.json())
+ .then(data => {
+ spinner.classList.add('d-none');
+ if (!data || data.length === 0) {
+ tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No se encontraron calificaciones para este criterio.</td></tr>';
+ return;
+ }
+ let html = '';
+ data.forEach(item => {
+ html += `
+ <tr>
+ <td>
+ <div class="fw-bold">${item.estudiante_nombre}</div>
+ <small class="text-muted">CI: ${item.estudiante_ci} | ${item.curso}</small>
+ </td>
+ <td>${item.materia}</td>
+ <td><span class="badge bg-light text-dark border">${item.periodo}</span></td>
+ <td><span class="badge bg-secondary-subtle text-secondary">${item.tipo}</span></td>
+ <td class="text-center fw-bold text-primary fs-6">${item.nota_actual}</td>
+ <td class="text-end pe-3">
+ <a href="${item.url_editar}" class="btn btn-sm btn-dark fw-bold">
+ <i class="fas fa-edit me-1"></i> Modificar
+ </a>
+ </td>
+ </tr>
+ `;
+ });
+ tbody.innerHTML = html;
+ })
+ .catch(err => {
+ spinner.classList.add('d-none');
+ tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Error al consultar datos.</td></tr>';
+ });
+ }, 300);
+ }
+
+ function ejecutarBusquedaPagos() {
+ clearTimeout(timerPagos);
+ const q = document.getElementById('inputBuscarPago').value.trim();
+ const tbody = document.getElementById('tbodyPagos');
+ const spinner = document.getElementById('spinnerPagos');
+
+ if (q.length < 2) {
+ tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Ingrese al menos 2 letras o números para buscar.</td></tr>';
+ return;
+ }
+
+ spinner.classList.remove('d-none');
+
+ timerPagos = setTimeout(() => {
+ fetch('/superadmin/api/buscar_pagos?q=' + encodeURIComponent(q))
+ .then(r => r.json())
+ .then(data => {
+ spinner.classList.add('d-none');
+ if (!data || data.length === 0) {
+ tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No se encontraron transacciones registradas.</td></tr>';
+ return;
+ }
+ let html = '';
+ data.forEach(item => {
+ html += `
+ <tr>
+ <td>
+ <div class="fw-bold">${item.estudiante_nombre}</div>
+ <small class="text-muted">CI: ${item.estudiante_ci} | Turno: ${item.turno}</small>
+ </td>
+ <td><span class="badge bg-light text-dark border">${item.mes} / ${item.anio}</span></td>
+ <td class="fw-bold text-success">${item.monto_pagado}</td>
+ <td><span class="badge bg-info-subtle text-info border border-info">${item.metodo}</span></td>
+ <td class="small text-muted">${item.fecha}</td>
+ <td class="text-end pe-3">
+ <a href="${item.url_editar}" class="btn btn-sm btn-danger fw-bold">
+ <i class="fas fa-file-invoice me-1"></i> Corregir
+ </a>
+ </td>
+ </tr>
+ `;
+ });
+ tbody.innerHTML = html;
+ })
+ .catch(err => {
+ spinner.classList.add('d-none');
+ tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Error al consultar datos.</td></tr>';
+ });
+ }, 300);
+ }
+</script>
+{% endblock %}

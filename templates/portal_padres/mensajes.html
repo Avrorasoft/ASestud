@@ -1,0 +1,76 @@
+{% extends "base_padres.html" %}
+{% block title %}Mensajes - Portal de Padres{% endblock %}
+{% block page_title %}Mis Mensajes{% endblock %}
+
+{% block content %}
+<style>
+    .dashboard-wrapper {
+        padding: 20px 15px;
+        background-color: #f8fafc;
+        min-height: calc(100vh - 60px);
+    }
+</style>
+
+<div class="dashboard-wrapper">
+    <div class="container-fluid p-0">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0 text-dark"><i class="bi bi-chat-dots-fill text-primary me-2"></i>Mis Mensajes</h2>
+            <div class="d-flex gap-2">
+                <a href="{{ url_for('portal_padres.nuevo_mensaje') }}" class="btn btn-success shadow-sm">
+                    <i class="bi bi-send-fill me-1"></i>Nuevo Mensaje
+                </a>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body p-0">
+                {% if mensajes %}
+                    <div class="list-group list-group-flush">
+                        {% for msg in mensajes %}
+                        {% set partes = msg.contenido.split('---ARCHIVO_ADJUNTO---') %}
+                        {% set texto_limpio = partes[0].strip() %}
+                        {% set tiene_adjunto = partes|length > 1 %}
+
+                        <a href="{{ url_for('portal_padres.ver_mensaje', id=msg.id) }}" class="list-group-item list-group-item-action p-3">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div class="flex-grow-1" style="min-width: 0;">
+                                    <div class="d-flex align-items-center mb-2 flex-wrap gap-2">
+                                        <span class="badge bg-{{ 'primary' if 'Boletín' in msg.tipo_mensaje else 'info' if 'Citación' in msg.tipo_mensaje else 'success' if 'Pago' in msg.tipo_mensaje else 'secondary' }}">
+                                            {{ msg.tipo_mensaje }}
+                                        </span>
+                                        {% if msg.remitente == 'Colegio' %}
+                                            <small class="text-success fw-bold"><i class="bi bi-building me-1"></i>Del Colegio</small>
+                                        {% else %}
+                                            <small class="text-primary fw-bold"><i class="bi bi-person me-1"></i>Su mensaje</small>
+                                        {% endif %}
+                                        {% if tiene_adjunto %}
+                                            <span class="badge bg-warning text-dark"><i class="bi bi-paperclip"></i> Archivo adjunto</span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="mb-0 text-muted text-truncate">
+                                        {{ texto_limpio[:150] }}{% if texto_limpio|length > 150 %}...{% endif %}
+                                    </p>
+                                </div>
+                                <div class="ms-3 text-end text-nowrap">
+                                    <small class="text-muted d-block"><i class="bi bi-calendar3 me-1"></i>{{ msg.fecha_envio.strftime('%d/%m/%Y') }}</small>
+                                    <small class="text-muted"><i class="bi bi-clock me-1"></i>{{ msg.fecha_envio.strftime('%H:%M') }}</small>
+                                    <i class="bi bi-chevron-right text-muted d-block mt-1"></i>
+                                </div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-chat-square-dots text-muted" style="font-size: 4rem;"></i>
+                        <p class="text-muted mt-3 mb-4">No hay mensajes disponibles</p>
+                        <a href="{{ url_for('portal_padres.nuevo_mensaje') }}" class="btn btn-primary shadow-sm">
+                            <i class="bi bi-send-fill me-1"></i>Enviar primer mensaje
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

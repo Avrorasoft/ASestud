@@ -1,0 +1,384 @@
+    <style id="estilo-boletin-carta-impresion">
+        /* MEDIDAS Y MÁRGENES ESTRICTOS TAMAÑO CARTA */
+        @page {
+            size: letter portrait !important;
+            margin: 8mm 10mm 8mm 10mm !important;
+        }
+
+        /* CONTENEDOR EN PANTALLA: HOJA CENTRADA */
+        @media screen {
+            body {
+                background-color: #cbd5e1 !important;
+                margin: 0 !important;
+                padding: 20px 0 !important;
+            }
+            .hoja-impresion-boletin {
+                background: #ffffff !important;
+                width: 215.9mm !important;
+                min-height: 279.4mm !important;
+                padding: 12mm 15mm !important;
+                margin: 0 auto 20px auto !important;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.2) !important;
+                border: 1px solid #94a3b8 !important;
+                box-sizing: border-box !important;
+                position: relative !important;
+            }
+        }
+
+        /* REGLAS OBLIGATORIAS DE IMPRESIÓN: CERO COLAPSO Y CERO SCROLL */
+        @media print {
+            html, body {
+                width: 100% !important;
+                height: auto !important;
+                min-height: auto !important;
+                max-height: none !important;
+                overflow: visible !important;
+                display: block !important;
+                background: #ffffff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            * {
+                overflow: visible !important;
+                float: none !important;
+            }
+            .no-print, nav, header, footer, .sidebar, .btn, button, .botonera {
+                display: none !important;
+            }
+            .hoja-impresion-boletin {
+                width: 100% !important;
+                min-height: auto !important;
+                height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+                background: transparent !important;
+                position: relative !important;
+                page-break-after: avoid !important;
+                page-break-inside: avoid !important;
+            }
+            .table-responsive {
+                overflow: visible !important;
+                display: block !important;
+                width: 100% !important;
+            }
+            table, tr, td, th {
+                page-break-inside: avoid !important;
+                background-color: transparent !important;
+            }
+            .watermark-fondo {
+                display: block !important;
+                color: rgba(0, 0, 0, 0.11) !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+        }
+
+        /* MARCA DE AGUA DE FONDO (INTEGRADA, NO FLOTANTE) */
+        .watermark-fondo {
+            position: absolute;
+            top: 48%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-30deg);
+            text-align: center;
+            width: 85%;
+            pointer-events: none;
+            z-index: 0;
+            user-select: none;
+            color: rgba(15, 23, 42, 0.09);
+        }
+        .wm-alumno {
+            font-size: 34px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            line-height: 1.15;
+            margin-bottom: 5px;
+        }
+        .wm-datos {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+        .wm-col {
+            font-size: 13px;
+            font-weight: 800;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+        }
+
+        /* CONTENIDO PRINCIPAL SOBRE LA MARCA DE AGUA */
+        .contenido-documento {
+            position: relative;
+            z-index: 1;
+        }
+        .contenido-documento table {
+            background-color: transparent !important;
+        }
+        .contenido-documento table th {
+            background-color: #1e293b !important;
+            color: #ffffff !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        .contenido-documento table td {
+            background-color: transparent !important;
+        }
+    </style>
+    
+{% extends "base.html" %}
+
+{% block title %}Nuevo Egresado - Cardex</div></div>
+{% endblock %}
+
+{% block content %}
+<div class="hoja-impresion-boletin">
+    {# MARCA DE AGUA INTEGRADA DE FONDO (DETRÁS DEL TEXTO) #}
+    {% set _est = est if (est is defined and est) else (estudiante if (estudiante is defined and estudiante) else (alumno if (alumno is defined and alumno) else None)) %}
+    {% if _est %}
+    <div class="watermark-fondo">
+        <div class="wm-alumno">{{ _est.apellidos }} {{ _est.nombres }}</div>
+        <div class="wm-datos">C.I. {{ _est.ci }} {{ _est.expedido or 'BN' }} &bull; RUDE: {{ _est.rude or '-' }}</div>
+        <div class="wm-col">COLEGIO DR. ANTONIO VACA DÍEZ</div>
+    </div>
+    {% endif %}
+<div class="contenido-documento">
+    
+<div class="container mt-4">
+
+    <div class="card shadow">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                <i class="bi bi-mortarboard-fill"></i>
+                Registro de Cardex - Nuevo Egresado
+            </h4>
+
+            <a href="{{ url_for('archivos.lista_egresados') }}"
+               class="btn btn-sm btn-light">
+                <i class="bi bi-arrow-left"></i> Volver
+            </a>
+        </div>
+
+        <div class="card-body">
+
+            <!-- =============================================================== -->
+            <!-- MENSAJE OCR -->
+            <!-- =============================================================== -->
+
+            {% if texto_sugerido %}
+            <div class="alert alert-success">
+                <strong>
+                    <i class="bi bi-check-circle-fill"></i>
+                    ¡Escaneo OCR exitoso!
+                </strong>
+                <br>
+                El sistema ha procesado la lectura desde el teléfono y autocompletará los campos detectados.
+
+                <pre class="mt-2 p-2 bg-light border rounded"
+                     style="max-height:200px; overflow-y:auto; white-space:pre-wrap;">{{ texto_sugerido }}</pre>
+            </div>
+            {% endif %}
+
+            <form method="POST" enctype="multipart/form-data">
+
+                <!-- =============================================================== -->
+                <!-- FOTOGRAFÍA -->
+                <!-- =============================================================== -->
+
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <h5>Fotografía (Boletín)</h5>
+
+                        <input type="file"
+                               name="foto_alumno"
+                               class="form-control"
+                               accept="image/*">
+
+                        <small class="text-muted">
+                            Formato perfil oficial
+                        </small>
+
+                        <div class="alert alert-info mt-2 small">
+                            <i class="bi bi-info-circle"></i>
+                            Esta imagen se vinculará al Cardex y se utilizará dinámicamente
+                            al generar el Boletín PDF.
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                <!-- =============================================================== -->
+                <!-- INFORMACIÓN ACADÉMICA Y PERSONAL -->
+                <!-- =============================================================== -->
+
+                <h5>Información Académica y Personal</h5>
+
+                <div class="row">
+
+                    <!-- ⭐ C.I. CON AUTOCOMPLETADO OCR -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            C.I. del Egresado *
+                        </label>
+
+                        <input type="text"
+                               name="ci"
+                               class="form-control"
+                               value="{{ datos.ci if datos else '' }}"
+                               placeholder="Carnet de Identidad"
+                               required>
+                    </div>
+
+                    <!-- ⭐ RUDE CON AUTOCOMPLETADO OCR -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            Código RUDE (informativo)
+                        </label>
+
+                        <input type="text"
+                               name="rude"
+                               class="form-control"
+                               value="{{ datos.rude if datos else '' }}"
+                               placeholder="Opcional">
+                    </div>
+
+                    <!-- ⭐ GESTIÓN CON AUTOCOMPLETADO OCR -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            Gestión de Egreso *
+                        </label>
+
+                        <input type="number"
+                               name="anio_egreso"
+                               class="form-control"
+                               value="{{ datos.anio_egreso if datos and datos.anio_egreso else anio_actual }}"
+                               min="1985"
+                               max="{{ anio_actual + 1 }}"
+                               required>
+                    </div>
+
+                    <!-- ⭐ NOMBRES CON AUTOCOMPLETADO OCR -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            Nombres *
+                        </label>
+
+                        <input type="text"
+                               name="nombres"
+                               class="form-control"
+                               value="{{ datos.nombres if datos else '' }}"
+                               required>
+                    </div>
+
+                    <!-- ⭐ APELLIDOS CON AUTOCOMPLETADO OCR -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            Apellidos *
+                        </label>
+
+                        <input type="text"
+                               name="apellidos"
+                               class="form-control"
+                               value="{{ datos.apellidos if datos else '' }}"
+                               required>
+                    </div>
+
+                    <!-- ⭐ CURSO FINAL CON AUTOCOMPLETADO OCR -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            Curso Final *
+                        </label>
+
+                        <select name="curso_final" class="form-select" required>
+                            <option value="">Seleccione un curso...</option>
+
+                            {% for curso in cursos %}
+                            <option value="{{ curso }}"
+                                {% if datos and datos.curso_final == curso %}selected{% endif %}>
+                                {{ curso }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- ⭐ ESTADO DE EGRESO -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            Estado de Egreso *
+                        </label>
+
+                        <select name="estado_egreso" class="form-select" required>
+                            <option value="Graduado" selected>Graduado</option>
+                            <option value="No Graduado">No Graduado</option>
+                            <option value="Retirado">Retirado</option>
+                            <option value="Trasladado">Trasladado</option>
+                        </select>
+                    </div>
+
+                </div>
+
+                <hr>
+
+                <!-- =============================================================== -->
+                <!-- DATOS DEL TUTOR -->
+                <!-- =============================================================== -->
+
+                <h5>Datos del Tutor (Opcional)</h5>
+
+                <div class="row">
+                    <!-- ⭐ TUTOR CON AUTOCOMPLETADO OCR -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            Nombre del Tutor
+                        </label>
+
+                        <input type="text"
+                               name="nombre_tutor"
+                               class="form-control"
+                               value="{{ datos.nombre_tutor if datos else '' }}"
+                               placeholder="Opcional">
+                    </div>
+
+                    <!-- ⭐ TELÉFONO CON AUTOCOMPLETADO OCR -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            Teléfono del Tutor
+                        </label>
+
+                        <input type="text"
+                               name="telefono_tutor"
+                               class="form-control"
+                               value="{{ datos.telefono_tutor if datos else '' }}"
+                               placeholder="Opcional">
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between mt-3">
+
+                    <a href="{{ url_for('archivos.lista_egresados') }}"
+                       class="btn btn-secondary">
+                        Cancelar
+                    </a>
+
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-save"></i> Guardar Cardex
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
+</div></div>
+{% endblock %}
+
+

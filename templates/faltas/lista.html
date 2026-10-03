@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% block title %}Asistencia{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0"><i class="bi bi-calendar-check-fill text-primary me-2"></i>Gestión de Asistencia</h2>
+        <a href="{{ url_for('faltas.nueva_falta') }}" class="btn btn-primary shadow-sm">
+            <i class="bi bi-plus-circle me-1"></i>Registrar Asistencia
+        </a>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4 shadow-sm border-0">
+        <div class="card-body">
+            <form method="GET" class="row g-2">
+                <div class="col-md-3">
+                    <select name="curso" class="form-select" onchange="this.form.submit()">
+                        <option value="">-- Todos los cursos --</option>
+                        {% for c in cursos %}
+                        <option value="{{ c }}" {% if curso_actual == c %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="tipo" class="form-select" onchange="this.form.submit()">
+                        <option value="Todos">-- Todos los tipos --</option>
+                        <option value="Injustificada" {% if tipo_actual == 'Injustificada' %}selected{% endif %}>Injustificada</option>
+                        <option value="Justificada" {% if tipo_actual == 'Justificada' %}selected{% endif %}>Justificada</option>
+                        <option value="Licencia Médica" {% if tipo_actual == 'Licencia Médica' %}selected{% endif %}>Licencia Médica</option>
+                        <option value="Permiso" {% if tipo_actual == 'Permiso' %}selected{% endif %}>Permiso</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="estado" class="form-select" onchange="this.form.submit()">
+                        <option value="Todos">-- Todos los estados --</option>
+                        <option value="Injustificada" {% if estado_actual == 'Injustificada' %}selected{% endif %}>Injustificada</option>
+                        <option value="Justificada" {% if estado_actual == 'Justificada' %}selected{% endif %}>Justificada</option>
+                        <option value="Licencia Médica" {% if estado_actual == 'Licencia Médica' %}selected{% endif %}>Licencia Médica</option>
+                        <option value="Permiso" {% if estado_actual == 'Permiso' %}selected{% endif %}>Permiso</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <a href="{{ url_for('faltas.lista_faltas') }}" class="btn btn-outline-secondary w-100">Limpiar filtros</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla Limpia y Optimizada -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 text-dark fw-bold"><i class="bi bi-list-ul text-primary me-2"></i>Historial de Asistencias</h5>
+            <span class="badge bg-primary fs-6">{{ pagination.total }} registros</span>
+        </div>
+        <div class="card-body p-0">
+            {% if faltas %}
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="ps-3">Fecha</th>
+                            <th>Estudiante</th>
+                            <th>Tipo</th>
+                            <th>Observaciones / Documento</th>
+                            <th>Estado</th>
+                            <th class="text-center pe-3">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for falta in faltas %}
+                        <tr>
+                            <td class="ps-3">{{ falta.fecha.strftime('%d/%m/%Y') }}</td>
+                            <td><strong>{{ falta.nombre_estudiante }}</strong></td>
+                            <td>
+                                <span class="badge bg-light text-dark border">{{ falta.tipo_falta }}</span>
+                            </td>
+                            <td>
+                                <small class="text-muted d-block">{{ falta.observaciones or '-' }}</small>
+                                {% if falta.archivo_adjunto %}
+                                <a href="{{ url_for('static', filename='uploads/faltas/' + falta.archivo_adjunto) }}" target="_blank" class="badge bg-info text-dark text-decoration-none mt-1">
+                                    <i class="bi bi-paperclip me-1"></i>Ver Adjunto
+                                </a>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if falta.estado == 'Justificada' %}
+                                <span class="badge bg-success px-2 py-1">{{ falta.estado }}</span>
+                                {% else %}
+                                <span class="badge bg-danger px-2 py-1">{{ falta.estado }}</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center pe-3">
+                                <div class="d-flex justify-content-center gap-1">
+                                    <a href="{{ url_for('faltas.editar_falta', id=falta.id) }}" class="btn btn-sm btn-outline-primary" title="Justificar o Reformular">
+                                        <i class="bi bi-pencil-square"></i> Justificar
+                                    </a>
+                                    <form method="POST" action="{{ url_for('faltas.eliminar_falta', id=falta.id) }}" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar permanentemente este registro?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar registro">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-check2-circle text-success" style="font-size: 4rem;"></i>
+                <p class="text-muted mt-3">No hay registros de asistencia con estos filtros.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Paginación -->
+    {% if pagination.pages > 1 %}
+    <nav class="mt-4">
+        <ul class="pagination justify-content-center">
+            <li class="page-item {% if not pagination.has_prev %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('faltas.lista_faltas', pagina=pagination.prev_num, curso=curso_actual, tipo=tipo_actual, estado=estado_actual) }}">
+                    <i class="bi bi-chevron-left"></i> Anterior
+                </a>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link">Página {{ pagination.page }} de {{ pagination.pages }}</span>
+            </li>
+            <li class="page-item {% if not pagination.has_next %}disabled{% endif %}">
+                <a class="page-link" href="{{ url_for('faltas.lista_faltas', pagina=pagination.next_num, curso=curso_actual, tipo=tipo_actual, estado=estado_actual) }}">
+                    Siguiente <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}

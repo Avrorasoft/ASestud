@@ -1,0 +1,110 @@
+{% extends "base_padres.html" %}
+{% block title %}Estado de Pagos - Portal de Padres{% endblock %}
+{% block page_title %}Estado de Pagos{% endblock %}
+
+{% block content %}
+<style>
+    .dashboard-wrapper {
+        padding: 20px 15px;
+        background-color: #f8fafc;
+        min-height: calc(100vh - 60px);
+    }
+    .pulse {
+        animation: pulse-animation 2s infinite;
+    }
+    @keyframes pulse-animation {
+        0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+        70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+    }
+</style>
+
+<div class="dashboard-wrapper">
+    <div class="container-fluid p-0">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="mb-0 text-dark"><i class="bi bi-cash-stack text-primary me-2"></i>Estado de Pagos</h2>
+        </div>
+
+        <div class="row mb-4">
+            <!-- Tarjeta Deuda en Mora -->
+            <div class="col-md-6 mb-3">
+                <div class="card border-{{ 'danger' if monto_mora > 0 else 'success' }} shadow-sm h-100">
+                    <div class="card-body text-center py-4">
+                        <h3 class="mb-0 text-{{ 'danger' if monto_mora > 0 else 'success' }} fw-bold">
+                            {{ "Bs. %.2f"|format(monto_mora) }}
+                        </h3>
+                        <p class="mb-0 text-muted mt-2 fw-bold">
+                            <i class="bi bi-exclamation-triangle-fill text-danger me-1" style="display: {{ 'inline' if monto_mora > 0 else 'none' }};"></i>Deuda Total (Mora)
+                        </p>
+                        <!-- Inyección del detalle de los meses impagos -->
+                        {% if monto_mora > 0 and detalle_meses %}
+                        <div class="mt-3">
+                            <span class="badge bg-danger-subtle text-danger border border-danger p-2" style="font-size: 0.85rem; white-space: normal;">
+                                <i class="bi bi-calendar-x me-1"></i> Meses impagos: <strong>{{ detalle_meses }}</strong>
+                            </span>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tarjeta Total Registros -->
+            <div class="col-md-6 mb-3">
+                <div class="card border-info shadow-sm h-100">
+                    <div class="card-body text-center py-4">
+                        <h3 class="mb-0 text-info fw-bold">{{ pagos|length }}</h3>
+                        <p class="mb-0 text-muted mt-2">Meses Registrados</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0"><i class="bi bi-clock-history text-primary me-2"></i>Historial Detallado</h5>
+            </div>
+            <div class="card-body p-0">
+                {% if pagos %}
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover mb-0 align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th class="ps-3">Período</th>
+                                <th>Monto Total</th>
+                                <th>Descuento</th>
+                                <th>Pagado</th>
+                                <th>Fecha de Pago</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <<tbody>
+                            {% for p in pagos %}
+                            <tr>
+                                <td class="ps-3 fw-bold text-uppercase">{{ p.mes }} {{ p.anio }}</td>
+                                <td>Bs. {{ "%.2f"|format(p.monto_total or 0.0) }}</td>
+                                <td>Bs. {{ "%.2f"|format(p.descuento or 0.0) }}</td>
+                                <td class="fw-bold">Bs. {{ "%.2f"|format(p.monto_pagado or 0.0) }}</td>
+                                <td>{{ p.fecha_pago.strftime('%d/%m/%Y') if p.fecha_pago else '-' }}</td>
+                                <td>
+                                    {% if p.estado and p.estado|lower == 'pagado' %}
+                                        <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Pagado</span>
+                                    {% else %}
+                                        <span class="badge bg-danger pulse"><i class="bi bi-exclamation-circle me-1"></i>En Mora</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-cash text-muted" style="font-size: 4rem;"></i>
+                    <p class="text-muted mt-3 mb-0">No hay pagos registrados</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

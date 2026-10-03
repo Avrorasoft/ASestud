@@ -1,0 +1,346 @@
+{% extends "base_padres.html" %}
+
+{% block title %}Inicio - Portal de Padres - Colegio Dr. Antonio Vaca Díez{% endblock %}
+
+{% block page_title %}Inicio{% endblock %}
+
+{% block content %}
+<style id="estilo-boletin-carta-impresion">
+    /* MEDIDAS Y MÁRGENES ESTRICTOS TAMAÑO CARTA */
+    @page {
+        size: letter portrait !important;
+        margin: 8mm 10mm 8mm 10mm !important;
+    }
+
+    /* CONTENEDOR EN PANTALLA: HOJA CENTRADA */
+    @media screen {
+        body {
+            background-color: #f8fafc !important;
+            margin: 0 !important;
+            padding: 0 !important; /* CORRECCIÓN: Cero franja blanca */
+        }
+        .hoja-impresion-boletin {
+            background: transparent !important;
+            width: 100% !important; /* CORRECCIÓN: Ocupa el 100% para no bloquear los clics */
+            min-height: auto !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            box-shadow: none !important;
+            border: none !important;
+            box-sizing: border-box !important;
+            position: relative !important;
+        }
+    }
+
+    /* REGLAS OBLIGATORIAS DE IMPRESIÓN: CERO COLAPSO Y CERO SCROLL */
+    @media print {
+        html, body {
+            width: 100% !important;
+            height: auto !important;
+            min-height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            display: block !important;
+            background: #ffffff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        * {
+            overflow: visible !important;
+            float: none !important;
+        }
+        .no-print, nav, header, footer, .sidebar, .btn, button, .botonera {
+            display: none !important;
+        }
+        .hoja-impresion-boletin {
+            width: 100% !important;
+            min-height: auto !important;
+            height: auto !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            box-shadow: none !important;
+            background: transparent !important;
+            position: relative !important;
+            page-break-after: avoid !important;
+            page-break-inside: avoid !important;
+        }
+        .table-responsive {
+            overflow: visible !important;
+            display: block !important;
+            width: 100% !important;
+        }
+        table, tr, td, th {
+            page-break-inside: avoid !important;
+            background-color: transparent !important;
+        }
+        .watermark-fondo {
+            display: block !important;
+            color: rgba(0, 0, 0, 0.11) !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+    }
+
+    /* MARCA DE AGUA DE FONDO (INTEGRADA, NO FLOTANTE) */
+    .watermark-fondo {
+        position: absolute;
+        top: 48%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-30deg);
+        text-align: center;
+        width: 85%;
+        pointer-events: none;
+        z-index: 0;
+        user-select: none;
+        color: rgba(15, 23, 42, 0.09);
+    }
+    .wm-alumno {
+        font-size: 34px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        line-height: 1.15;
+        margin-bottom: 5px;
+    }
+    .wm-datos {
+        font-size: 16px;
+        font-weight: 700;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 4px;
+    }
+    .wm-col {
+        font-size: 13px;
+        font-weight: 800;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+    }
+
+    /* CONTENIDO PRINCIPAL SOBRE LA MARCA DE AGUA */
+    .contenido-documento {
+        position: relative;
+        z-index: 1;
+    }
+    .contenido-documento table {
+        background-color: transparent !important;
+    }
+    .contenido-documento table th {
+        background-color: #1e293b !important;
+        color: #ffffff !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+    .contenido-documento table td {
+        background-color: transparent !important;
+    }
+</style>
+
+<div class="hoja-impresion-boletin">
+    {# MARCA DE AGUA INTEGRADA DE FONDO (DETRÁS DEL TEXTO) #}
+    {% set _est = est if (est is defined and est) else (estudiante if (estudiante is defined and estudiante) else (alumno if (alumno is defined and alumno) else None)) %}
+    {% if _est %}
+    <div class="watermark-fondo">
+        <div class="wm-alumno">{{ _est.apellidos }} {{ _est.nombres }}</div>
+        <div class="wm-datos">C.I. {{ _est.ci }} {{ _est.expedido or 'BN' }} &bull; RUDE: {{ _est.rude or '-' }}</div>
+        <div class="wm-col">COLEGIO DR. ANTONIO VACA DÍEZ</div>
+    </div>
+    {% endif %}
+
+    <div class="contenido-documento">
+        <div class="container-fluid py-4">
+            <div class="row mb-4">
+                <div class="col-12">
+                    <h2 class="fw-bold mb-0 text-dark">
+                        <i class="bi bi-house-door-fill text-primary me-2"></i>
+                        Hola, {{ padre.nombres }}
+                    </h2>
+                </div>
+            </div>
+
+            <!-- Banner PWA -->
+            <div id="pwaBanner" class="alert alert-info alert-dismissible fade show shadow-sm" style="display: none;">
+                <div class="d-flex align-items-center gap-3">
+                    <i class="bi bi-phone-fill fs-3"></i>
+                    <div class="flex-grow-1">
+                        <strong>¡Instala la App Oficial!</strong>
+                        <p class="mb-0 small">Accede desde tu celular con un solo toque.</p>
+                    </div>
+                    <button id="btnInstalarPWA" class="btn btn-primary btn-sm">
+                        <i class="bi bi-download me-1"></i>Instalar
+                    </button>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" onclick="cerrarBannerPWA()"></button>
+            </div>
+
+            <!-- Perfil del Estudiante -->
+            <div class="card mb-4 shadow-sm border-0">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-badge-fill text-primary me-2"></i>
+                        Perfil del Estudiante
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p class="mb-2 text-muted"><strong>Nombre Completo:</strong></p>
+                            <h4 class="text-primary fw-bold">{% if estudiante %}{{ estudiante.apellidos }}, {{ estudiante.nombres }}{% else %}Sin estudiante asignado{% endif %}</h4>
+                            <p class="mb-0"><strong>RUDE:</strong> <span class="badge bg-light text-dark border">{{ estudiante.rude if estudiante else 'N/D' }}</span></p>
+                        </div>
+                        <div class="col-md-6 mt-3 mt-md-0">
+                            <p class="mb-2 text-muted"><strong>Información Académica:</strong></p>
+                            <p class="mb-2"><strong>Curso:</strong> <span class="text-primary fw-bold">{{ estudiante.curso if estudiante else 'N/D' }}</span></p>
+                            <p class="mb-0">
+                                <strong>Estado:</strong>
+                                <span class="badge bg-{{ 'success' if estudiante and estudiante.estado == 'Activo' else 'warning text-dark' }}">
+                                    {{ estudiante.estado if estudiante else 'Inactivo' }}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accesos Rápidos -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-6 col-lg-3">
+                    <a href="{{ url_for('portal_padres.nuevo_mensaje') }}" class="text-decoration-none">
+                        <div class="card h-100 border-primary shadow-sm hover-card">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-send-fill text-primary" style="font-size: 2.2rem;"></i>
+                                <h5 class="mt-3 mb-1 text-dark">Nuevo Mensaje</h5>
+                                <p class="text-muted mb-0 small">Escribir al colegio</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <a href="{{ url_for('portal_padres.mensajes') }}" class="text-decoration-none">
+                        <div class="card h-100 border-info shadow-sm hover-card">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-chat-dots-fill text-info" style="font-size: 2.2rem;"></i>
+                                <h5 class="mt-3 mb-1 text-dark">Bandeja de Entrada</h5>
+                                <p class="text-muted mb-0 small">{{ mensajes_recientes|length if mensajes_recientes is defined else 0 }} mensajes</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <a href="{{ url_for('portal_padres.ver_boletin') }}" class="text-decoration-none">
+                        <div class="card h-100 border-warning shadow-sm hover-card">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-journal-check text-warning" style="font-size: 2.2rem;"></i>
+                                <h5 class="mt-3 mb-1 text-dark">Boletín de Notas</h5>
+                                <p class="text-muted mb-0 small">Ver calificaciones</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+                <div class="col-md-6 col-lg-3">
+                    <a href="{{ url_for('portal_padres.pagos') }}" class="text-decoration-none">
+                        <div class="card h-100 border-{{ 'danger' if monto_pendiente > 0 else 'success' }} shadow-sm hover-card">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-wallet2 text-{{ 'danger' if monto_pendiente > 0 else 'success' }}" style="font-size: 2.2rem;"></i>
+                                <h5 class="mt-3 mb-1 text-dark">Finanzas</h5>
+                                <p class="text-muted mb-0 small">
+                                    {% if monto_pendiente > 0 %}
+                                        Pendiente: Bs. {{ "%.2f"|format(monto_pendiente) }}
+                                    {% else %}
+                                        Al día <i class="bi bi-check-circle-fill text-success"></i>
+                                    {% endif %}
+                                </p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Últimos Mensajes -->
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="bi bi-inboxes-fill text-primary me-2"></i>
+                        Últimos Mensajes
+                    </h5>
+                    <a href="{{ url_for('portal_padres.mensajes') }}" class="btn btn-sm btn-outline-primary fw-bold">Ver todos</a>
+                </div>
+                <div class="card-body p-0">
+                    {% if mensajes_recientes %}
+                        <div class="list-group list-group-flush">
+                            {% for msg in mensajes_recientes %}
+                            {% set partes = msg.contenido.split('---ARCHIVO_ADJUNTO---') %}
+                            {% set texto_limpio = partes[0].strip() %}
+                            {% set tiene_adjunto = partes|length > 1 %}
+
+                            <a href="{{ url_for('portal_padres.ver_mensaje', id=msg.id) }}" class="list-group-item list-group-item-action p-3">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="d-flex flex-wrap gap-2 align-items-center">
+                                        <span class="badge bg-{{ 'primary' if 'Boletín' in msg.tipo_mensaje else 'info' if 'Citación' in msg.tipo_mensaje else 'success' if 'Pago' in msg.tipo_mensaje else 'secondary' }}">
+                                            {{ msg.tipo_mensaje }}
+                                        </span>
+                                        {% if msg.remitente == 'Colegio' %}
+                                            <small class="text-success fw-bold"><i class="bi bi-building me-1"></i>Colegio</small>
+                                        {% else %}
+                                            <small class="text-primary fw-bold"><i class="bi bi-person-fill me-1"></i>Usted</small>
+                                        {% endif %}
+                                        {% if tiene_adjunto %}
+                                            <span class="badge bg-warning text-dark"><i class="bi bi-paperclip"></i> Adjunto</span>
+                                        {% endif %}
+                                    </div>
+                                    <small class="text-muted text-nowrap">
+                                        <i class="bi bi-calendar3 me-1"></i>{{ msg.fecha_envio.strftime('%d/%m/%Y') }}
+                                    </small>
+                                </div>
+                                <p class="mb-0 text-muted text-truncate">
+                                    {{ texto_limpio }}
+                                </p>
+                            </a>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="bi bi-mailbox text-muted" style="font-size: 3rem;"></i>
+                            <p class="text-muted mt-3 mb-0">No hay mensajes en la bandeja</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let deferredPrompt;
+window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    if (!localStorage.getItem('pwa_banner_cerrado')) {
+        document.getElementById('pwaBanner').style.display = 'block';
+    }
+});
+
+const btnInstalar = document.getElementById('btnInstalarPWA');
+if (btnInstalar) {
+    btnInstalar.addEventListener('click', async () => {
+        if (deferredPrompt) {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+            if (outcome === 'accepted') {
+                document.getElementById('pwaBanner').style.display = 'none';
+                localStorage.setItem('pwa_banner_cerrado', 'true');
+            }
+            deferredPrompt = null;
+        } else {
+            alert('Para instalar la app, usa el menú de tu navegador y selecciona "Añadir a pantalla de inicio"');
+        }
+    });
+}
+
+function cerrarBannerPWA() {
+    localStorage.setItem('pwa_banner_cerrado', 'true');
+}
+</script>
+{% endblock %}

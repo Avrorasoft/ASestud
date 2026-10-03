@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-4" style="max-width: 800px;">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="fw-bold text-primary mb-1">
+                {% if criterio %}Editar Parámetro de Evaluación{% else %}Nuevo Parámetro de Evaluación{% endif %}
+            </h3>
+            <p class="text-muted mb-0">Definición de escala, nivel de aplicación y formato de captura.</p>
+        </div>
+        <a href="{{ url_for('rubricas.index') }}" class="btn btn-outline-secondary fw-bold">
+            <i class="fas fa-arrow-left me-1"></i> Volver al Catálogo
+        </a>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-4">
+            <form method="POST" action="{% if criterio %}{{ url_for('rubricas.editar_criterio', id=criterio.id) }}{% else %}{{ url_for('rubricas.nuevo_criterio') }}{% endif %}">
+                
+                <!-- Nombre y Orden -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold">Nombre del Criterio / Área de Evaluación: *</label>
+                        <input type="text" name="nombre" class="form-control" placeholder="Ej: Asistencia, Participación, Desarrollo Psicomotriz..." value="{{ criterio.nombre if criterio else '' }}" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Orden de Secuencia:</label>
+                        <input type="number" name="orden" class="form-control text-center" min="1" max="20" value="{{ criterio.orden if criterio else 1 }}" required>
+                    </div>
+                </div>
+
+                <!-- Alcance: General vs Específico -->
+                <div class="row g-3 mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold">Ámbito de Aplicación (Precedencia):</label>
+                        <select name="alcance" id="selectAlcance" class="form-select fw-bold" onchange="alternarAlcance()">
+                            <option value="general" {% if not criterio or not criterio.materia_id %}selected{% endif %}>Rúbrica General (Para todo el Nivel)</option>
+                            <option value="especifico" {% if criterio and criterio.materia_id %}selected{% endif %}>Rúbrica Específica (Solo una Materia)</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6" id="boxNivel">
+                        <label class="form-label fw-bold">Nivel Escolar:</label>
+                        <select name="nivel" class="form-select">
+                            {% for n in niveles %}
+                                <option value="{{ n }}" {% if criterio and criterio.nivel == n %}selected{% endif %}>{{ n }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6 d-none" id="boxMateria">
+                        <label class="form-label fw-bold">Seleccionar Asignatura Específica:</label>
+                        <select name="materia_id" class="form-select">
+                            <option value="">-- Seleccionar Materia --</option>
+                            {% for m in materias %}
+                                <option value="{{ m.id }}" {% if criterio and criterio.materia_id == m.id %}selected{% endif %}>
+                                    {{ m.nombre }} ({{ m.curso_id }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Tipo de Evaluación: Numérica vs Cualitativa -->
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Régimen Evaluativo:</label>
+                    <select name="tipo_evaluacion" id="selectTipoEval" class="form-select fw-bold" onchange="alternarTipoEvaluacion()">
+                        <option value="NUMERICA" {% if not criterio or criterio.tipo_evaluacion == 'NUMERICA' %}selected{% endif %}>Cuantitativa / Numérica (Primaria y Secundaria)</option>
+                        <option value="CUALITATIVA" {% if criterio and criterio.tipo_evaluacion == 'CUALITATIVA' %}selected{% endif %}>Cualitativa / Descriptiva (Nidito / Inicial)</option>
+                    </select>
+                </div>
+
+                <!-- Bloque Numérico -->
+                <div class="border rounded p-3 mb-3 bg-light" id="bloqueNumerico">
+                    <h6 class="fw-bold text-primary mb-3"><i class="fas fa-calculator me-2"></i>Parámetros Cuantitativos</h6>
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Puntaje Máximo (/100):</label>
+                            <input type="number" name="puntaje_maximo" class="form-control text-center fw-bold" min="1" max="100" value="{{ criterio.puntaje_maximo if criterio else 10 }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">¿Permite Decimales?</label>
+                            <select name="permite_decimales" class="form-select">
+                                <option value="0" {% if not criterio or not criterio.permite_decimales %}selected{% endif %}>No (Entero Estricto: Asistencia, Participación)</option>
+                                <option value="1" {% if criterio and criterio.permite_decimales %}selected{% endif %}>Sí (Tareas, Pruebas y Exámenes)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Paso / Incremento (Step):</label>
+                            <input type="number" name="paso_step" class="form-control text-center" step="0.1" min="0.1" max="1.0" value="{{ criterio.paso_step if criterio else 1.0 }}">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Bloque Cualitativo -->
+                <div class="border rounded p-3 mb-3 bg-light d-none" id="bloqueCualitativo">
+                    <h6 class="fw-bold text-info mb-3"><i class="fas fa-child me-2"></i>Parámetros Formativos de Inicial (Nidito)</h6>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" name="es_descriptivo" value="1" id="checkDescriptivo" {% if criterio and criterio.es_descriptivo %}checked{% endif %} onchange="alternarDescriptivo()">
+                            <label class="form-check-label fw-bold" for="checkDescriptivo">
+                                Requiere redacción de Informe Narrativo / Observaciones
+                            </label>
+                        </div>
+                    </div>
+                    <div id="boxOpcionesCualitativas">
+                        <label class="form-label fw-bold">Opciones Conceptuales (Separadas por comas):</label>
+                        <input type="text" name="opciones_cualitativas" class="form-control" placeholder="Ej: Logrado,En Proceso,En Inicio" value="{{ criterio.opciones_cualitativas if criterio and criterio.opciones_cualitativas else 'Logrado,En Proceso,En Inicio' }}">
+                    </div>
+                </div>
+
+                <!-- Estado -->
+                <div class="mb-4">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" name="activo" value="1" id="checkActivo" {% if not criterio or criterio.activo %}checked{% endif %}>
+                        <label class="form-check-label fw-bold" for="checkActivo">Criterio habilitado para captura de notas</label>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-end gap-2 border-top pt-3">
+                    <a href="{{ url_for('rubricas.index') }}" class="btn btn-light fw-bold">Cancelar</a>
+                    <button type="submit" class="btn btn-primary fw-bold px-4">
+                        <i class="fas fa-save me-1"></i> Guardar Configuración
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function alternarAlcance() {
+        const alcance = document.getElementById('selectAlcance').value;
+        const boxNivel = document.getElementById('boxNivel');
+        const boxMateria = document.getElementById('boxMateria');
+
+        if (alcance === 'especifico') {
+            boxNivel.classList.add('d-none');
+            boxMateria.classList.remove('d-none');
+        } else {
+            boxNivel.classList.remove('d-none');
+            boxMateria.classList.add('d-none');
+        }
+    }
+
+    function alternarTipoEvaluacion() {
+        const tipo = document.getElementById('selectTipoEval').value;
+        const bNum = document.getElementById('bloqueNumerico');
+        const bCual = document.getElementById('bloqueCualitativo');
+
+        if (tipo === 'CUALITATIVA') {
+            bNum.classList.add('d-none');
+            bCual.classList.remove('d-none');
+        } else {
+            bNum.classList.remove('d-none');
+            bCual.classList.add('d-none');
+        }
+    }
+
+    function alternarDescriptivo() {
+        const check = document.getElementById('checkDescriptivo').checked;
+        const boxOpciones = document.getElementById('boxOpcionesCualitativas');
+        if (check) {
+            boxOpciones.classList.add('d-none');
+        } else {
+            boxOpciones.classList.remove('d-none');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        alternarAlcance();
+        alternarTipoEvaluacion();
+        alternarDescriptivo();
+    });
+</script>
+{% endblock %}

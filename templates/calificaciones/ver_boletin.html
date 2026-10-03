@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Boletín - {{ estudiante.apellidos }}</title>
+    <!-- Librería PDF.js de Mozilla para renderizar en móviles -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        body { margin: 0; padding: 0; background: #525659; font-family: Arial, sans-serif; }
+        .toolbar { 
+            background: #2c3e50; color: white; padding: 15px; text-align: center; 
+            position: fixed; top: 0; width: 100%; z-index: 1000; box-shadow: 0 2px 5px rgba(0,0,0,0.3); 
+        }
+        .toolbar h2 { margin: 0; font-size: 16px; }
+        #canvas-container { margin-top: 70px; text-align: center; padding: 10px; }
+        canvas { box-shadow: 0 0 15px rgba(0,0,0,0.5); max-width: 100%; height: auto; background: white; }
+        .loading { color: white; text-align: center; padding: 50px; font-size: 18px; }
+        .btn-download { 
+            display: inline-block; margin-top: 20px; padding: 12px 24px; 
+            background: #3498db; color: white; text-decoration: none; border-radius: 5px; font-weight: bold;
+        }
+    </style>
+    <style id="estilo-hoja-carta-estandar">
+        /* BLOQUEO DE MÁRGENES Y MEDIDAS ESTÁNDAR TAMAÑO CARTA */
+        @page {
+            size: letter portrait !important;
+            margin: 10mm !important;
+        }
+        @media screen {
+            body {
+                background-color: #cbd5e1 !important;
+                margin: 0 !important;
+                padding: 20px 0 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+            }
+            .documento-hoja, .boletin-container, .card-boletin, .sheet, .hoja-impresion {
+                background: #ffffff !important;
+                width: 215.9mm !important;
+                min-height: 279.4mm !important;
+                padding: 15mm 18mm !important;
+                margin: 0 auto 20px auto !important;
+                box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2) !important;
+                border: 1px solid #94a3b8 !important;
+                box-sizing: border-box !important;
+            }
+        }
+        @media print {
+            body {
+                background: #ffffff !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .no-print, .btn, .botonera {
+                display: none !important;
+            }
+            .documento-hoja, .boletin-container, .card-boletin, .sheet, .hoja-impresion {
+                width: 100% !important;
+                min-height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: none !important;
+                box-shadow: none !important;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="toolbar">
+        <h2>🏫 Colegio Dr. Antonio Vaca Díez</h2>
+    </div>
+    
+    <div id="canvas-container">
+        <div class="loading">Cargando boletín oficial...</div>
+    </div>
+
+    <script>
+        // Configurar el worker de PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
+        const pdfUrl = '{{ pdf_url }}';
+        const container = document.getElementById('canvas-container');
+
+        pdfjsLib.getDocument(pdfUrl).promise.then(pdf => {
+            pdf.getPage(1).then(page => {
+                // Ajustar escala para que quepa perfectamente en el ancho del celular
+                const viewport = page.getViewport({ scale: 1.0 });
+                const scale = (window.innerWidth - 20) / viewport.width;
+                const scaledViewport = page.getViewport({ scale: scale });
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = scaledViewport.height;
+                canvas.width = scaledViewport.width;
+
+                page.render({ canvasContext: context, viewport: scaledViewport }).promise.then(() => {
+                    container.innerHTML = '';
+                    container.appendChild(canvas);
+                    
+                    // Botón de descarga por si el usuario quiere el archivo original
+                    const downloadLink = document.createElement('a');
+                    downloadLink.href = pdfUrl;
+                    downloadLink.className = 'btn-download';
+                    downloadLink.innerText = '⬇️ Descargar PDF Original';
+                    downloadLink.download = 'boletin.pdf';
+                    container.appendChild(downloadLink);
+                });
+            });
+        }).catch(error => {
+            console.error('Error:', error);
+            container.innerHTML = '<div class="loading">No se pudo visualizar.<br><br><a href="' + (pdfUrl || '#') + '" class="btn-download" onclick="if(!this.getAttribute(\'href\') || this.getAttribute(\'href\')===\'#\') return false;">⬇️ Descargar PDF directamente</a></div>';
+        });
+    </script>
+</body>
+</html>

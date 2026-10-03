@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Estudiantes - Colegio Dr. Antonio Vaca Díez{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-people-fill me-2"></i>Gestión de Estudiantes</h2>
+    <a href="{{ url_for('estudiantes.nuevo') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-1"></i>Nuevo Estudiante
+    </a>
+</div>
+
+<!-- Barra de búsqueda -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="GET" action="{{ url_for('estudiantes.index') }}" class="row g-3">
+            <div class="col-md-8">
+                <input type="text" name="search" class="form-control" placeholder="Buscar por nombre, apellido, RUDE o curso..." value="{{ search }}">
+            </div>
+            <div class="col-md-4">
+                <button type="submit" class="btn btn-outline-primary w-100">
+                    <i class="bi bi-search me-1"></i>Buscar
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabla de estudiantes -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Foto</th>
+                        <th>RUDE</th>
+                        <th>Apellidos y Nombres</th>
+                        <th>Curso</th>
+                        <th>Estado</th>
+                        <th>Pensión</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if estudiantes.items %}
+                        {% for est in estudiantes.items %}
+                        <tr>
+                            <td>
+                                <img src="{{ url_for('static', filename='uploads/' + est.foto_path) }}" 
+                                     class="rounded-circle" width="40" height="40" 
+                                     alt="{{ est.nombres }}" 
+                                     onerror="this.src='{{ url_for('static', filename='uploads/default.png') }}'">
+                            </td>
+                            <td><strong>{{ est.rude }}</strong></td>
+                            <td>{{ est.apellidos }}, {{ est.nombres }}</td>
+                            <td><span class="badge bg-info">{{ est.curso }}</span></td>
+                            <td>
+                                {% if est.estado == 'Activo' %}
+                                    <span class="badge bg-success">{{ est.estado }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ est.estado }}</span>
+                                {% endif %}
+                            </td>
+                            <td>Bs. {{ "%.2f"|format(est.pension) }}</td>
+                            <td class="text-end">
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{{ url_for('estudiantes.ver', id=est.id) }}" class="btn btn-outline-info" title="Ver Cardex">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{{ url_for('estudiantes.editar', id=est.id) }}" class="btn btn-outline-warning" title="Editar">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-outline-danger" title="Eliminar" 
+                                            data-bs-toggle="modal" data-bs-target="#deleteModal{{ est.id }}">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                                
+                                <!-- Modal de confirmación de eliminación -->
+                                <div class="modal fade" id="deleteModal{{ est.id }}" tabindex="-1">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content">
+                                            <div class="modal-header bg-danger text-white">
+                                                <h5 class="modal-title">Confirmar Eliminación</h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <p>¿Estás seguro de que deseas eliminar al estudiante <strong>{{ est.apellidos }}, {{ est.nombres }}</strong>?</p>
+                                                <p class="text-muted small">Esta acción también eliminará los datos de los padres/tutores asociados.</p>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                <form action="{{ url_for('estudiantes.eliminar', id=est.id) }}" method="POST">
+                                                    <button type="submit" class="btn btn-danger">Sí, Eliminar</button>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-4 text-muted">
+                                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                                No se encontraron estudiantes.
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <!-- Paginación -->
+    {% if estudiantes.pages > 1 %}
+    <div class="card-footer">
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center mb-0">
+                {% if estudiantes.has_prev %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('estudiantes.index', page=estudiantes.prev_num, search=search) }}">Anterior</a>
+                    </li>
+                {% endif %}
+                
+                {% for page_num in estudiantes.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+                    {% if page_num %}
+                        {% if page_num == estudiantes.page %}
+                            <li class="page-item active"><span class="page-link">{{ page_num }}</span></li>
+                        {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="{{ url_for('estudiantes.index', page=page_num, search=search) }}">{{ page_num }}</a>
+                            </li>
+                        {% endif %}
+                    {% else %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if estudiantes.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="{{ url_for('estudiantes.index', page=estudiantes.next_num, search=search) }}">Siguiente</a>
+                    </li>
+                {% endif %}
+            </ul>
+        </nav>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

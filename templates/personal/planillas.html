@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}Planilla General de Sueldos - Colegio Dr. Antonio Vaca Díez{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <!-- Cabecera y controles de filtro e impresión -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3 d-print-none">
+        <div>
+            <h2><i class="bi bi-file-earmark-spreadsheet-fill me-2 text-primary"></i>Planilla General de Sueldos</h2>
+            <p class="text-muted mb-0">Gestión de planillas por turnos y consolidado general</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <form method="GET" class="d-flex gap-2 align-items-center m-0">
+                <select name="mes" class="form-select form-select-sm" onchange="this.form.submit()">
+                    {% for m in meses_disponibles %}
+                    <option value="{{ m }}" {% if m == mes_seleccionado %}selected{% endif %}>{{ m }}</option>
+                    {% endfor %}
+                </select>
+                <input type="number" name="anio" class="form-control form-control-sm" style="width: 85px;" value="{{ anio_seleccionado }}" onchange="this.form.submit()">
+                <select name="turno" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Todos los Turnos</option>
+                    <option value="Mañana" {% if turno_filtro == 'Mañana' %}selected{% endif %}>Turno Mañana</option>
+                    <option value="Tarde" {% if turno_filtro == 'Tarde' %}selected{% endif %}>Turno Tarde</option>
+                </select>
+            </form>
+            <button onclick="window.print()" class="btn btn-primary btn-sm">
+                <i class="bi bi-printer me-1"></i> Imprimir Planillas
+            </button>
+        </div>
+    </div>
+
+    <!-- Título institucional para impresión -->
+    <div class="text-center mb-4 d-none d-print-block">
+        <h3>COLEGIO DR. ANTONIO VACA DÍEZ</h3>
+        <h5 class="mb-1">PLANILLA GENERAL DE SUELDOS Y SALARIOS</h5>
+        <p class="text-muted small">Período: {{ mes_seleccionado }} / {{ anio_seleccionado }} {% if turno_filtro %}(Turno: {{ turno_filtro }}){% endif %}</p>
+    </div>
+
+    <!-- BLOQUE 1: PLANILLA DE PROFESORES -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-person-workspace me-2"></i>I. PLANILLA DE PROFESORES — {{ mes_seleccionado }} / {{ anio_seleccionado }}</h5>
+            <span class="badge bg-light text-dark">Líquido Profesores: Bs. {{ "%.2f"|format(tot_prof_neto) }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle mb-0">
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th style="width: 45px;">N°</th>
+                            <th style="width: 100px;">C.I.</th>
+                            <th>Apellidos y Nombres</th>
+                            <th style="width: 130px;">Sueldo Base (Bs.)</th>
+                            <th style="width: 130px;">Adelantos (Bs.)</th>
+                            <th style="width: 140px;">Líquido a Recibir</th>
+                            <th style="width: 180px;">Firma de Recibido</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for p in profesores %}
+                        <tr>
+                            <td class="text-center">{{ loop.index }}</td>
+                            <td class="text-center">{{ p.ci or 'S/N' }}</td>
+                            <td><strong>{{ p.apellidos }}, {{ p.nombres }}</strong></td>
+                            <td class="text-end">Bs. {{ "%.2f"|format(p.salario_base or 0) }}</td>
+                            <td class="text-end text-danger">- Bs. {{ "%.2f"|format(p.adelanto or 0) }}</td>
+                            <td class="text-end text-success fw-bold">Bs. {{ "%.2f"|format(p.salario_neto or 0) }}</td>
+                            <td class="text-center text-muted small" style="height: 35px;">___________________</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="7" class="text-center py-3 text-muted">No hay profesores activos registrados para este filtro.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- BLOQUE 2: PLANILLA DE PERSONAL ADMINISTRATIVO -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-briefcase-fill me-2"></i>II. PLANILLA DE PERSONAL ADMINISTRATIVO — {{ mes_seleccionado }} / {{ anio_seleccionado }}</h5>
+            <span class="badge bg-light text-dark">Líquido Administrativos: Bs. {{ "%.2f"|format(tot_admin_neto) }}</span>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle mb-0">
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th style="width: 45px;">N°</th>
+                            <th style="width: 100px;">C.I.</th>
+                            <th>Apellidos y Nombres</th>
+                            <th style="width: 130px;">Sueldo Base (Bs.)</th>
+                            <th style="width: 130px;">Adelantos (Bs.)</th>
+                            <th style="width: 140px;">Líquido a Recibir</th>
+                            <th style="width: 180px;">Firma de Recibido</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in administrativos %}
+                        <tr>
+                            <td class="text-center">{{ loop.index }}</td>
+                            <td class="text-center">{{ a.ci or 'S/N' }}</td>
+                            <td><strong>{{ a.apellidos }}, {{ a.nombres }}</strong></td>
+                            <td class="text-end">Bs. {{ "%.2f"|format(a.salario_base or 0) }}</td>
+                            <td class="text-end text-danger">- Bs. {{ "%.2f"|format(a.adelanto or 0) }}</td>
+                            <td class="text-end text-success fw-bold">Bs. {{ "%.2f"|format(a.salario_neto or 0) }}</td>
+                            <td class="text-center text-muted small" style="height: 35px;">___________________</td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="7" class="text-center py-3 text-muted">No hay personal administrativo activo registrado para este filtro.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- BLOQUE 3: RESUMEN Y TOTALES GENERALES -->
+    <div class="card shadow border-primary mb-5">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-calculator me-2"></i>III. RESUMEN Y TOTALES GENERALES</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-bordered align-middle mb-0">
+                    <thead class="table-light text-center">
+                        <tr>
+                            <th>Concepto</th>
+                            <th style="width: 180px;">Total Base (Bs.)</th>
+                            <th style="width: 180px;">Total Adelantos (Bs.)</th>
+                            <th style="width: 200px;">Total Líquido Pagable (Bs.)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><strong>Total Planilla Profesores</strong></td>
+                            <td class="text-end">Bs. {{ "%.2f"|format(tot_prof_base) }}</td>
+                            <td class="text-end text-danger">- Bs. {{ "%.2f"|format(tot_prof_adelanto) }}</td>
+                            <td class="text-end text-success fw-bold">Bs. {{ "%.2f"|format(tot_prof_neto) }}</td>
+                        </tr>
+                        <tr>
+                            <td><strong>Total Planilla Personal Administrativo</strong></td>
+                            <td class="text-end">Bs. {{ "%.2f"|format(tot_admin_base) }}</td>
+                            <td class="text-end text-danger">- Bs. {{ "%.2f"|format(tot_admin_adelanto) }}</td>
+                            <td class="text-end text-success fw-bold">Bs. {{ "%.2f"|format(tot_admin_neto) }}</td>
+                        </tr>
+                        <tr class="table-success fw-bold fs-5">
+                            <td>GRAN TOTAL GENERAL COMBINADO</td>
+                            <td class="text-end">Bs. {{ "%.2f"|format(gran_total_base) }}</td>
+                            <td class="text-end text-danger">- Bs. {{ "%.2f"|format(gran_total_adelanto) }}</td>
+                            <td class="text-end text-success">Bs. {{ "%.2f"|format(gran_total_neto) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bloque de Firmas Institucionales para Impresión -->
+    <div class="row mt-5 pt-4 d-none d-print-flex justify-content-around text-center">
+        <div class="col-4">
+            <p class="border-top border-dark pt-2 mb-0"><strong>Contabilidad / Administración</strong></p>
+        </div>
+        <div class="col-4">
+            <p class="border-top border-dark pt-2 mb-0"><strong>Dirección General</strong></p>
+        </div>
+    </div>
+</div>
+{% endblock %}

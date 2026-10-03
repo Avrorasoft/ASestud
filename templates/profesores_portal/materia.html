@@ -1,0 +1,408 @@
+{% extends "profesores_portal/base.html" %}
+
+{% block content %}
+<style>
+    :root {
+        --jaguar-primary: #1e3c72;
+        --jaguar-secondary: #2a5298;
+        --jaguar-dark: #0f172a;
+        --jaguar-border: #e2e8f0;
+    }
+
+    .cal-header-box {
+        background: linear-gradient(135deg, var(--jaguar-primary) 0%, var(--jaguar-secondary) 100%);
+        color: #ffffff;
+        border-radius: 12px;
+        padding: 24px 28px;
+        margin-bottom: 24px;
+        box-shadow: 0 10px 25px -5px rgba(30, 60, 114, 0.3);
+    }
+
+    .rubrica-pill {
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.15);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 20px;
+        padding: 5px 14px;
+        font-size: 0.82rem;
+        font-weight: 600;
+        margin-right: 8px;
+        margin-top: 6px;
+        backdrop-filter: blur(4px);
+    }
+
+    .input-nota-entera {
+        font-weight: 700;
+        font-size: 1.05rem;
+        max-width: 95px;
+        margin: 0 auto;
+        border: 2px solid var(--jaguar-border);
+        border-radius: 8px;
+        transition: all 0.2s ease;
+    }
+    .input-nota-entera:focus {
+        border-color: var(--jaguar-secondary);
+        box-shadow: 0 0 0 4px rgba(42, 82, 152, 0.15);
+    }
+
+    .total-badge {
+        display: inline-block;
+        min-width: 55px;
+        padding: 6px 12px;
+        font-size: 1.05rem;
+        font-weight: 800;
+        border-radius: 8px;
+    }
+    .total-aprobado {
+        background-color: #d1e7dd;
+        color: #0f5132;
+        border: 1px solid #badbcc;
+    }
+    .total-reprobado {
+        background-color: #f8d7da;
+        color: #842029;
+        border: 1px solid #f5c2c7;
+    }
+
+    .jaguar-upload-wrapper {
+        background: #f8fafc;
+        border: 2px dashed #cbd5e1;
+        border-radius: 10px;
+        padding: 8px;
+        transition: all 0.25s ease;
+    }
+    .jaguar-upload-wrapper:hover {
+        border-color: var(--jaguar-secondary);
+        background: #f1f5f9;
+    }
+    .btn-jaguar-action {
+        border-radius: 6px;
+        font-weight: 600;
+        font-size: 0.75rem;
+        transition: all 0.2s ease;
+    }
+
+    @media print {
+        .no-print, .btn, nav, .sidebar, footer {
+            display: none !important;
+        }
+        .cal-header-box {
+            background: none !important;
+            color: #000 !important;
+            border-bottom: 2px solid #000;
+            padding: 0 0 10px 0 !important;
+        }
+        .table {
+            border: 1px solid #000 !important;
+        }
+        .table th, .table td {
+            border: 1px solid #000 !important;
+            color: #000 !important;
+        }
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Cabecera de la Materia -->
+    <div class="cal-header-box">
+        <div class="row align-items-center">
+            <div class="col-md-7">
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-light text-dark fw-bold px-3 py-1">{{ nivel|upper }}</span>
+                    {% if origen_rubrica == 'especifico' %}
+                        <span class="badge bg-warning text-dark fw-bold px-3 py-1">
+                            <i class="fas fa-star me-1"></i> Rúbrica Específica
+                        </span>
+                    {% else %}
+                        <span class="badge bg-info text-white fw-bold px-3 py-1">
+                            <i class="fas fa-university me-1"></i> Rúbrica Institucional
+                        </span>
+                    {% endif %}
+                </div>
+                <h2 class="fw-bold mb-1 text-white">{{ materia.nombre }}</h2>
+                <div class="text-light opacity-90">
+                    <i class="fas fa-chalkboard me-1"></i> <strong>Curso:</strong> {{ materia.curso_id }} &nbsp;|&nbsp;
+                    <i class="fas fa-calendar-alt me-1"></i> <strong>Periodo:</strong> {{ periodo_sel }}
+                </div>
+                <div class="mt-2">
+                    {% if es_nidito %}
+                        <span class="rubrica-pill"><i class="fas fa-child me-1"></i> Evaluación Cualitativa y Descriptiva (Nidito)</span>
+                    {% else %}
+                        {% for c in criterios %}
+                            <span class="rubrica-pill">
+                                {{ c.nombre }}: {{ c.puntaje_maximo }} pts 
+                            </span>
+                        {% endfor %}
+                        <span class="rubrica-pill" style="background: #198754; border-color: #198754;">Total: 100 pts</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-5 text-md-end mt-3 mt-md-0 no-print">
+                <form method="GET" action="{{ url_for('profesores_portal.ver_materia', materia_id=materia.id) }}" class="d-inline-block me-2">
+                    <select name="periodo" class="form-select fw-bold border-0 shadow-sm" onchange="this.form.submit()" style="border-radius: 8px;">
+                        {% for p in periodos %}
+                            <option value="{{ p }}" {% if periodo_sel == p %}selected{% endif %}>{{ p }}</option>
+                        {% endfor %}
+                    </select>
+                </form>
+                <button type="button" onclick="window.print()" class="btn btn-outline-light me-2 fw-bold" style="border-radius: 8px;">
+                    <i class="fas fa-print me-1"></i> Imprimir
+                </button>
+                <a href="{{ url_for('profesores_portal.index') }}" class="btn btn-light fw-bold text-primary shadow-sm" style="border-radius: 8px;">
+                    <i class="fas fa-arrow-left me-1"></i> Volver
+                </a>
+            </div>
+        </div>
+    </div>
+<!-- Planilla de Calificaciones con Soporte para Subida Múltiple -->
+    <form method="POST" action="{{ url_for('profesores_portal.guardar_notas_matriz', materia_id=materia.id) }}" enctype="multipart/form-data" id="formPlanillaNotas" novalidate>
+        <input type="hidden" name="periodo" value="{{ periodo_sel }}">
+
+        <div class="card shadow-sm border-0 mb-4" style="border-radius: 12px; overflow: hidden;">
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="tablaPlanilla">
+                        <thead class="table-dark text-uppercase fs-7" style="background: var(--jaguar-dark);">
+                            <tr>
+                                <th style="width: 50px;" class="text-center py-3">#</th>
+                                <th style="min-width: 240px;" class="py-3">Estudiante</th>
+                                <th style="width: 120px;" class="py-3">C.I.</th>
+
+                                {% if es_nidito %}
+                                    {% for c in criterios %}
+                                        <th class="py-3" style="min-width: 200px;">{{ c.nombre }}</th>
+                                    {% endfor %}
+                                {% else %}
+                                    {% for c in criterios %}
+                                        <th class="text-center py-3" style="width: 140px;">
+                                            <div>{{ c.nombre }}</div>
+                                            <span class="badge bg-secondary text-light small mt-1">/{{ c.puntaje_maximo }} pts</span>
+                                        </th>
+                                    {% endfor %}
+                                    <th class="text-center py-3" style="width: 110px;">Total</th>
+                                    <th class="text-center py-3" style="width: 110px;">Estado</th>
+                                {% endif %}
+                                <th class="text-center py-3" style="width: 220px;"><i class="fas fa-camera text-info me-1"></i> Respaldos Múltiples</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if estudiantes and estudiantes|length > 0 %}
+                                {% for est in estudiantes %}
+                                <tr style="border-bottom: 1px solid var(--jaguar-border);">
+                                    <td class="text-center text-muted fw-bold">{{ loop.index }}</td>
+                                    <td>
+                                        <div class="fw-bold text-dark fs-6">{{ est.apellidos }}, {{ est.nombres }}</div>
+                                        <small class="text-muted"><i class="fas fa-id-card me-1"></i>{{ est.curso }}</small>
+                                    </td>
+                                    <td><span class="badge bg-light text-dark border px-2 py-1">{{ est.ci }}</span></td>
+
+                                    {% if es_nidito %}
+                                        {% for c in criterios %}
+                                            {% set reg_cal = cal_matrix.get((est.id, c.nombre)) %}
+                                            {% if not c.es_descriptivo %}
+                                                <td class="text-center">
+                                                    <select name="criterio_{{ est.id }}_{{ c.id }}" class="form-select form-select-sm fw-bold shadow-none">
+                                                        <option value="">-- Seleccionar --</option>
+                                                        {% set opciones = (c.opciones_cualitativas or 'Logrado,En Proceso,En Inicio').split(',') %}
+                                                        {% for op in opciones %}
+                                                            <option value="{{ op }}" {% if reg_cal and reg_cal.valoracion_cualitativa == op %}selected{% endif %}>{{ op }}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </td>
+                                            {% else %}
+                                                <td>
+                                                    <textarea name="criterio_{{ est.id }}_{{ c.id }}" class="form-control form-control-sm shadow-none" rows="2" placeholder="Observaciones pedagógicas...">{{ reg_cal.informe_descriptivo if reg_cal else '' }}</textarea>
+                                                </td>
+                                            {% endif %}
+                                        {% endfor %}
+                                    {% else %}
+                                        {% for c in criterios %}
+                                            {% set reg_cal = cal_matrix.get((est.id, c.nombre)) %}
+                                            <td class="text-center">
+                                                <input 
+                                                    type="text" 
+                                                    name="criterio_{{ est.id }}_{{ c.id }}" 
+                                                    class="form-control text-center input-nota-entera input-nota-estudiante"
+                                                    data-estudiante="{{ est.id }}"
+                                                    data-max="{{ c.puntaje_maximo }}"
+                                                    value="{% if reg_cal and reg_cal.nota is not none %}{% if not c.permite_decimales %}{{ reg_cal.nota|int }}{% else %}{{ reg_cal.nota }}{% endif %}{% endif %}"
+                                                    placeholder="0"
+                                                >
+                                            </td>
+                                        {% endfor %}
+
+                                        {% set nota_fin = notas_finales.get(est.id, 0.0) %}
+                                        <td class="text-center">
+                                            <span id="total_{{ est.id }}" class="total-badge {% if nota_fin >= 51 %}total-aprobado{% else %}total-reprobado{% endif %}">
+                                                {{ "%.1f"|format(nota_fin) if nota_fin else '0.0' }}
+                                            </span>
+                                        </td>
+                                        <td class="text-center" id="estado_box_{* est.id *}">
+                                            {% if nota_fin >= 51 %}
+                                                <span class="badge bg-success px-2 py-1">Aprobado</span>
+                                            {% else %}
+                                                <span class="badge bg-danger px-2 py-1">Reprobado</span>
+                                            {% endif %}
+                                        </td>
+                                    {% endif %}
+
+                                    <!-- Columna Estilizada Jaguar: Subida Múltiple y Botón Único de Galería -->
+                                    <td class="text-center align-middle">
+                                        <div class="jaguar-upload-wrapper">
+                                            <!-- Selector múltiple de archivos -->
+                                            <label class="btn btn-outline-primary btn-sm btn-jaguar-action w-100 text-truncate mb-1 py-1 px-2" style="cursor: pointer;">
+                                                <i class="fas fa-cloud-upload-alt me-1"></i> <span class="lbl-file-name">Adjuntar Varios...</span>
+                                                <input type="file" name="respaldo_{{ est.id }}" class="d-none" multiple accept=".png, .jpg, .jpeg, .pdf, .doc, .docx" onchange="this.previousElementSibling.lastElementChild.textContent = this.files.length + ' archivo(s) listo(s)';">
+                                            </label>
+                                            
+                                            <div class="d-flex justify-content-center align-items-center gap-2 mt-1">
+                                                {% set lista_respaldos = RespaldoEstudiante.query.filter_by(estudiante_id=est.id, materia_id=materia.id, periodo=periodo_sel).all() %}
+                                                <button type="button" class="btn btn-info btn-sm btn-jaguar-action text-white py-1 px-3 w-100" data-bs-toggle="modal" data-bs-target="#modalGaleria_{{ est.id }}">
+                                                    <i class="fas fa-images me-1"></i> Ver Galería ({{ lista_respaldos|length }})
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+
+                                <!-- MODAL DE GALERÍA INDIVIDUAL PARA CADA ESTUDIANTE -->
+                                <div class="modal fade" id="modalGaleria_{{ est.id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered modal-lg">
+                                        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+                                            <div class="modal-header bg-dark text-white" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                                                <h5 class="modal-title fw-bold">
+                                                    <i class="fas fa-folder-open text-info me-2"></i> Respaldos de: {{ est.apellidos }}, {{ est.nombres }}
+                                                </h5>
+                                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                            </div>
+                                            <div class="modal-body bg-light p-4">
+                                                {% if lista_respaldos %}
+                                                    <div class="row g-3">
+                                                        {% for resp in lista_respaldos %}
+                                                            <div class="col-md-6">
+                                                                <div class="card border shadow-sm h-100" style="border-radius: 8px;">
+                                                                    <div class="card-body d-flex align-items-center justify-content-between p-3">
+                                                                        <div class="d-flex align-items-center gap-2 text-truncate">
+                                                                            <i class="fas fa-file-alt fa-2x text-primary"></i>
+                                                                            <div class="text-truncate">
+                                                                                <span class="fw-bold d-block text-truncate" style="font-size: 0.85rem;" title="{{ resp.filename }}">{{ resp.filename.split('_')[-1] }}</span>
+                                                                                <small class="text-muted" style="font-size: 0.7rem;">Subido el {{ resp.fecha_subida.strftime('%d/%m/%Y %H:%M') if resp.fecha_subida else 'N/A' }}</small>
+                                                                            </div>
+                                                                        </div>
+                                                                        <div class="d-flex gap-2">
+                                                                            <a href="{{ url_for('profesores_portal.ver_respaldo', filename=resp.filename) }}" target="_blank" class="btn btn-outline-info btn-sm px-2 py-1" title="Ver documento">
+                                                                                <i class="fas fa-eye"></i>
+                                                                            </a>
+                                                                            <form action="{{ url_for('profesores_portal.eliminar_respaldo', respaldo_id=resp.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de eliminar este respaldo de forma permanente?');">
+                                                                                <button type="submit" class="btn btn-outline-danger btn-sm px-2 py-1" title="Eliminar archivo">
+                                                                                    <i class="fas fa-trash-alt"></i>
+                                                                                </button>
+                                                                            </form>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        {% endfor %}
+                                                    </div>
+                                                {% else %}
+                                                    <div class="text-center py-4 text-muted">
+                                                        <i class="fas fa-box-open fa-3x mb-2 text-secondary"></i>
+                                                        <p class="mb-0">No hay archivos de respaldo adjuntos para este estudiante en el periodo {{ periodo_sel }}.</p>
+                                                    </div>
+                                                {% endif %}
+                                            </div>
+                                            <div class="modal-footer bg-white border-0">
+                                                <button type="button" class="btn btn-secondary btn-sm fw-bold px-3" data-bs-dismiss="modal">Cerrar</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- FIN DEL MODAL -->
+
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="11" class="text-center py-5 text-muted">
+                                        <i class="fas fa-folder-open fa-2x mb-2 text-secondary"></i>
+                                        <p class="mb-0">No se registran estudiantes activos matriculados en este curso.</p>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card-footer bg-light p-3 d-flex justify-content-between align-items-center">
+                <div class="text-muted small fw-medium">
+                    <i class="fas fa-shield-alt text-primary me-1"></i> Módulo blindado institucional. Sube varios archivos simultáneamente y revísalos en la galería.
+                </div>
+                <div>
+                    <button type="submit" class="btn btn-primary fw-bold px-4 py-2 shadow-sm" style="border-radius: 8px; background: var(--jaguar-primary); border: none;">
+                        <i class="fas fa-save me-2"></i> Guardar Calificaciones y Respaldos
+                    </button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const inputs = document.querySelectorAll('.input-nota-estudiante');
+        const form = document.getElementById('formPlanillaNotas');
+
+        function recalcularFila(estId) {
+            const inputsEstudiante = document.querySelectorAll(`.input-nota-estudiante[data-estudiante="${estId}"]`);
+            let suma = 0.0;
+
+            inputsEstudiante.forEach(inp => {
+                let max = parseFloat(inp.getAttribute('data-max')) || 100.0;
+                let val = parseFloat(inp.value) || 0.0;
+
+                if (val > max) {
+                    val = max;
+                    inp.value = max;
+                } else if (val < 0) {
+                    val = 0;
+                    inp.value = 0;
+                }
+
+                suma += val;
+            });
+
+            suma = Math.min(100.0, Math.max(0.0, suma));
+
+            const totalBadge = document.getElementById(`total_${estId}`);
+            const estadoBox = document.getElementById(`estado_box_${estId}`);
+
+            if (totalBadge) {
+                totalBadge.textContent = suma.toFixed(1);
+                if (suma >= 51.0) {
+                    totalBadge.className = 'total-badge total-aprobado';
+                    if (estadoBox) estadoBox.innerHTML = '<span class="badge bg-success px-2 py-1">Aprobado</span>';
+                } else {
+                    totalBadge.className = 'total-badge total-reprobado';
+                    if (estadoBox) estadoBox.innerHTML = '<span class="badge bg-danger px-2 py-1">Reprobado</span>';
+                }
+            }
+        }
+
+        inputs.forEach(inp => {
+            inp.addEventListener('input', function () {
+                const estId = this.getAttribute('data-estudiante');
+                recalcularFila(estId);
+            });
+        });
+
+        if (form) {
+            form.addEventListener('submit', function() {
+                inputs.forEach(inp => {
+                    if (inp.value.trim() === '') {
+                        inp.disabled = true;
+                    }
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}

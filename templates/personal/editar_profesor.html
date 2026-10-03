@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Editar Cardex del Profesor</h4>
+                </div>
+
+                <div class="card-body">
+
+                    <form method="POST"
+                          action="{{ url_for('personal.editar_profesor', id=persona.id) }}">
+
+                        <div class="row">
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Apellidos *</label>
+                                <input type="text"
+                                       name="apellidos"
+                                       class="form-control"
+                                       value="{{ request.form.get('apellidos', persona.apellidos) }}"
+                                       required>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Nombres *</label>
+                                <input type="text"
+                                       name="nombres"
+                                       class="form-control"
+                                       value="{{ request.form.get('nombres', persona.nombres) }}"
+                                       required>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">CI</label>
+                                <input type="text"
+                                       name="ci"
+                                       class="form-control"
+                                       value="{{ request.form.get('ci', persona.ci or '') }}">
+                            </div>
+
+                            <div class="col-md-8 mb-3">
+                                <label class="form-label">Especialidad</label>
+                                <input type="text"
+                                       name="especialidad"
+                                       class="form-control"
+                                       value="{{ request.form.get('especialidad', persona.especialidad or '') }}"
+                                       placeholder="Ejemplo: Matemáticas, Comunicación, Educación Física">
+                            </div>
+
+                            <!-- ⭐ NUEVO: NIVEL QUE ATIENDE -->
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Nivel que atiende</label>
+                                <select name="nivel" class="form-select">
+                                    <option value=""
+                                        {% if not persona.nivel %}selected{% endif %}>
+                                        -- Sin asignar --
+                                    </option>
+                                    <option value="Nidito"
+                                        {% if persona.nivel == 'Nidito' %}selected{% endif %}>
+                                        Nidito
+                                    </option>
+                                    <option value="Primaria"
+                                        {% if persona.nivel == 'Primaria' %}selected{% endif %}>
+                                        Primaria
+                                    </option>
+                                    <option value="Secundaria"
+                                        {% if persona.nivel == 'Secundaria' %}selected{% endif %}>
+                                        Secundaria
+                                    </option>
+                                </select>
+                            </div>
+
+                            <!-- ⭐ NUEVO: TURNO EN EL QUE TRABAJA -->
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Turno</label>
+                                <select name="turno" class="form-select">
+                                    <option value="Mañana"
+                                        {% if persona.turno != 'Tarde' %}selected{% endif %}>
+                                        Mañana
+                                    </option>
+                                    <option value="Tarde"
+                                        {% if persona.turno == 'Tarde' %}selected{% endif %}>
+                                        Tarde
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Salario Base</label>
+                                <input type="number"
+                                       name="salario_base"
+                                       class="form-control"
+                                       step="0.01"
+                                       min="0"
+                                       value="{{ request.form.get('salario_base', persona.salario_base or 0) }}">
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Estado</label>
+                                <select name="estado" class="form-select">
+                                    <option value="Activo"
+                                        {% if persona.estado == 'Activo' %}selected{% endif %}>
+                                        Activo
+                                    </option>
+
+                                    <option value="Inactivo"
+                                        {% if persona.estado == 'Inactivo' %}selected{% endif %}>
+                                        Inactivo
+                                    </option>
+                                </select>
+                            </div>
+
+                            <div class="col-md-4 mb-3">
+                                <label class="form-label">Usuario para portal</label>
+                                <input type="text"
+                                       name="usuario"
+                                       class="form-control"
+                                       value="{{ request.form.get('usuario', persona.usuario or '') }}"
+                                       placeholder="Opcional">
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Nueva contraseña</label>
+                                <input type="password"
+                                       name="contrasena"
+                                       class="form-control"
+                                       autocomplete="new-password"
+                                       placeholder="Dejar vacío si no se cambia">
+                            </div>
+
+                        </div>
+
+                        <div class="alert alert-info">
+                            El salario neto se recalcula automáticamente al guardar:
+                            <br>
+                            <strong>Salario Neto = Salario Base - Adelanto</strong>
+                        </div>
+
+                        <div class="d-flex justify-content-between mt-3">
+                            <a href="{{ url_for('personal.cardex_personal', tipo='profesor', id=persona.id) }}"
+                               class="btn btn-secondary">
+                                Cancelar
+                            </a>
+
+                            <button type="submit" class="btn btn-success">
+                                Guardar cambios
+                            </button>
+                        </div>
+
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

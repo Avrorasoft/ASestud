@@ -1,0 +1,157 @@
+{% extends "profesores_portal/base.html" %}
+{% block content %}
+<div class="container-fluid py-3">
+
+    <!-- Cabecera de Bienvenida Genérica -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <div>
+            <h3 class="fw-bold mb-0 text-dark">
+                <i class="bi bi-person-workspace text-primary me-2"></i>Panel Docente: {{ profesor.nombres }} {{ profesor.apellidos }}
+            </h3>
+            <p class="text-muted small mb-0">
+                <strong>C.I.:</strong> {{ profesor.ci }} &bull; <strong>Especialidad:</strong> {{ profesor.especialidad or 'Docente Titular' }} &bull; <strong>Gestión:</strong> {{ now().year }}
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('profesores_portal.mis_pagos') }}" class="btn btn-warning text-dark fw-bold">
+                <i class="bi bi-wallet2 me-1"></i> Historial de Pagos y Adelantos
+            </a>
+            <a href="{{ url_for('profesores_portal.alumnos_morosos') }}" class="btn btn-danger fw-bold">
+                <i class="bi bi-exclamation-octagon me-1"></i> Alumnos con Pagos Pendientes
+            </a>
+            <a href="{{ url_for('profesores_portal.logout') }}" class="btn btn-outline-secondary">
+                <i class="bi bi-box-arrow-right me-1"></i> Salir
+            </a>
+        </div>
+    </div>
+
+    <!-- Métricas Generales -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-md-3">
+            <div class="card border-0 shadow-sm rounded-3 bg-primary text-white h-100">
+                <div class="card-body d-flex align-items-center justify-content-between p-3">
+                    <div>
+                        <h6 class="text-white-50 text-uppercase fw-bold mb-1" style="font-size: 0.75rem;">Materias Asignadas</h6>
+                        <h2 class="fw-bold mb-0">{{ total_materias }}</h2>
+                    </div>
+                    <i class="bi bi-journal-bookmark-fill fs-1 text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-3">
+            <div class="card border-0 shadow-sm rounded-3 bg-success text-white h-100">
+                <div class="card-body d-flex align-items-center justify-content-between p-3">
+                    <div>
+                        <h6 class="text-white-50 text-uppercase fw-bold mb-1" style="font-size: 0.75rem;">Cursos a Cargo</h6>
+                        <h2 class="fw-bold mb-0">{{ total_cursos }}</h2>
+                    </div>
+                    <i class="bi bi-mortarboard-fill fs-1 text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-md-3">
+            <a href="{{ url_for('profesores_portal.mis_pagos') }}" class="text-decoration-none">
+                <div class="card border-0 shadow-sm rounded-3 bg-warning text-dark h-100">
+                    <div class="card-body d-flex align-items-center justify-content-between p-3">
+                        <div>
+                            <h6 class="text-dark text-uppercase fw-bold mb-1" style="font-size: 0.75rem;">Adelantos y Sueldo</h6>
+                            <h5 class="fw-bold mb-0">Ver Historial</h5>
+                        </div>
+                        <i class="bi bi-cash-coin fs-1 text-dark"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-12 col-md-3">
+            <a href="{{ url_for('profesores_portal.alumnos_morosos') }}" class="text-decoration-none">
+                <div class="card border-0 shadow-sm rounded-3 bg-danger text-white h-100">
+                    <div class="card-body d-flex align-items-center justify-content-between p-3">
+                        <div>
+                            <h6 class="text-white-50 text-uppercase fw-bold mb-1" style="font-size: 0.75rem;">Alumnos Morosos</h6>
+                            <h5 class="fw-bold mb-0">Ver Lista</h5>
+                        </div>
+                        <i class="bi bi-person-x-fill fs-1 text-white-50"></i>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Bandeja de Comunicados de Administración -->
+    <div class="card border-0 shadow-sm rounded-3 mb-4">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-dark">
+                <i class="bi bi-envelope-paper-heart-fill text-danger me-2"></i>Bandeja de Comunicados Institucionales
+            </h5>
+            <span class="badge bg-light text-dark border">{{ mensajes_recibidos|length }} Notificaciones</span>
+        </div>
+        <div class="card-body p-0">
+            {% if mensajes_recibidos %}
+            <div class="list-group list-group-flush">
+                {% for m in mensajes_recibidos %}
+                <div class="list-group-item p-3">
+                    <div class="d-flex w-100 justify-content-between align-items-center mb-1">
+                        <h6 class="mb-1 fw-bold text-primary">
+                            <i class="bi bi-pin-angle-fill me-1 text-warning"></i>{{ m.asunto }}
+                            {% if m.tipo == 'general' %}
+                            <span class="badge bg-secondary ms-2">Circular General</span>
+                            {% else %}
+                            <span class="badge bg-info text-dark ms-2">Mensaje Privado</span>
+                            {% endif %}
+                        </h6>
+                        <small class="text-muted">{{ m.fecha_envio.strftime('%d/%m/%Y %H:%M') if m.fecha_envio else '' }}</small>
+                    </div>
+                    <p class="mb-0 text-dark small" style="white-space: pre-wrap;">{{ m.contenido }}</p>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-4 text-muted">
+                <i class="bi bi-chat-square-text fs-2 d-block mb-1 text-black-50"></i>
+                No tiene comunicados ni avisos nuevos de la Dirección.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Materias Asignadas -->
+    <h5 class="fw-bold text-dark mb-3">
+        <i class="bi bi-collection-play-fill text-primary me-2"></i>Mis Materias y Cursos
+    </h5>
+
+    {% if materias %}
+    <div class="row g-3">
+        {% for m in materias %}
+        <div class="col-12 col-md-6 col-lg-4">
+            <div class="card border-0 shadow-sm rounded-3 h-100">
+                <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-2">
+                    <h6 class="mb-0 fw-bold"><i class="bi bi-book me-1 text-warning"></i> {{ m.nombre }}</h6>
+                    <span class="badge bg-primary">{{ m.curso_id }}</span>
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-3">
+                        <strong>Nivel / Curso:</strong> {{ m.curso_id }}<br>
+                        <strong>Gestión:</strong> {{ now().year }}
+                    </p>
+                    <div class="d-grid gap-2">
+                        <a href="{{ url_for('profesores_portal.ver_materia', materia_id=m.id) }}" class="btn btn-primary fw-bold">
+                            <i class="bi bi-pencil-square me-1"></i> Calificaciones y Rúbricas
+                        </a>
+                        <a href="{{ url_for('profesores_portal.registrar_asistencia', materia_id=m.id) }}" class="btn btn-outline-success fw-bold">
+                            <i class="bi bi-calendar-check me-1"></i> Control de Asistencia Diaria
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-warning text-center rounded-3 shadow-sm py-4">
+        <i class="bi bi-exclamation-triangle-fill fs-3 d-block mb-2"></i>
+        No tiene materias ni cursos asignados actualmente. Consulte con Administración.
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

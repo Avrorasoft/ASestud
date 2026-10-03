@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}Envío de Boletines - Administración{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="mb-0 text-dark"><i class="bi bi-send-check-fill text-primary me-2"></i>Distribución de Boletines PWA</h2>
+        <form action="{{ url_for('admin_envios.enviar_masivo') }}" method="POST" onsubmit="return confirm('¿Está seguro de enviar los boletines a TODOS los estudiantes que NO tienen mora?');">
+            <button type="submit" class="btn btn-success fw-bold shadow-sm">
+                <i class="bi bi-broadcast me-2"></i>Enviar Masivamente (Solo Habilitados)
+            </button>
+        </form>
+    </div>
+
+    <div class="alert alert-info shadow-sm border-0">
+        <i class="bi bi-info-circle-fill me-2"></i>El sistema de envío masivo verifica en tiempo real la situación financiera de cada estudiante. Los boletines solo se enviarán si el PDF fue generado previamente y el estudiante no registra deudas vencidas.
+    </div>
+
+    <div class="card shadow-sm border-0 mt-4">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover mb-0 align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th class="ps-3">Estudiante</th>
+                            <th>Curso</th>
+                            <th>Estado PDF</th>
+                            <th>Estado Financiero</th>
+                            <th class="text-end pe-3">Acción Individual</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in lista %}
+                        <tr>
+                            <td class="ps-3 fw-bold">{{ item.estudiante.apellidos }}, {{ item.estudiante.nombres }}</td>
+                            <td>{{ item.estudiante.curso }}</td>
+                            <td>
+                                {% if item.tiene_pdf %}
+                                    <span class="badge bg-success"><i class="bi bi-file-pdf me-1"></i>Generado</span>
+                                {% else %}
+                                    <span class="badge bg-secondary"><i class="bi bi-x-circle me-1"></i>No Generado</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.tiene_mora %}
+                                    <span class="badge bg-danger"><i class="bi bi-exclamation-triangle-fill me-1"></i>En Mora</span>
+                                {% else %}
+                                    <span class="badge bg-success"><i class="bi bi-check-circle-fill me-1"></i>Al Día</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end pe-3">
+                                <form action="{{ url_for('admin_envios.enviar_individual', estudiante_id=item.estudiante.id) }}" method="POST" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-primary" {% if not item.tiene_pdf %}disabled{% endif %}>
+                                        <i class="bi bi-send-fill me-1"></i>Enviar al Chat
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

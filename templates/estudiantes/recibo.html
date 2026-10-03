@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3><i class="bi bi-receipt"></i> Recibo de Pago</h3>
+        <div>
+            <button onclick="copiarParaWhatsapp()" class="btn btn-success me-2">
+                <i class="bi bi-whatsapp"></i> Copiar para WhatsApp
+            </button>
+            <button onclick="window.print()" class="btn btn-info text-white">
+                <i class="bi bi-printer"></i> Imprimir
+            </button>
+            <a href="{{ url_for('estudiantes.ver_estudiante', id=est.id) }}" class="btn btn-outline-secondary">Volver al Cardex</a>
+        </div>
+    </div>
+
+    <div class="card mx-auto" style="max-width: 800px;" id="area_impresion">
+        <div class="card-body">
+            <div class="text-center mb-4">
+                <h4>COLEGIO DR. ANTONIO VACA DÍEZ</h4>
+                <p class="text-muted">Riberalta, Beni - Bolivia</p>
+                <h5 class="text-success">RECIBO DE PAGO DE PENSIONES</h5>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-6"><strong>Estudiante:</strong> {{ est.apellidos }}, {{ est.nombres }}</div>
+                <div class="col-6 text-end"><strong>RUDE:</strong> {{ est.rude }}</div>
+                <div class="col-6"><strong>Curso:</strong> {{ est.curso }}</div>
+                <div class="col-6 text-end"><strong>Fecha:</strong> {{ datetime.now().strftime('%d/%m/%Y') }}</div>
+            </div>
+            
+            <table class="table table-bordered">
+                <thead class="table-light">
+                    <tr><th>Mes</th><th>Monto</th><th>Descuento</th><th>Pagado</th></tr>
+                </thead>
+                <tbody>
+                    {% for p in pagos %}
+                    <tr>
+                        <td>{{ p.mes }} {{ p.anio }}</td>
+                        <td>Bs. {{ p.monto_total }}</td>
+                        <td>Bs. {{ p.descuento }}</td>
+                        <td class="text-success fw-bold">Bs. {{ p.monto_pagado }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <div class="text-center mt-4">
+                <p class="text-muted small">Este documento es un comprobante válido de pago.</p>
+                <p class="fw-bold">Total Pagado: Bs. {{ "%.2f"|format(pagos|sum(attribute='monto_pagado')) }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function copiarParaWhatsapp() {
+    let texto = `*COMPROBANTE DE PAGO - COLEGIO DR. ANTONIO VACA DÍEZ*\n\n`;
+    texto += `Estudiante: {{ est.apellidos }}, {{ est.nombres }}\n`;
+    texto += `RUDE: {{ est.rude }}\n`;
+    texto += `Curso: {{ est.curso }}\n\n`;
+    texto += `*Detalle del Pago:*\n`;
+    {% for p in pagos %}
+    texto += `- {{ p.mes }} {{ p.anio }}: Bs. {{ p.monto_pagado }}\n`;
+    {% endfor %}
+    texto += `\n*Total Pagado:* Bs. {{ "%.2f"|format(pagos|sum(attribute='monto_pagado')) }}\n\n`;
+    texto += `_Gracias por su puntualidad._`;
+    
+    navigator.clipboard.writeText(texto).then(() => {
+        alert('Recibo copiado al portapapeles. Ahora pégalo en WhatsApp.');
+    });
+}
+</script>
+{% endblock %}

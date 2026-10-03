@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Historial de Adelantos - {{ profesor.apellidos }}, {{ profesor.nombres }}{% endblock %}
+
+{% block content %}
+<style>
+    @media print {
+        nav, header, footer, .sidebar, .d-print-none, .btn, .alert, form {
+            display: none !important;
+        }
+        body, .container-fluid, main {
+            background-color: #ffffff !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            width: 100% !important;
+        }
+        .encabezado-impresion-oficial {
+            display: block !important;
+        }
+        .table {
+            font-size: 10pt;
+            width: 100% !important;
+        }
+        .table th, .table td {
+            padding: 6px 8px !important;
+        }
+        .seccion-firmas {
+            display: flex !important;
+            justify-content: space-around;
+            margin-top: 60px;
+        }
+    }
+    .encabezado-impresion-oficial {
+        display: none;
+    }
+    .seccion-firmas {
+        display: none;
+    }
+</style>
+
+<div class="container-fluid py-4">
+    <!-- Membrete oficial visible solo al imprimir -->
+    <div class="encabezado-impresion-oficial text-center mb-4 border-bottom pb-3">
+        <h4 class="fw-bold mb-0">COLEGIO DR. ANTONIO VACA DÍEZ</h4>
+        <p class="text-muted small mb-1">PLANILLA OFICIAL DE DESGLOSE DE ADELANTOS Y RETENCIONES</p>
+        <h5 class="fw-bold text-dark mt-2 mb-1">DOCENTE: {{ profesor.apellidos|upper }}, {{ profesor.nombres|upper }}</h5>
+        <p class="mb-0 small"><strong>C.I.:</strong> {{ profesor.ci }} &bull; <strong>Mes Consultado:</strong> {{ mes_filtro|upper }} / {{ anio_filtro }} &bull; <strong>Sueldo Base:</strong> Bs. {{ "{:,.2f}".format(profesor.salario_base or 0.0) }}</p>
+    </div>
+
+    <!-- Barra de acciones en pantalla -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 d-print-none">
+        <div>
+            <h3 class="fw-bold text-dark mb-1">
+                <i class="bi bi-wallet2 text-warning me-2"></i>Desglose de Adelantos por Docente
+            </h3>
+            <p class="text-muted mb-0">
+                <strong>{{ profesor.apellidos }}, {{ profesor.nombres }}</strong> (C.I.: {{ profesor.ci }}) &bull; Salario Base: Bs. {{ "{:,.2f}".format(profesor.salario_base or 0.0) }}
+            </p>
+        </div>
+        <div class="d-flex gap-2">
+            <button onclick="window.print();" class="btn btn-outline-dark">
+                <i class="bi bi-printer me-1"></i> Imprimir Planilla Mensual
+            </button>
+            <a href="{{ url_for('profesores.ver_profesor', id=profesor.id) }}" class="btn btn-secondary">
+                <i class="bi bi-arrow-left me-1"></i> Volver a Ficha
+            </a>
+        </div>
+    </div>
+
+    <!-- Registro de Nuevo Adelanto (Oculto al imprimir) -->
+    <div class="card border-0 shadow-sm rounded-3 mb-4 d-print-none">
+        <div class="card-header bg-primary text-white py-2">
+            <h6 class="mb-0 fw-bold"><i class="bi bi-plus-circle me-2"></i>Registrar Entrega de Adelanto</h6>
+        </div>
+        <div class="card-body">
+            <form action="{{ url_for('profesores.registrar_adelanto_profesor', id=profesor.id) }}" method="POST" class="row g-3 align-items-end">
+                <div class="col-12 col-md-3">
+                    <label class="form-label small fw-semibold">Mes de Imputación</label>
+                    <select name="mes" class="form-select" required>
+                        {% for m in meses_disponibles %}
+                        <option value="{{ m }}" {% if m == mes_filtro %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-12 col-md-2">
+                    <label class="form-label small fw-semibold">Monto (Bs.)</label>
+                    <input type="number" step="0.50" min="1" name="monto" class="form-control" placeholder="Ej: 150.00" required>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label small fw-semibold">Concepto / Motivo de Entrega</label>
+                    <input type="text" name="motivo" list="lista-motivos" class="form-control" placeholder="Ej: Consumo en Snack, Adelanto Personal..." required>
+                    <datalist id="lista-motivos">
+                        <option value="Consumo en Snack">
+                        <option value="Adelanto Personal de Sueldo">
+                        <option value="Descuento por Cuota">
+                        <option value="Préstamo Institucional">
+                        <option value="Anticipo de Emergencia">
+                    </datalist>
+                </div>
+                <div class="col-12 col-md-3">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-check2-circle me-1"></i> Guardar Adelanto
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Filtro de Consulta por Periodo -->
+    <div class="card border-0 shadow-sm rounded-3 mb-4 d-print-none bg-light">
+        <div class="card-body py-2">
+            <form method="GET" class="row g-2 align-items-center">
+                <div class="col-auto">
+                    <span class="small fw-bold text-muted"><i class="bi bi-funnel me-1"></i>Filtrar Historial:</span>
+                </div>
+                <div class="col-auto">
+                    <select name="mes" class="form-select form-select-sm" onchange="this.form.submit()">
+                        {% for m in meses_disponibles %}
+                        <option value="{{ m }}" {% if m == mes_filtro %}selected{% endif %}>{{ m }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <span class="badge bg-danger fs-6 px-3 py-2">
+                        Total Adelantos en {{ mes_filtro }}: Bs. {{ "{:,.2f}".format(total_mes) }}
+                    </span>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla Detallada del Desglose -->
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold text-dark">
+                Detalle de Entregas - Periodo: {{ mes_filtro }} / {{ anio_filtro }}
+            </h5>
+            <span class="fw-bold text-primary">Saldo Pendiente de Liquidación: Bs. {{ "{:,.2f}".format(profesor.adelanto or 0.0) }}</span>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Fecha de Entrega</th>
+                        <th>Concepto / Motivo Detallado</th>
+                        <th>Mes Aplicado</th>
+                        <th class="text-end pe-3">Monto Entregado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if not adelantos %}
+                    <tr>
+                        <td colspan="5" class="text-center py-4 text-muted">
+                            <i class="bi bi-check2-circle fs-3 d-block text-success mb-2"></i>
+                            No existen registros de adelantos para el mes de {{ mes_filtro }}.
+                        </td>
+                    </tr>
+                    {% else %}
+                    {% for a in adelantos %}
+                    <tr>
+                        <td class="ps-3 text-muted small">{{ loop.index }}</td>
+                        <td>{{ a.fecha_pago.strftime('%d/%m/%Y') if a.fecha_pago else '-' }}</td>
+                        <td>
+                            <span class="fw-semibold text-dark">{{ a.motivo or 'Adelanto de Sueldo' }}</span>
+                        </td>
+                        <td><span class="badge bg-light text-dark border">{{ a.mes }} / {{ a.anio }}</span></td>
+                        <td class="text-end pe-3 fw-bold text-danger">Bs. {{ "{:,.2f}".format(a.monto_neto_pagado or 0.0) }}</td>
+                    </tr>
+                    {% endfor %}
+                    {% endif %}
+                </tbody>
+                <tfoot class="table-group-divider bg-light fw-bold">
+                    <tr>
+                        <td colspan="4" class="text-end ps-3">TOTAL ADELANTOS RETENIDOS ({{ mes_filtro|upper }}):</td>
+                        <td class="text-end pe-3 text-danger fs-6">Bs. {{ "{:,.2f}".format(total_mes) }}</td>
+                    </tr>
+                    <tr class="table-secondary">
+                        <td colspan="4" class="text-end ps-3">SALDO ESTIMADO A COBRAR EN SUELDO NETO:</td>
+                        <td class="text-end pe-3 text-success fs-6">
+                            Bs. {{ "{:,.2f}".format([0.0, (profesor.salario_base or 0.0) - total_mes]|max) }}
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <!-- Espacio de firmas al imprimir -->
+    <div class="seccion-firmas">
+        <div style="text-align: center; width: 220px; border-top: 1px solid #000; padding-top: 5px;">
+            <p class="small mb-0"><strong>Firma del Docente</strong></p>
+            <p class="small text-muted mb-0">C.I.: {{ profesor.ci }}</p>
+        </div>
+        <div style="text-align: center; width: 220px; border-top: 1px solid #000; padding-top: 5px;">
+            <p class="small mb-0"><strong>Administración / Caja</strong></p>
+            <p class="small text-muted mb-0">Colegio Dr. Antonio Vaca Díez</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

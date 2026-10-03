@@ -1,0 +1,203 @@
+{% extends "base.html" %}
+
+{% block title %}
+Nuevo Estudiante - Colegio Dr. Antonio Vaca Díez
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+
+    <div class="card shadow">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                Registrar Nuevo Estudiante
+            </h4>
+
+            <a href="{{ url_for('estudiantes.index') }}"
+               class="btn btn-sm btn-light">
+                Volver al Listado
+            </a>
+        </div>
+
+        <div class="card-body">
+
+            <div class="alert alert-info">
+                El <strong>C.I.</strong> será el identificador principal del estudiante.
+                El <strong>RUDE</strong> es opcional (solo informativo).
+                El <strong>Turno</strong> es obligatorio.
+            </div>
+
+            <form method="POST">
+
+                <h5>
+                    Datos Académicos y Personales
+                </h5>
+
+                <div class="row">
+
+                    <!-- C.I. IDENTIFICADOR PRINCIPAL OBLIGATORIO -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            C.I. *
+                        </label>
+
+                        <input type="text"
+                               name="ci"
+                               class="form-control"
+                               placeholder="Carnet de Identidad"
+                               required>
+                    </div>
+
+                    <!-- RUDE OPCIONAL (NO OBLIGATORIO) -->
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            RUDE (opcional)
+                        </label>
+
+                        <input type="text"
+                               name="rude"
+                               class="form-control"
+                               placeholder="Opcional - solo informativo">
+                    </div>
+
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">
+                            Nombres *
+                        </label>
+
+                        <input type="text"
+                               name="nombres"
+                               class="form-control"
+                               placeholder="Nombres del estudiante"
+                               required>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            Apellidos *
+                        </label>
+
+                        <input type="text"
+                               name="apellidos"
+                               class="form-control"
+                               placeholder="Apellidos del estudiante"
+                               required>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label">
+                            Curso *
+                        </label>
+
+                        <select name="curso"
+                                class="form-select"
+                                required>
+
+                            <option value="">
+                                Seleccione un curso...
+                            </option>
+
+                            <optgroup label="Nidito">
+                                <option value="Nidito 1">Nidito 1</option>
+                                <option value="Nidito 2">Nidito 2</option>
+                            </optgroup>
+
+                            <optgroup label="Primaria">
+                                <option value="1ro Primaria">1ro Primaria</option>
+                                <option value="2do Primaria">2do Primaria</option>
+                                <option value="3ro Primaria">3ro Primaria</option>
+                                <option value="4to Primaria">4to Primaria</option>
+                                <option value="5to Primaria">5to Primaria</option>
+                                <option value="6to Primaria">6to Primaria</option>
+                            </optgroup>
+
+                            <optgroup label="Secundaria">
+                                <option value="1ro Secundaria">1ro Secundaria</option>
+                                <option value="2do Secundaria">2do Secundaria</option>
+                                <option value="3ro Secundaria">3ro Secundaria</option>
+                                <option value="4to Secundaria">4to Secundaria</option>
+                                <option value="5to Secundaria">5to Secundaria</option>
+                                <option value="6to Secundaria">6to Secundaria</option>
+                            </optgroup>
+
+                        </select>
+                    </div>
+
+                    <!-- TURNO OBLIGATORIO -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">
+                            Turno *
+                        </label>
+
+                        <select name="turno"
+                                class="form-select"
+                                required>
+
+                            <option value="">-- Seleccione --</option>
+                            <option value="Mañana">Mañana</option>
+                            <option value="Tarde">Tarde</option>
+
+                        </select>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">
+                            Pensión Mensual (Bs.) *
+                        </label>
+
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                Bs.
+                            </span>
+
+                            <input type="number"
+                                   name="pension"
+                                   class="form-control"
+                                   step="0.01"
+                                   min="0"
+                                   value="0"
+                                   required>
+                        </div>
+                    </div>
+
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label">
+                            Estado del Alumno
+                        </label>
+
+                        <select name="estado"
+                                class="form-select">
+
+                            <option value="Activo" selected>
+                                Activo
+                            </option>
+
+                            <option value="Inactivo">
+                                Inactivo
+                            </option>
+
+                        </select>
+                    </div>
+
+                </div>
+
+                <div class="d-flex justify-content-between mt-3">
+
+                    <a href="{{ url_for('estudiantes.index') }}"
+                       class="btn btn-secondary">
+                        Cancelar
+                    </a>
+
+                    <button type="submit" class="btn btn-success">
+                        Guardar Estudiante
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

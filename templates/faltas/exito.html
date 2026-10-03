@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container mt-5 text-center">
+    <div class="card p-5 shadow-lg" style="max-width: 600px; margin: auto;">
+        <div class="mb-4">
+            <i class="bi bi-check-circle-fill text-success" style="font-size: 4rem;"></i>
+        </div>
+        <h3 class="mb-3">¡Registro Exitoso!</h3>
+        <p class="text-muted">El registro de asistencia ({{ falta.tipo_falta }}) del día {{ falta.fecha.strftime('%d/%m/%Y') }} ha sido guardado correctamente[cite: 6].</p>
+        
+        {% if whatsapp_link %}
+        <div class="alert alert-info mt-4">
+            <p class="mb-2"><strong>¿Deseas notificar al tutor inmediatamente?</strong></p>
+            <a href="{{ whatsapp_link }}" target="_blank" class="btn btn-success btn-lg w-100">
+                <i class="bi bi-whatsapp"></i> Enviar Aviso por WhatsApp
+            </a>
+            <small class="text-muted d-block mt-2">Se abrirá WhatsApp con un mensaje pre-redactado listo para enviar[cite: 6].</small>
+        </div>
+        {% endif %}
+
+        <div class="mt-4 d-flex justify-content-center gap-3">
+            <a href="{{ url_for('faltas.nueva_falta') }}" class="btn btn-outline-primary">Registrar Otro</a>
+            <a href="{{ url_for('faltas.lista_faltas') }}" class="btn btn-secondary">Ver Listado</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

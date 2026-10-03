@@ -1,0 +1,309 @@
+        
+{% extends "base.html" %}
+
+{% block title %}
+Gestión de Estudiantes - Colegio Dr. Antonio Vaca Díez
+
+{% endblock %}
+
+{% block content %}
+{# MARCA DE AGUA INTEGRADA DE FONDO (DETRÁS DEL TEXTO) #}
+    {% set _est = est if (est is defined and est) else (estudiante if (estudiante is defined and estudiante) else (alumno if (alumno is defined and alumno) else None)) %}
+    {% if _est %}
+    {% endif %}
+<div class="container mt-4">
+
+    <!-- =============================================================== -->
+    <!-- ENCABEZADO -->
+    <!-- =============================================================== -->
+
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 class="mb-0">
+            Gestión de Estudiantes
+        </h3>
+
+        <a href="{{ url_for('estudiantes.nuevo_estudiante') }}"
+           class="btn btn-success">
+            Nuevo Estudiante
+        </a>
+    </div>
+
+    <!-- =============================================================== -->
+    <!-- FILTROS: CURSO, NIVEL, TURNO Y BÚSQUEDA POR C.I. -->
+    <!-- =============================================================== -->
+
+    <form method="GET" class="mb-4">
+
+        <div class="row g-2 mb-2">
+
+            <div class="col-md-3">
+                <select name="curso"
+                        class="form-select"
+                        onchange="this.form.submit()">
+
+                    <option value="">
+                        -- Seleccione un curso --
+                    </option>
+
+                    <option value="todos"
+                        {% if curso_seleccionado == 'todos' %}selected{% endif %}>
+                        Todos los Cursos
+                    </option>
+
+                    {% for c in cursos %}
+                    <option value="{{ c }}"
+                        {% if curso_seleccionado == c %}selected{% endif %}>
+                        {{ c }}
+                    </option>
+                    {% endfor %}
+
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <select name="nivel"
+                        class="form-select"
+                        onchange="this.form.submit()">
+
+                    <option value="">-- Todos los Niveles --</option>
+
+                    <option value="Nidito"
+                        {% if nivel_seleccionado == 'Nidito' %}selected{% endif %}>
+                        Nidito
+                    </option>
+
+                    <option value="Primaria"
+                        {% if nivel_seleccionado == 'Primaria' %}selected{% endif %}>
+                        Primaria
+                    </option>
+
+                    <option value="Secundaria"
+                        {% if nivel_seleccionado == 'Secundaria' %}selected{% endif %}>
+                        Secundaria
+                    </option>
+
+                </select>
+            </div>
+
+            <div class="col-md-3">
+                <select name="turno"
+                        class="form-select"
+                        onchange="this.form.submit()">
+
+                    <option value="">-- Todos los Turnos --</option>
+
+                    <option value="Mañana"
+                        {% if turno_seleccionado == 'Mañana' %}selected{% endif %}>
+                        Mañana
+                    </option>
+
+                    <option value="Tarde"
+                        {% if turno_seleccionado == 'Tarde' %}selected{% endif %}>
+                        Tarde
+                    </option>
+
+                </select>
+            </div>
+
+            <div class="col-md-3 d-flex gap-2">
+                <a href="{{ url_for('estudiantes.index') }}"
+                   class="btn btn-outline-secondary w-100">
+                    Limpiar
+                </a>
+            </div>
+
+        </div>
+
+        <div class="row g-2">
+
+            <div class="col-md-9">
+                <input type="text"
+                       name="q"
+                       value="{{ q or '' }}"
+                       class="form-control"
+                       placeholder="Buscar por C.I., nombre, apellido o RUDE">
+            </div>
+
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    Buscar
+                </button>
+            </div>
+
+        </div>
+
+    </form>
+
+    <!-- =============================================================== -->
+    <!-- BOTÓN BOLETINES POR CURSO -->
+    <!-- =============================================================== -->
+
+    {% if curso_seleccionado and curso_seleccionado != 'todos' %}
+    <div class="mb-3">
+        <a href="{{ url_for('estudiantes.boletines_curso', curso=curso_seleccionado) }}"
+           class="btn btn-outline-primary">
+            Generar Boletines PDF del curso {{ curso_seleccionado }}
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- =============================================================== -->
+    <!-- TABLA DE ESTUDIANTES -->
+    <!-- =============================================================== -->
+
+    <div class="card shadow-sm">
+        <div class="card-header">
+            Estudiantes
+            {% if q %}
+                - Búsqueda: "{{ q }}"
+            {% elif curso_seleccionado %}
+                de {{ curso_seleccionado }}
+            {% endif %}
+
+            ({{ estudiantes|length }})
+        </div>
+
+        <div class="card-body">
+
+            {% if estudiantes %}
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>C.I.</th>
+                            <th>Foto</th>
+                            <th>Apellidos y Nombres</th>
+                            <th>Curso</th>
+                            <th>Nivel</th>
+                            <th>Turno</th>
+                            <th>Pensión</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for est in estudiantes %}
+                        <tr>
+                            <td>
+                                <strong>{{ est.ci }}</strong>
+
+                                {% if est.rude %}
+                                <br>
+                                <small class="text-muted">
+                                    RUDE: {{ est.rude }}
+                                </small>
+                                {% endif %}
+                            </td>
+
+						<td>
+							{% if est.foto_path and est.foto_path != 'default.png' %}
+							<img src="{{ url_for('static', filename=est.foto_path) }}?v={{ now().timestamp()|int }}"
+								class="img-thumbnail"
+								style="max-width:60px;">
+							{% else %}
+							<div class="bg-light border text-center p-2"
+								style="width:60px;">
+								<small>S/F</small>
+							</div>
+							{% endif %}
+						</td>
+
+                            <td>
+                                {{ est.apellidos }}, {{ est.nombres }}
+                            </td>
+
+                            <td>
+                                {{ est.curso }}
+                            </td>
+
+                            <!-- ⭐ NIVEL -->
+                            <td>
+                                {% if 'Primaria' in est.curso %}
+                                    Primaria
+                                {% elif 'Secundaria' in est.curso %}
+                                    Secundaria
+                                {% elif 'Nidito' in est.curso %}
+                                    Nidito
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+
+                            <!-- ⭐ TURNO -->
+                            <td>
+                                {% if est.turno == 'Tarde' %}
+                                <span class="badge bg-warning text-dark">
+                                    Tarde
+                                </span>
+                                {% else %}
+                                <span class="badge bg-info text-dark">
+                                    Mañana
+                                </span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                Bs. {{ "%.2f"|format(est.pension or 0) }}
+                            </td>
+
+                            <td>
+                                {% if est.estado == 'Activo' %}
+                                <span class="badge bg-success">
+                                    {{ est.estado }}
+                                </span>
+                                {% elif est.estado == 'Archivado' %}
+                                <span class="badge bg-secondary">
+                                    {{ est.estado }}
+                                </span>
+                                {% else %}
+                                <span class="badge bg-warning text-dark">
+                                    {{ est.estado }}
+                                </span>
+                                {% endif %}
+                            </td>
+
+                            <td>
+                                <div class="d-flex gap-1 flex-wrap">
+
+                                    <a href="{{ url_for('estudiantes.ver_estudiante', id=est.id) }}"
+                                       class="btn btn-sm btn-primary"
+                                       title="Cardex">
+                                        <i class="bi bi-eye-fill"></i>
+                                    </a>
+
+                                    <a href="{{ url_for('estudiantes.pagar_estudiante', id=est.id) }}"
+                                       class="btn btn-sm btn-success"
+                                       title="Registrar Pago">
+                                        <i class="bi bi-cash-stack"></i>
+                                    </a>
+
+                                    <a href="{{ url_for('estudiantes.editar_estudiante', id=est.id) }}"
+                                       class="btn btn-sm btn-warning"
+                                       title="Editar">
+                                        <i class="bi bi-pencil-fill"></i>
+                                    </a>
+
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% else %}
+            <div class="alert alert-info">
+                No hay estudiantes registrados para mostrar.
+            </div>
+            {% endif %}
+
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+

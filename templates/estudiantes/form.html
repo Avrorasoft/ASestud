@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Editar' if action == 'editar' else 'Nuevo' }} Estudiante - Colegio Dr. Antonio Vaca Díez{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-dark">
+            <i class="bi bi-person-plus-fill me-2"></i>
+            {{ 'Editar' if action == 'editar' else 'Nuevo' }} Estudiante
+        </h2>
+        <a href="{{ url_for('estudiantes.index') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver al Listado
+        </a>
+    </div>
+
+    <form method="POST" enctype="multipart/form-data">
+        <div class="card shadow mb-4">
+            <div class="card-header bg-light text-dark">
+                <h5 class="mb-0 text-dark">Datos del Estudiante</h5>
+            </div>
+            <div class="card-body text-dark">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label text-dark">RUDE <span class="text-danger">*</span></label>
+                        <input type="text" name="rude" class="form-control text-dark" value="{{ estudiante.rude if estudiante else '' }}" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label text-dark">Curso <span class="text-danger">*</span></label>
+                        <select name="curso" class="form-select text-dark" required>
+                            <option value="">Seleccionar curso...</option>
+                            {% for c in ['1ro Primaria','2do Primaria','3ro Primaria','4to Primaria','5to Primaria','6to Primaria','1ro Secundaria','2do Secundaria','3ro Secundaria','4to Secundaria','5to Secundaria','6to Secundaria'] %}
+                            <option value="{{ c }}" {% if estudiante and estudiante.curso == c %}selected{% endif %} class="text-dark">{{ c }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label text-dark">Estado</label>
+                        <select name="estado" class="form-select text-dark">
+                            {% for e in ['Activo','Inactivo','Retirado','Archivado'] %}
+                            <option value="{{ e }}" {% if estudiante and estudiante.estado == e %}selected{% endif %} class="text-dark">{{ e }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-dark">Apellidos <span class="text-danger">*</span></label>
+                        <input type="text" name="apellidos" class="form-control text-dark" value="{{ estudiante.apellidos if estudiante else '' }}" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-dark">Nombres <span class="text-danger">*</span></label>
+                        <input type="text" name="nombres" class="form-control text-dark" value="{{ estudiante.nombres if estudiante else '' }}" required>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label text-dark">Fecha de Nacimiento <span class="text-danger">*</span></label>
+                        <input type="date" name="fecha_nacimiento" class="form-control text-dark" value="{{ estudiante.fecha_nacimiento.strftime('%Y-%m-%d') if estudiante and estudiante.fecha_nacimiento else '' }}" required>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label text-dark">Pensión Mensual (Bs.)</label>
+                        <input type="number" name="pension" class="form-control text-dark" step="0.01" value="{{ estudiante.pension if estudiante and estudiante.pension else '0' }}">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label text-dark">Foto del Estudiante</label>
+                        <input type="file" name="foto" class="form-control text-dark" accept="image/*">
+                        {% if estudiante and estudiante.foto_path and estudiante.foto_path != 'default.png' %}
+                        <small class="text-muted">Foto actual: {{ estudiante.foto_path }}</small>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-dark">Dirección</label>
+                        <input type="text" name="direccion" class="form-control text-dark" value="{{ estudiante.direccion if estudiante else '' }}">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label text-dark">Zona</label>
+                        <input type="text" name="zona" class="form-control text-dark" value="{{ estudiante.zona if estudiante else '' }}">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label text-dark">Ciudad</label>
+                        <input type="text" name="ciudad" class="form-control text-dark" value="{{ estudiante.ciudad if estudiante else '' }}">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="card shadow mb-4">
+            <div class="card-header bg-light text-dark">
+                <h5 class="mb-0 text-dark">Datos del Padre/Tutor Principal</h5>
+            </div>
+            <div class="card-body text-dark">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label text-dark">Parentesco</label>
+                        <select name="parentesco" class="form-select text-dark">
+                            {% for p in ['Padre','Madre','Tutor Legal','Abuelo/a','Otro'] %}
+                            <option value="{{ p }}" {% if padre and padre.parentesco == p %}selected{% endif %} class="text-dark">{{ p }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-8 mb-3">
+                        <label class="form-label text-dark">Nombres Completos</label>
+                        <input type="text" name="nombres_padre" class="form-control text-dark" value="{{ padre.nombres if padre else '' }}">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label text-dark">Cédula de Identidad</label>
+                        <input type="text" name="ci_padre" class="form-control text-dark" value="{{ padre.ci if padre else '' }}">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label text-dark">Correo Electrónico</label>
+                        <input type="email" name="email_padre" class="form-control text-dark" value="{{ padre.email if padre else '' }}">
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label text-dark">Ocupación</label>
+                        <input type="text" name="ocupacion_padre" class="form-control text-dark" value="{{ padre.ocupacion if padre else '' }}">
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label text-dark">Teléfono 1</label>
+                        <input type="text" name="telefono1_padre" class="form-control text-dark" value="{{ padre.telefono1 if padre else '' }}">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label text-dark">Teléfono 2</label>
+                        <input type="text" name="telefono2_padre" class="form-control text-dark" value="{{ padre.telefono2 if padre else '' }}">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label text-dark">Teléfono 3</label>
+                        <input type="text" name="telefono3_padre" class="form-control text-dark" value="{{ padre.telefono3 if padre else '' }}">
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label text-dark">Teléfono 4</label>
+                        <input type="text" name="telefono4_padre" class="form-control text-dark" value="{{ padre.telefono4 if padre else '' }}">
+                    </div>
+                </div>
+                <small class="text-muted">Al menos un teléfono es recomendado para contacto de emergencia.</small>
+            </div>
+        </div>
+
+        <div class="d-flex justify-content-between">
+            <a href="{{ url_for('estudiantes.index') }}" class="btn btn-secondary btn-lg">
+                <i class="bi bi-x-circle"></i> Cancelar
+            </a>
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="bi bi-save"></i> {{ 'Actualizar' if action == 'editar' else 'Guardar' }} Estudiante
+            </button>
+        </div>
+    </form>
+
+    <div class="alert alert-info mt-4 text-dark">
+        <h6 class="text-dark"><i class="bi bi-info-circle-fill"></i> Información</h6>
+        <ul class="mb-0 text-dark">
+            <li>Los campos marcados con <span class="text-danger">*</span> son obligatorios.</li>
+            <li>La foto debe ser JPG, PNG o GIF (máx. 16MB).</li>
+            <li>Se recomienda registrar al menos un teléfono de contacto.</li>
+            <li>Los datos se guardan de forma segura en la base de datos.</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}

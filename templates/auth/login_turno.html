@@ -1,0 +1,73 @@
+<!-- Ruta: D:\colegio_vaca_diez\templates\auth\login_turno.html -->
+{% extends "base.html" %}
+{% block title %}Acceso por Turnos{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center mt-5">
+    <div class="col-md-5">
+        <div class="card shadow border-0 overflow-hidden">
+            <!-- Cabecera Institucional Inteligente -->
+            <div class="card-header bg-dark text-white text-center py-4 border-0">
+                <div class="mb-3">
+                    {% set logo_val = institucion.institucion_logo if institucion else '' %}
+                    {% if institucion.institucion_logo_url %}
+                        <!-- Logo real cargado por el usuario -->
+                        <img src="{{ institucion.institucion_logo_url }}" alt="Logo Institucional" style="max-height: 70px; object-fit: contain;" class="bg-white p-1 rounded shadow-sm">
+                    {% else %}
+                        <!-- Icono vectorial por defecto (Birrete Académico) cuando hay reseteo -->
+                        <div class="d-inline-flex align-items-center justify-content-center bg-white text-primary rounded-circle shadow-sm" style="width: 80px; height: 80px;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="45" height="45" fill="currentColor" class="bi bi-mortarboard-fill" viewBox="0 0 16 16">
+                                <path d="M8.211 2.047a.5.5 0 0 0-.422 0l-7.5 3.5a.5.5 0 0 0 .025.917l7.5 3a.5.5 0 0 0 .372 0L14 6.5V13a.5.5 0 0 0 1 0V6.018l.507-.224a.5.5 0 0 0 .025-.917l-7.5-3.5Z"/>
+                                <path d="M4.176 9.032a.5.5 0 0 0-.656.327l-.5 1.7a.5.5 0 0 0 .294.605l4.5 1.8a.5.5 0 0 0 .372 0l4.5-1.8a.5.5 0 0 0 .294-.605l-.5-1.7a.5.5 0 0 0-.656-.327L8 10.43 4.176 9.032Z"/>
+                            </svg>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- Textos dinámicos globales -->
+                <h4 class="fw-bold mb-1">{{ institucion.institucion_linea1 if institucion and institucion.institucion_linea1 else 'Sistema de Gestión Escolar' }}</h4>
+                <p class="mb-0 small text-white-50">{{ institucion.institucion_linea2 if institucion and institucion.institucion_linea2 else 'Módulo Académico Institucional' }}</p>
+            </div>
+
+            <div class="card-body p-4 text-center">
+                <h5 class="fw-bold mb-4 text-secondary">Control de Turnos</h5>
+                
+                {% with messages = get_flashed_messages(with_categories=true) %}
+                  {% if messages %}
+                    {% for category, message in messages %}
+                      <div class="alert alert-{{ category if category != 'error' else 'danger' }} alert-dismissible fade show py-2">
+                          <small>{{ message }}</small>
+                          <button type="button" class="btn-close py-2" data-bs-dismiss="alert"></button>
+                      </div>
+                    {% endfor %}
+                  {% endif %}
+                {% endwith %}
+
+                <form method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    
+                    <div class="mb-3 text-start">
+                        <label class="form-label fw-bold text-muted small">Seleccione Turno:</label>
+                        <select name="turno" class="form-select form-select-lg" required style="font-size: 1rem;">
+                            <option value="" selected disabled>Seleccione un turno...</option>
+                            <option value="Mañana">Turno Mañana</option>
+                            <option value="Tarde">Turno Tarde</option>
+                        </select>
+                    </div>
+                    <div class="mb-4 text-start">
+                        <label class="form-label fw-bold text-muted small">Contraseña de Caja:</label>
+                        <input type="password" name="password" class="form-control form-select-lg" placeholder="••••••••" required style="font-size: 1rem;">
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 fw-bold py-2">Ingresar al Turno</button>
+                </form>
+                
+                <div class="mt-4">
+                    <a href="{{ url_for('auth.login') }}" class="text-decoration-none small text-muted">
+                        <i class="bi bi-shield-lock"></i> Acceso Maestro
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

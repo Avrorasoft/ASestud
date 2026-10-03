@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}Chats - Colegio Vaca Díez{% endblock %}
+{% block content %}
+<div class="container py-4">
+    <h3 class="text-dark mb-4"><i class="bi bi-chat-left-text me-2"></i>Mis Conversaciones</h3>
+    
+    <div class="list-group shadow-sm">
+        {% for chat in chats %}
+            {% if chat.estudiante %}
+            <a href="{{ url_for('chat.conversacion', estudiante_id=chat.estudiante.id) }}" 
+               class="list-group-item list-group-item-action d-flex align-items-center p-3 border-bottom">
+                <div class="me-3">
+                    {% if chat.estudiante.foto_path and chat.estudiante.foto_path != 'default.png' %}
+                        <img src="{{ url_for('static', filename=chat.estudiante.foto_path) }}" class="rounded-circle" width="50" height="50" style="object-fit: cover;">
+                    {% else %}
+                        <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                            <i class="bi bi-person-fill fs-4"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between">
+                        <h6 class="mb-1 text-dark fw-bold">{{ chat.estudiante.apellidos }}, {{ chat.estudiante.nombres }}</h6>
+                        <small class="text-muted">{{ chat.fecha.strftime('%H:%M') }}</small>
+                    </div>
+                    <p class="mb-0 text-muted small text-truncate" style="max-width: 250px;">
+                        {% if chat.ultimo_msg.startswith('uploads/') %}
+                            <i class="bi bi-paperclip me-1"></i> Archivo adjunto
+                        {% else %}
+                            {{ chat.ultimo_msg }}
+                        {% endif %}
+                    </p>
+                </div>
+            </a>
+            {% endif %}
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-chat-square-dots fs-1"></i>
+            <p>No hay conversaciones activas con estudiantes registrados.</p>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-dark fw-bold mb-0">Dashboard Ejecutivo</h2>
+        <div>
+            <!-- Botón de Acceso a Bóveda Superadmin -->
+            <button type="button" class="btn btn-dark text-warning fw-bold me-3 shadow-sm" data-bs-toggle="modal" data-bs-target="#adminModal">
+                <i class="bi bi-shield-lock-fill me-1"></i>Bóveda Superadmin
+            </button>
+
+            <span class="badge bg-secondary fs-6 px-3 py-2 shadow-sm">
+                <i class="bi bi-calendar3 me-1"></i> Período de Caja: {{ mes_actual }}
+            </span>
+        </div>
+    </div>
+
+    <!-- Modal de Contraseña para la Bóveda -->
+    <div class="modal fade" id="adminModal" tabindex="-1">
+        <div class="modal-dialog modal-dialog-centered modal-sm">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-header bg-dark text-warning border-0">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-shield-lock me-2"></i>Acceso Restringido</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="{{ url_for('superadmin.auth') }}" method="POST">
+                    <!-- ⭐ TOKEN CSRF OBLIGATORIO -->
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="modal-body p-4 bg-light">
+                        <label class="form-label text-dark fw-bold mb-2">Clave de Seguridad:</label>
+                        <input type="password" name="password" class="form-control form-control-lg border-dark" placeholder="••••••••" required autofocus>
+                    </div>
+                    <div class="modal-footer border-0 bg-light pt-0">
+                        <button type="submit" class="btn btn-warning w-100 fw-bold fs-5 text-dark shadow-sm">Ingresar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs Principales -->
+    <div class="row">
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start-success shadow h-100 py-2 bg-white">
+                <div class="card-body text-dark">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-success text-uppercase mb-1">Ingresos del Mes</div>
+                            <div class="h5 mb-0 fw-bold text-dark">Bs. {{ "%.2f"|format(ingresos_mes or 0) }}</div>
+                        </div>
+                        <div class="col-auto"><i class="bi bi-cash-stack fs-2 text-success"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start-danger shadow h-100 py-2 bg-white">
+                <div class="card-body text-dark">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-danger text-uppercase mb-1">Egresos del Mes</div>
+                            <div class="h5 mb-0 fw-bold text-dark">Bs. {{ "%.2f"|format(total_egresos_mes or 0) }}</div>
+                        </div>
+                        <div class="col-auto"><i class="bi bi-graph-down-arrow fs-2 text-danger"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start-warning shadow h-100 py-2 bg-white">
+                <div class="card-body text-dark">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-warning text-uppercase mb-1">Mora Total Acumulada</div>
+                            <div class="h5 mb-0 fw-bold text-dark">Bs. {{ "%.2f"|format(morosidad_total or 0) }}</div>
+                        </div>
+                        <div class="col-auto"><i class="bi bi-exclamation-triangle-fill fs-2 text-warning"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-start-primary shadow h-100 py-2 bg-white">
+                <div class="card-body text-dark">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs fw-bold text-primary text-uppercase mb-1">Estudiantes Activos</div>
+                            <div class="h5 mb-0 fw-bold text-dark">{{ estudiantes_activos or 0 }}</div>
+                        </div>
+                        <div class="col-auto"><i class="bi bi-people-fill fs-2 text-primary"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Control de Caja y Finanzas -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4 border-0">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center bg-white text-dark border-bottom">
+                    <h6 class="m-0 fw-bold text-dark fs-5">Control de Caja y Finanzas (Desglose Detallado)</h6>
+                    <a href="{{ url_for('caja.index') }}" class="btn btn-sm btn-primary fw-bold shadow-sm">Ver Detalle Completo</a>
+                </div>
+                <div class="card-body text-dark bg-light">
+                    <div class="row">
+                        <!-- Ingresos -->
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="text-success fw-bold mb-3"><i class="bi bi-arrow-up-circle-fill me-2"></i>Ingresos (Pagos de Estudiantes)</h5>
+                                    <ul class="list-group list-group-flush text-dark">
+                                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">Hoy: <span class="fw-bold text-dark fs-5">Bs. {{ "%.2f"|format(ingresos_hoy or 0) }}</span></li>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">Esta Semana: <span class="fw-bold text-dark fs-5">Bs. {{ "%.2f"|format(ingresos_semana or 0) }}</span></li>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">Mes en Curso: <span class="fw-bold text-dark fs-5">Bs. {{ "%.2f"|format(ingresos_mes or 0) }}</span></li>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">Mes Pasado: <span class="fw-bold text-muted">Bs. {{ "%.2f"|format(ingresos_mes_pasado or 0) }}</span></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Egresos y Morosidad -->
+                        <div class="col-md-6">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-body">
+                                    <h5 class="text-danger fw-bold mb-3"><i class="bi bi-arrow-down-circle-fill me-2"></i>Egresos del Mes (Flujo Real)</h5>
+                                    <ul class="list-group list-group-flush text-dark">
+                                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">Sueldos: <span class="fw-bold">Bs. {{ "%.2f"|format(egresos_sueldos or 0) }}</span></li>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">Electricidad: <span class="fw-bold">Bs. {{ "%.2f"|format(egresos_electricidad or 0) }}</span></li>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">Agua: <span class="fw-bold">Bs. {{ "%.2f"|format(egresos_agua or 0) }}</span></li>
+                                        <li class="list-group-item d-flex justify-content-between align-items-center px-0">Otros: <span class="fw-bold">Bs. {{ "%.2f"|format(egresos_otros or 0) }}</span></li>
+                                    </ul>
+                                    <div class="alert alert-danger mt-4 mb-0 text-dark border-danger shadow-sm text-center">
+                                        <h6 class="fw-bold mb-1"><i class="bi bi-exclamation-octagon-fill me-1"></i>Morosidad Total Proyectada</h6>
+                                        <span class="fs-4 fw-bold">Bs. {{ "%.2f"|format(morosidad_total or 0) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

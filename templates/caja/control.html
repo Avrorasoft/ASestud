@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid py-4">
+    <h2 class="text-dark mb-4">Control de Caja y Finanzas</h2>
+
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow">
+                <div class="card-body text-dark">
+                    <h5 class="card-title text-dark fw-bold">Control de Caja: Total Recaudado</h5>
+                    <h2 class="display-4 text-success fw-bold">Bs. {{ "%.2f"|format(ingresos_mes or 0) }}</h2>
+                    <p class="card-text text-muted">Acumulado del mes en curso</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow mb-4">
+        <div class="card-header bg-light text-dark">
+            <h5 class="mb-0 text-dark">Resumen Financiero</h5>
+        </div>
+        <div class="card-body text-dark">
+            <div class="row">
+                <div class="col-md-6">
+                    <h4 class="text-success fw-bold">💰 Ingresos (Pagos de Estudiantes)</h4>
+                    <table class="table table-bordered text-dark">
+                        <tbody>
+                            <tr><td class="text-dark">Hoy</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(ingresos_dia or 0) }}</td></tr>
+                            <tr><td class="text-dark">Esta Semana</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(ingresos_semana or 0) }}</td></tr>
+                            <tr><td class="text-dark">Mes en Curso</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(ingresos_mes or 0) }}</td></tr>
+                            <tr><td class="text-dark">Mes Pasado</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(ingresos_mes_pasado or 0) }}</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div class="col-md-6">
+                    <h4 class="text-danger fw-bold">💸 Egresos del Mes en Curso</h4>
+                    <table class="table table-bordered text-dark">
+                        <tbody>
+                            <tr><td class="text-dark">💡 Luz / Electricidad</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(gastos_luz or 0) }}</td></tr>
+                            <tr><td class="text-dark">💧 Agua</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(gastos_agua or 0) }}</td></tr>
+                            <tr><td class="text-dark">🌐 Internet</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(gastos_internet or 0) }}</td></tr>
+                            <tr><td class="text-dark">📞 Teléfono</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(gastos_telefono or 0) }}</td></tr>
+                            <tr><td class="text-dark">👥 Sueldos (Personal + Pagos)</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(gastos_sueldos or 0) }}</td></tr>
+                            <tr><td class="text-dark">📝 Papelería</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(gastos_papeleria or 0) }}</td></tr>
+                            <tr><td class="text-dark">🧹 Limpieza</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(gastos_limpieza or 0) }}</td></tr>
+                            <tr><td class="text-dark">🔧 Mantenimiento</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(gastos_mantenimiento or 0) }}</td></tr>
+                            <tr><td class="text-dark">⛽ Combustible</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(gastos_combustible or 0) }}</td></tr>
+                            <tr><td class="text-dark">🛡️ Seguridad</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(gastos_seguridad or 0) }}</td></tr>
+                            <tr><td class="text-dark">🎉 Eventos</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(gastos_eventos or 0) }}</td></tr>
+                            <tr><td class="text-dark">📋 Impuestos</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(gastos_impuestos or 0) }}</td></tr>
+                            <tr><td class="text-dark">📦 Otros</td><td class="fw-bold text-end text-dark">Bs. {{ "%.2f"|format(gastos_otros or 0) }}</td></tr>
+                            <tr class="table-dark text-white">
+                                <td class="fw-bold text-white">TOTAL EGRESOS</td>
+                                <td class="fw-bold text-end text-white">Bs. {{ "%.2f"|format(total_egresos_mes or 0) }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <div class="alert alert-warning mt-3 text-dark fw-bold fs-5">
+                <i class="bi bi-exclamation-triangle-fill"></i> 
+                Morosidad Total de Estudiantes ({{ total_estudiantes }} activos): Bs. {{ "%.2f"|format(monto_moroso or 0) }}
+            </div>
+        </div>
+    </div>
+</div>
+    
+{% endblock %}
+

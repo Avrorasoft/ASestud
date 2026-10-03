@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Encabezado y Métricas -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-primary mb-1">
+                <i class="fas fa-chalkboard-teacher me-2"></i>Cárdex de Personal Docente
+            </h2>
+            <p class="text-muted mb-0">Gestión de expedientes, asignación de materias y control de haberes de profesores.</p>
+        </div>
+        <div>
+            <a href="{{ url_for('profesores.nuevo_profesor') }}" class="btn btn-primary fw-bold shadow-sm">
+                <i class="fas fa-user-plus me-1"></i> Nuevo Docente
+            </a>
+        </div>
+    </div>
+
+    <!-- Tarjetas de Resumen Rápido -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm border-start border-primary border-4 p-3 bg-white">
+                <div class="text-muted small fw-bold text-uppercase">Total Docentes Registrados</div>
+                <div class="h3 fw-bold text-primary mb-0">{{ total_docentes }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm border-start border-success border-4 p-3 bg-white">
+                <div class="text-muted small fw-bold text-uppercase">Docentes en Estado Activo</div>
+                <div class="h3 fw-bold text-success mb-0">{{ total_activos }}</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm border-start border-info border-4 p-3 bg-white">
+                <div class="text-muted small fw-bold text-uppercase">Total Materias Asignadas</div>
+                <div class="h3 fw-bold text-info mb-0">{{ total_materias_asignadas }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra de Búsqueda y Filtros Directos -->
+    <div class="card shadow-sm border-0 mb-4">
+        <div class="card-body">
+            <form method="GET" action="{{ url_for('profesores.index') }}" class="row g-2 align-items-center">
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" name="q" id="searchDocenteInput" class="form-control border-start-0" placeholder="Buscar por C.I., Apellidos o Especialidad..." value="{{ q }}">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <select name="nivel" class="form-select">
+                        <option value="">-- Todos los Niveles --</option>
+                        {% for n in niveles_disponibles %}
+                            <option value="{{ n }}" {% if filtro_nivel == n %}selected{% endif %}>{{ n }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="turno" class="form-select">
+                        <option value="">-- Todos los Turnos --</option>
+                        {% for t in turnos_disponibles %}
+                            <option value="{{ t }}" {% if filtro_turno == t %}selected{% endif %}>{{ t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select name="estado" class="form-select">
+                        <option value="">-- Todos los Estados --</option>
+                        <option value="Activo" {% if filtro_estado == 'Activo' %}selected{% endif %}>Activo</option>
+                        <option value="Inactivo" {% if filtro_estado == 'Inactivo' %}selected{% endif %}>Inactivo</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button type="submit" class="btn btn-dark w-100 fw-bold">Filtrar</button>
+                    {% if q or filtro_nivel or filtro_turno or filtro_estado %}
+                        <a href="{{ url_for('profesores.index') }}" class="btn btn-outline-secondary" title="Limpiar Filtros">
+                            <i class="fas fa-times"></i>
+                        </a>
+                    {% endif %}
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla Principal de Profesores -->
+    <div class="card shadow-sm border-0">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" id="tablaDocentes">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Docente (Apellidos y Nombres)</th>
+                            <th>C.I.</th>
+                            <th>Especialidad</th>
+                            <th>Nivel / Turno</th>
+                            <th>Carga Académica</th>
+                            <th>Salario Base</th>
+                            <th>Estado</th>
+                            <th class="text-end pe-3">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if profesores and profesores|length > 0 %}
+                            {% for p in profesores %}
+                            <tr>
+                                <td class="ps-3">
+                                    <div class="fw-bold text-dark fs-6">{{ p.apellidos }}, {{ p.nombres }}</div>
+                                    <small class="text-muted">{{ p.correo or 'Sin correo registrado' }}</small>
+                                </td>
+                                <td class="fw-bold">{{ p.ci }}</td>
+                                <td>{{ p.especialidad or 'Docente' }}</td>
+                                <td>
+                                    <span class="badge bg-light text-dark border">{{ p.nivel or 'General' }}</span>
+                                    <span class="badge bg-light text-dark border">{{ p.turno or 'General' }}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-primary-subtle text-primary border border-primary px-2 py-1">
+                                        <i class="fas fa-book me-1"></i>{{ p.materias|length if p.materias else 0 }} materias
+                                    </span>
+                                </td>
+                                <td class="fw-bold text-success">
+                                    Bs. {{ "%.2f"|format(p.salario_base or 0.0) }}
+                                </td>
+                                <td>
+                                    {% if p.estado == 'Activo' %}
+                                        <span class="badge bg-success">Activo</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ p.estado or 'Inactivo' }}</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-end pe-3">
+                                    <a href="{{ url_for('profesores.ver_profesor', id=p.id) }}" class="btn btn-sm btn-info text-white fw-bold me-1" title="Ver Cárdex Completo">
+                                        <i class="fas fa-id-badge me-1"></i> Cárdex
+                                    </a>
+                                    <a href="{{ url_for('profesores.pagar_profesor', id=p.id) }}" class="btn btn-sm btn-warning fw-bold me-1" title="Registrar Pago">
+                                        <i class="fas fa-hand-holding-usd"></i>
+                                    </a>
+                                    <form method="POST" action="{{ url_for('profesores.eliminar_profesor', id=p.id) }}" class="d-inline" onsubmit="return confirm('¿Confirma que desea dar de baja al docente {{ p.nombres }} {{ p.apellidos }}?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Eliminar Docente">
+                                            <i class="fas fa-trash-alt"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="8" class="text-center py-4 text-muted">
+                                    <i class="fas fa-user-slash fs-3 d-block mb-2"></i>
+                                    No se encontraron docentes con los criterios especificados.
+                                </td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Filtro instantáneo del lado del cliente mientras se escribe
+    document.getElementById('searchDocenteInput').addEventListener('keyup', function() {
+        let filter = this.value.toLowerCase();
+        let rows = document.querySelectorAll('#tablaDocentes tbody tr');
+        rows.forEach(function(row) {
+            let text = row.innerText.toLowerCase();
+            row.style.display = text.includes(filter) ? '' : 'none';
+        });
+    });
+</script>
+{% endblock %}

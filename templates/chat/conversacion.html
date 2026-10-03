@@ -1,0 +1,320 @@
+<style id="estilo-impresion-boletin-definitivo">
+    @page {
+        size: letter portrait !important;
+        margin: 10mm !important;
+    }
+
+    /* ELIMINAR COLAPSO DE SCROLL EN IMPRESIÓN */
+    @media print {
+        html, body {
+            height: auto !important;
+            min-height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            display: block !important;
+            background: #fff !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        * {
+            overflow: visible !important;
+            max-height: none !important;
+        }
+        nav, header, footer, .sidebar, #sidebar-wrapper, .navbar, .btn, .no-print, button {
+            display: none !important;
+        }
+        #wrapper, #page-content-wrapper, .container, .container-fluid, main {
+            display: block !important;
+            width: 100% !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            overflow: visible !important;
+            position: static !important;
+            border: none !important;
+            box-shadow: none !important;
+        }
+        table {
+            page-break-inside: auto !important;
+            background-color: transparent !important;
+        }
+        tr {
+            page-break-inside: avoid !important;
+            page-break-after: auto !important;
+        }
+        thead {
+            display: table-header-group !important;
+        }
+        .watermark-segura {
+            display: block !important;
+        }
+    }
+
+    /* MARCA DE AGUA DIAGONAL CON ALTA VISIBILIDAD (18% DE OPACIDAD) */
+    .watermark-segura {
+        position: fixed;
+        top: 45%;
+        left: 50%;
+        transform: translate(-50%, -50%) rotate(-30deg);
+        width: 85%;
+        text-align: center;
+        pointer-events: none;
+        z-index: 9999;
+        user-select: none;
+    }
+    .wm-nombre-txt {
+        font-size: 36px;
+        font-weight: 900;
+        text-transform: uppercase;
+        letter-spacing: 3px;
+        line-height: 1.15;
+        color: rgba(0, 0, 0, 0.18) !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        margin-bottom: 5px;
+    }
+    .wm-datos-txt {
+        font-size: 16px;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: rgba(0, 0, 0, 0.15) !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
+</style>
+        
+{% extends "base.html" %}
+{% block title %}Chat - {{ estudiante.apellidos }}, {{ estudiante.nombres }}
+{% endblock %}
+{% block content %}
+{# MARCA DE AGUA VISIBLE CON NOMBRE Y DOCUMENTO DEL ESTUDIANTE #}
+{% set _est = est if (est is defined and est) else (estudiante if (estudiante is defined and estudiante) else (alumno if (alumno is defined and alumno) else None)) %}
+{% if _est %}
+<div class="watermark-segura">
+    <div class="wm-nombre-txt">{{ _est.apellidos }} {{ _est.nombres }}</div>
+    <div class="wm-datos-txt">C.I. {{ _est.ci }} {{ _est.expedido or 'BN' }} &bull; RUDE: {{ _est.rude or '-' }} &bull; COL. DR. ANTONIO VACA DÍEZ</div>
+</div>
+{% endif %}
+<style>
+    .chat-wrapper {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 200px);
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .chat-messages {
+        flex: 1;
+        overflow-y: auto;
+        background: #e5ddd5;
+        padding: 15px;
+        border-radius: 10px 10px 0 0;
+    }
+    .msg-bubble {
+        max-width: 75%;
+        padding: 10px 14px;
+        border-radius: 12px;
+        margin-bottom: 8px;
+        position: relative;
+        font-size: 0.9rem;
+        word-wrap: break-word;
+    }
+    .msg-colegio {
+        background: #dcf8c6;
+        margin-left: auto;
+        border-bottom-right-radius: 2px;
+    }
+    .msg-padre {
+        background: #ffffff;
+        margin-right: auto;
+        border-bottom-left-radius: 2px;
+    }
+    .msg-time {
+        font-size: 0.65rem;
+        color: #888;
+        text-align: right;
+        margin-top: 4px;
+    }
+    .chat-input-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: #f0f0f0;
+        padding: 10px 15px;
+        border-radius: 0 0 10px 10px;
+        border-top: 1px solid #ddd;
+    }
+    .chat-input-bar input[type="text"] {
+        flex: 1;
+        border: none;
+        border-radius: 20px;
+        padding: 10px 15px;
+        font-size: 0.9rem;
+        outline: none;
+    }
+    .btn-attach {
+        background: none;
+        border: none;
+        font-size: 1.3rem;
+        cursor: pointer;
+        color: #555;
+    }
+    .btn-send {
+        background: #075e54;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 42px;
+        height: 42px;
+        font-size: 1.1rem;
+        cursor: pointer;
+    }
+    .btn-send:hover { background: #128c7e; }
+    .file-preview {
+        background: #fff3cd;
+        padding: 8px 12px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        font-size: 0.8rem;
+        display: none;
+    }
+</style>
+
+<div class="chat-wrapper">
+    <!-- Header del chat -->
+    <div class="d-flex align-items-center mb-2">
+        <a href="{{ url_for('chat.index') }}" class="btn btn-sm btn-outline-secondary me-2">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <div>
+            <h6 class="mb-0 text-dark fw-bold">{{ estudiante.apellidos }}, {{ estudiante.nombres }}</h6>
+            <small class="text-muted">{{ estudiante.curso }} | {% if padre %}{{ padre.nombres }}{% else %}Sin tutor{% endif %}</small>
+        </div>
+    </div>
+
+    <!-- Mensajes -->
+    <div class="chat-messages" id="chatMessages">
+        {% if mensajes %}
+            {% for msg in mensajes %}
+            <div class="msg-bubble {% if msg.remitente == 'Colegio' %}msg-colegio{% else %}msg-padre{% endif %}">
+                
+                {# ✅ LÓGICA NUEVA: Detecta si es un Boletín con el marcador de archivo adjunto #}
+                {% if 'Boletín' in msg.tipo_mensaje and '---ARCHIVO_ADJUNTO---' in msg.contenido %}
+                    {% set partes = msg.contenido.split('---ARCHIVO_ADJUNTO---') %}
+                    <p class="mb-0 text-dark" style="white-space: pre-line;">{{ partes[0] }}</p>
+                    {% set pdf_url = partes[1].strip() %}
+                    
+                    <div class="bg-white p-3 rounded border mt-2 shadow-sm">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-file-earmark-pdf-fill text-danger fs-1 me-3"></i>
+                            <div>
+                                <strong class="d-block text-dark">Boletín de Calificaciones</strong>
+                                <small class="text-muted">Documento PDF oficial con QR de verificación</small>
+                            </div>
+                        </div>
+                        <div class="mt-3 d-flex gap-2">
+                            <a href="{{ pdf_url }}" target="_blank" class="btn btn-sm btn-primary">
+                                <i class="bi bi-eye me-1"></i> Ver en línea
+                            </a>
+                            <a href="{{ pdf_url }}" download class="btn btn-sm btn-success">
+                                <i class="bi bi-download me-1"></i> Descargar
+                            </a>
+                        </div>
+                    </div>
+
+                {% elif msg.tipo_mensaje == 'Texto' or msg.tipo_mensaje == 'General' %}
+                    <p class="mb-0 text-dark">{{ msg.contenido }}</p>
+                {% elif msg.tipo_mensaje == 'Imagen' %}
+                    <img src="{{ url_for('static', filename=msg.contenido) }}" class="img-fluid rounded mb-1" style="max-height: 200px;">
+                    <p class="mb-0 small text-muted">📷 Imagen</p>
+                {% elif msg.tipo_mensaje == 'Audio' %}
+                    <audio controls style="width: 100%; height: 35px;">
+                        <source src="{{ url_for('static', filename=msg.contenido) }}">
+                    </audio>
+                    <p class="mb-0 small text-muted">🎤 Nota de voz</p>
+                {% elif msg.tipo_mensaje == 'Documento' %}
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-file-earmark-pdf fs-4 text-danger me-2"></i>
+                        <a href="{{ url_for('static', filename=msg.contenido) }}" target="_blank" class="text-dark small">📎 Ver documento</a>
+                    </div>
+                {% elif msg.tipo_mensaje == 'Comprobante de Pago' %}
+                    <p class="mb-0 text-dark" style="white-space: pre-line;">{{ msg.contenido }}</p>
+                {% else %}
+                    <p class="mb-0 text-dark" style="white-space: pre-line;">{{ msg.contenido }}</p>
+                {% endif %}
+                
+                <div class="msg-time">{{ msg.fecha_envio.strftime('%H:%M') }} ✓✓</div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center py-5 text-muted">
+                <i class="bi bi-chat-square-dots fs-1"></i>
+                <p class="mt-2">No hay mensajes aún. Escribe el primero.</p>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Preview de archivo seleccionado -->
+    <div class="file-preview" id="filePreview">
+        <i class="bi bi-paperclip me-1"></i>
+        <span id="fileName"></span>
+        <button type="button" class="btn btn-sm btn-link p-0 ms-2" onclick="clearFile()">✕ Quitar</button>
+    </div>
+
+    <!-- Barra de entrada -->
+    <form action="{{ url_for('chat.enviar_mensaje', estudiante_id=estudiante.id) }}" method="POST" enctype="multipart/form-data" class="chat-input-bar" id="chatForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <!-- Botón adjuntar archivo -->
+        <label class="btn-attach" title="Adjuntar archivo">
+            <i class="bi bi-plus-circle-fill"></i>
+            <input type="file" name="archivo" id="archivoInput" class="d-none" 
+                   accept="image/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx" 
+                   onchange="showFilePreview(this)">
+        </label>
+
+        <!-- Input de texto -->
+        <input type="text" name="contenido" id="msgInput" placeholder="Escribe un mensaje..." autocomplete="off">
+
+        <!-- Botón enviar -->
+        <button type="submit" class="btn-send" title="Enviar">
+            <i class="bi bi-send-fill"></i>
+        </button>
+    </form>
+</div>
+
+<script>
+    // Auto-scroll al final
+    var chatBox = document.getElementById("chatMessages");
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    // Mostrar preview del archivo
+    function showFilePreview(input) {
+        if (input.files && input.files[0]) {
+            document.getElementById('fileName').textContent = input.files[0].name;
+            document.getElementById('filePreview').style.display = 'block';
+        }
+    }
+
+    // Quitar archivo
+    function clearFile() {
+        document.getElementById('archivoInput').value = '';
+        document.getElementById('filePreview').style.display = 'none';
+    }
+
+    // Enviar con Enter
+    document.getElementById('msgInput').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            document.getElementById('chatForm').submit();
+        }
+    });
+</script>
+
+{% endblock %}
+
+
+
+
+

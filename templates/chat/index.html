@@ -1,0 +1,298 @@
+        
+{% extends "base.html" %}
+{% block title %}Chat Interno - Colegio Dr. Antonio Vaca Díez
+{% endblock %}
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="text-dark fw-bold">
+            <i class="bi bi-chat-dots-fill me-2 text-primary"></i>Chat Interno del Colegio
+        </h2>
+        <a href="{{ url_for('chat.enviar') }}" class="btn btn-primary text-white shadow-sm">
+            <i class="bi bi-plus-circle me-1"></i>Nuevo Mensaje
+        </a>
+    </div>
+
+    <!-- Estadísticas rápidas -->
+    <div class="row mb-4 g-3">
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <a href="{{ url_for('chat.index') }}" class="text-decoration-none">
+                <div class="card shadow-sm bg-primary text-white h-100 {% if not filtro_actual %}border border-3 border-warning{% endif %}">
+                    <div class="card-body text-center">
+                        <h3 class="text-white mb-0 fw-bold">{{ total_mensajes }}</h3>
+                        <small class="text-white">Total</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <a href="{{ url_for('chat.index', tipo='pago') }}" class="text-decoration-none">
+                <div class="card shadow-sm bg-success text-white h-100 {% if filtro_actual == 'pago' %}border border-3 border-warning{% endif %}">
+                    <div class="card-body text-center">
+                        <h3 class="text-white mb-0 fw-bold">{{ total_comprobantes }}</h3>
+                        <small class="text-white">Pagos</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <a href="{{ url_for('chat.index', tipo='falta') }}" class="text-decoration-none">
+                <div class="card shadow-sm bg-danger text-white h-100 {% if filtro_actual == 'falta' %}border border-3 border-warning{% endif %}">
+                    <div class="card-body text-center">
+                        <h3 class="text-white mb-0 fw-bold">{{ total_faltas }}</h3>
+                        <small class="text-white">Faltas</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <a href="{{ url_for('chat.index', tipo='citacion') }}" class="text-decoration-none">
+                <div class="card shadow-sm bg-info text-white h-100 {% if filtro_actual == 'citacion' %}border border-3 border-warning{% endif %}">
+                    <div class="card-body text-center">
+                        <h3 class="text-white mb-0 fw-bold">{{ total_citaciones }}</h3>
+                        <small class="text-white">Citaciones</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <a href="{{ url_for('chat.index', tipo='felicitacion') }}" class="text-decoration-none">
+                <div class="card shadow-sm bg-warning text-dark h-100 {% if filtro_actual == 'felicitacion' %}border border-3 border-dark{% endif %}">
+                    <div class="card-body text-center">
+                        <h3 class="text-dark mb-0 fw-bold">{{ total_felicitaciones }}</h3>
+                        <small class="text-dark">Felicitaciones</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+        <div class="col-xl-2 col-md-4 col-sm-6">
+            <a href="{{ url_for('chat.index', tipo='boletin') }}" class="text-decoration-none">
+                <div class="card shadow-sm bg-secondary text-white h-100 {% if filtro_actual == 'boletin' %}border border-3 border-warning{% endif %}">
+                    <div class="card-body text-center">
+                        <h3 class="text-white mb-0 fw-bold">{{ total_boletines }}</h3>
+                        <small class="text-white">Boletines</small>
+                    </div>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    {% if filtro_actual %}
+    <div class="alert alert-info d-flex justify-content-between align-items-center shadow-sm mb-4">
+        <span class="fw-bold"><i class="bi bi-funnel me-2"></i>Filtrando por: <span class="text-uppercase">{{ filtro_actual }}</span></span>
+        <a href="{{ url_for('chat.index') }}" class="btn btn-sm btn-outline-dark">
+            <i class="bi bi-x-circle me-1"></i>Quitar filtro
+        </a>
+    </div>
+    {% endif %}
+
+    <!-- Lista de mensajes -->
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-light text-dark d-flex justify-content-between align-items-center py-3">
+            <h5 class="mb-0 text-dark fw-bold">
+                <i class="bi bi-chat-left-text me-2"></i>Historial de Comunicaciones
+            </h5>
+            <span class="badge bg-primary text-white px-3 py-2">{{ mensajes|length }} mensajes</span>
+        </div>
+        <div class="card-body p-0">
+            {% if mensajes %}
+            <div class="list-group list-group-flush">
+                {% for msg in mensajes %}
+                
+                <!-- SEPARACIÓN LÓGICA DE TEXTO Y ARCHIVO ADJUNTO -->
+                {% set contenido_str = msg.contenido or '' %}
+                {% set partes = contenido_str.split('---ARCHIVO_ADJUNTO---') %}
+                {% set texto_puro = partes[0] %}
+                {% set archivo_url = partes[1]|trim if partes|length > 1 else '' %}
+                
+                <div class="list-group-item list-group-item-action p-3 border-bottom">
+                    <div class="row align-items-center">
+                        <div class="col-auto">
+                            {% set tipo_lower = msg.tipo_mensaje|lower if msg.tipo_mensaje else '' %}
+                            {% if 'pago' in tipo_lower or 'comprobante' in tipo_lower %}
+                                <div class="rounded-circle bg-success text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                    <i class="bi bi-cash-stack fs-4"></i>
+                                </div>
+                            {% elif 'falta' in tipo_lower or 'inasistencia' in tipo_lower %}
+                                <div class="rounded-circle bg-danger text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                    <i class="bi bi-exclamation-triangle fs-4"></i>
+                                </div>
+                            {% elif 'citación' in tipo_lower or 'citacion' in tipo_lower %}
+                                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                    <i class="bi bi-calendar-event fs-4"></i>
+                                </div>
+                            {% elif 'felicitación' in tipo_lower or 'felicitacion' in tipo_lower %}
+                                <div class="rounded-circle bg-warning text-dark d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                    <i class="bi bi-trophy fs-4"></i>
+                                </div>
+                            {% elif 'boletín' in tipo_lower or 'boletin' in tipo_lower %}
+                                <div class="rounded-circle bg-info text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                    <i class="bi bi-journal-text fs-4"></i>
+                                </div>
+                            {% else %}
+                                <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+                                    <i class="bi bi-chat-dots fs-4"></i>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="col">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="mb-1 text-dark fw-bold">
+                                        <i class="bi bi-person-fill me-1 text-muted"></i>{{ msg.destinatario }}
+                                    </h6>
+                                    <span class="badge bg-light text-dark border me-2 mb-1">{{ msg.tipo_mensaje }}</span>
+                                    {% if msg.telefono and msg.telefono != 'Sin teléfono' %}
+                                    <small class="text-muted d-block">
+                                        <i class="bi bi-telephone me-1"></i>{{ msg.telefono }}
+                                    </small>
+                                    {% endif %}
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-muted fw-bold">
+                                        <i class="bi bi-clock me-1"></i>{{ msg.fecha_envio.strftime('%d/%m/%Y %H:%M') }}
+                                    </small>
+                                </div>
+                            </div>
+                            <div class="mt-2 p-2 bg-light rounded text-dark border" style="max-height: 100px; overflow-y: auto;">
+                                <small class="text-dark" style="white-space: pre-line;">{{ texto_puro[:300] }}{% if texto_puro|length > 300 %}...{% endif %}</small>
+                                
+                                <!-- Si el sistema detecta que hay una URL extraída, pone una etiqueta en la vista previa -->
+                                {% if archivo_url %}
+                                <div class="mt-2">
+                                    <span class="badge bg-danger"><i class="bi bi-file-earmark-pdf me-1"></i>Documento PDF Adjunto</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="col-auto">
+                            <div class="btn-group-vertical btn-group-sm">
+                                <button type="button" class="btn btn-outline-primary mb-1 btn-ver-mensaje"
+                                        data-bs-toggle="modal" 
+                                        data-bs-target="#modalUnico"
+                                        data-destinatario="{{ msg.destinatario }}"
+                                        data-tipo="{{ msg.tipo_mensaje }}"
+                                        data-telefono="{{ msg.telefono }}"
+                                        data-fecha="{{ msg.fecha_envio.strftime('%d/%m/%Y %H:%M:%S') }}"
+                                        data-contenido="{{ texto_puro }}"
+                                        data-archivo="{{ archivo_url }}"
+                                        title="Ver mensaje completo">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <form method="POST" action="{{ url_for('chat.eliminar', id=msg.id) }}" onsubmit="return confirm('¿Eliminar este mensaje?');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-outline-danger" title="Eliminar mensaje">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="text-center py-5 text-dark">
+                <i class="bi bi-chat-square-dots fs-1 text-muted d-block mb-3"></i>
+                <h5 class="text-muted fw-bold">No hay mensajes en el chat interno</h5>
+                <p class="text-muted">Los mensajes enviados a padres de familia aparecerán aquí automáticamente.</p>
+                <a href="{{ url_for('chat.enviar') }}" class="btn btn-primary text-white mt-2 px-4">
+                    <i class="bi bi-plus-circle me-1"></i>Enviar primer mensaje
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ÚNICO DINÁMICO CON INTEGRACIÓN DE BOTÓN -->
+<div class="modal fade" id="modalUnico" tabindex="-1" aria-labelledby="modalUnicoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold" id="modalUnicoLabel">
+                    <i class="bi bi-chat-square-text me-2"></i>Mensaje Completo
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body text-dark">
+                <div class="row mb-3">
+                    <div class="col-md-6 mb-2">
+                        <strong class="text-dark"><i class="bi bi-person me-1"></i>Destinatario:</strong> 
+                        <span class="text-dark" id="modalDestinatario"></span>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <strong class="text-dark"><i class="bi bi-tag me-1"></i>Tipo:</strong> 
+                        <span class="badge bg-primary text-white" id="modalTipo"></span>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6 mb-2">
+                        <strong class="text-dark"><i class="bi bi-telephone me-1"></i>Teléfono:</strong> 
+                        <span class="text-dark" id="modalTelefono"></span>
+                    </div>
+                    <div class="col-md-6 mb-2">
+                        <strong class="text-dark"><i class="bi bi-calendar3 me-1"></i>Fecha:</strong> 
+                        <span class="text-dark" id="modalFecha"></span>
+                    </div>
+                </div>
+                <hr class="my-3">
+                <div class="p-3 bg-light rounded text-dark border">
+                    <!-- Área de texto puro -->
+                    <pre class="mb-0 text-dark" id="modalContenido" style="white-space: pre-wrap; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; font-size: 0.95rem;"></pre>
+                    
+                    <!-- Contenedor dinámico donde aparecerá el botón del Boletín -->
+                    <div id="modalArchivoContenedor" style="display: none;" class="mt-3 text-center"></div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">
+                    <i class="bi bi-x-circle me-1"></i>Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// LÓGICA DE DIBUJADO DINÁMICO EN LA VENTANA EMERGENTE
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('modalUnico');
+    modal.addEventListener('show.bs.modal', function(event) {
+        const button = event.relatedTarget;
+        
+        // Asignar los textos
+        document.getElementById('modalDestinatario').textContent = button.getAttribute('data-destinatario');
+        document.getElementById('modalTipo').textContent = button.getAttribute('data-tipo');
+        document.getElementById('modalTelefono').textContent = button.getAttribute('data-telefono');
+        document.getElementById('modalFecha').textContent = button.getAttribute('data-fecha');
+        document.getElementById('modalContenido').textContent = button.getAttribute('data-contenido');
+        
+        // Lógica de inyección del botón de PDF
+        const archivoUrl = button.getAttribute('data-archivo');
+        const contenedorArchivo = document.getElementById('modalArchivoContenedor');
+        
+        if (archivoUrl && archivoUrl !== "undefined" && archivoUrl !== "") {
+            contenedorArchivo.innerHTML = `
+                <div class="bg-white p-3 rounded border shadow-sm d-inline-block w-100">
+                    <i class="bi bi-file-earmark-pdf-fill text-danger fs-1 mb-2 d-block"></i>
+                    <h6 class="fw-bold text-dark">Documento Adjunto</h6>
+                    <a href="${archivoUrl}" target="_blank" class="btn btn-danger mt-2">
+                        <i class="bi bi-download me-1"></i> Abrir / Descargar PDF
+                    </a>
+                </div>
+            `;
+            contenedorArchivo.style.display = 'block';
+        } else {
+            contenedorArchivo.innerHTML = '';
+            contenedorArchivo.style.display = 'none';
+        }
+    });
+});
+</script>
+
+{% endblock %}
+
+
+
+

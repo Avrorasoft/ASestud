@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}Reporte de Gastos {{ anio }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-bar-chart me-2"></i>Reporte de Gastos - {{ anio }}</h2>
+    <a href="{{ url_for('gastos.index') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left me-1"></i>Volver</a>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <h5>Total Gastado</h5>
+                <h2>Bs. {{ "%.2f"|format(total) }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+                <form method="GET" class="row g-2 align-items-end">
+                    <div class="col-md-6">
+                        <label class="form-label">Seleccionar Año</label>
+                        <select name="anio" class="form-select">
+                            {% for y in range(2024, 2028) %}
+                            <option value="{{ y }}" {% if anio == y %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-arrow-clockwise me-1"></i>Actualizar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">Distribución por Categoría</h5></div>
+            <div class="card-body">
+                <canvas id="gastosChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header"><h5 class="mb-0">Detalle</h5></div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    {% for cat, monto in resumen.items()|sort(attribute='1', reverse=True) %}
+                    <li class="list-group-item d-flex justify-content-between">
+                        <span>{{ cat }}</span>
+                        <strong>Bs. {{ "%.2f"|format(monto) }}</strong>
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const ctx = document.getElementById('gastosChart').getContext('2d');
+const data = {
+    labels: {{ resumen.keys()|list|tojson }},
+    datasets: [{
+        label: 'Monto (Bs.)',
+        data: {{ resumen.values()|list|tojson }},
+        backgroundColor: [
+            '#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF',
+            '#FF9F40', '#FF6384', '#C9CBCF', '#7BC8A4', '#E7E9ED',
+            '#76D7C4', '#F7DC6F', '#BB8FCE'
+        ],
+        borderWidth: 1
+    }]
+};
+
+new Chart(ctx, {
+    type: 'doughnut',
+    data: data,
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { position: 'bottom' },
+            title: { display: true, text: 'Gastos por Categoría - {{ anio }}' }
+        }
+    }
+});
+</script>
+{% endblock %}
