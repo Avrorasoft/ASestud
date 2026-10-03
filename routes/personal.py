@@ -141,7 +141,126 @@ def lista_administrativos():
         administrativos=administrativos
     )
 
+# ==============================================================================
+# PLANILLA GENERAL CONSOLIDADA DE SUELDOS
+# ==============================================================================
 
+@personal_bp.route('/planillas', methods=['GET'])
+def planillas():
+    MESES_ES = [
+        'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+        'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+    ]
+    
+    mes_actual_es = MESES_ES[datetime.now().month - 1]
+    mes_seleccionado = request.args.get('mes', mes_actual_es).capitalize()
+    
+    try:
+        anio_seleccionado = int(request.args.get('anio', datetime.now().year))
+    except ValueError:
+        anio_seleccionado = datetime.now().year
+
+    turno_filtro = request.args.get('turno', '').strip()
+
+    query_profesores = Profesor.query.filter_by(estado='Activo')
+    query_admins = PersonalAdministrativo.query.filter_by(estado='Activo')
+
+    if turno_filtro:
+        query_profesores = query_profesores.filter(Profesor.turno == turno_filtro)
+        if hasattr(PersonalAdministrativo, 'turno'):
+            query_admins = query_admins.filter(PersonalAdministrativo.turno == turno_filtro)
+
+    profesores_raw = query_profesores.order_by(Profesor.apellidos.asc()).all()
+    administrativos_raw = query_admins.order_by(PersonalAdministrativo.apellidos.asc()).all()
+
+    profesores = []
+    tot_prof_base = 0.0
+    tot_prof_adelanto = 0.0
+    tot_prof_neto = 0.0
+
+    for p in profesores_raw:
+        adelanto_mes = db.session.query(db.func.coalesce(db.func.sum(PagoPersonal.monto_neto_pagado), 0.0)).filter(
+            PagoPersonal.tipo == 'Adelanto',
+            PagoPersonal.persona_id == p.id,
+            PagoPersonal.mes == mes_seleccionado,
+            PagoPersonal.anio == anio_seleccionado,
+            PagoPersonal.estado != 'Anulado',
+            PagoPersonal.nombre_persona.ilike(f"{p.apellidos}%")
+        ).scalar() or 0.0
+
+        base = float(p.salario_base or 0.0)
+        adel = float(adelanto_mes)
+        neto = max(0.0, base - adel)
+
+        tot_prof_base += base
+        tot_prof_adelanto += adel
+        tot_prof_neto += neto
+
+        profesores.append({
+            'id': p.id,
+            'ci': p.ci,
+            'apellidos': p.apellidos,
+            'nombres': p.nombres,
+            'salario_base': base,
+            'adelanto': adel,
+            'salario_neto': neto
+        })
+
+    administrativos = []
+    tot_admin_base = 0.0
+    tot_admin_adelanto = 0.0
+    tot_admin_neto = 0.0
+
+    for a in administrativos_raw:
+        adelanto_mes = db.session.query(db.func.coalesce(db.func.sum(PagoPersonal.monto_neto_pagado), 0.0)).filter(
+            PagoPersonal.tipo == 'Adelanto',
+            PagoPersonal.persona_id == a.id,
+            PagoPersonal.mes == mes_seleccionado,
+            PagoPersonal.anio == anio_seleccionado,
+            PagoPersonal.estado != 'Anulado',
+            PagoPersonal.nombre_persona.ilike(f"{a.apellidos}%")
+        ).scalar() or 0.0
+
+        base = float(a.salario_base or 0.0)
+        adel = float(adelanto_mes)
+        neto = max(0.0, base - adel)
+
+        tot_admin_base += base
+        tot_admin_adelanto += adel
+        tot_admin_neto += neto
+
+        administrativos.append({
+            'id': a.id,
+            'ci': a.ci,
+            'apellidos': a.apellidos,
+            'nombres': a.nombres,
+            'salario_base': base,
+            'adelanto': adel,
+            'salario_neto': neto
+        })
+
+    gran_total_base = tot_prof_base + tot_admin_base
+    gran_total_adelanto = tot_prof_adelanto + tot_admin_adelanto
+    gran_total_neto = tot_prof_neto + tot_admin_neto
+
+    return render_template(
+        'personal/planillas.html',
+        profesores=profesores,
+        administrativos=administrativos,
+        mes_seleccionado=mes_seleccionado,
+        anio_seleccionado=anio_seleccionado,
+        turno_filtro=turno_filtro,
+        meses_disponibles=MESES_ES,
+        tot_prof_base=tot_prof_base,
+        tot_prof_adelanto=tot_prof_adelanto,
+        tot_prof_neto=tot_prof_neto,
+        tot_admin_base=tot_admin_base,
+        tot_admin_adelanto=tot_admin_adelanto,
+        tot_admin_neto=tot_admin_neto,
+        gran_total_base=gran_total_base,
+        gran_total_adelanto=gran_total_adelanto,
+        gran_total_neto=gran_total_neto
+    )
 # ==============================================================================
 # NUEVO PROFESOR (CON NIVEL Y TURNO)
 # ==============================================================================
