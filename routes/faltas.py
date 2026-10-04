@@ -1,254 +1,198 @@
 # -*- coding: utf-8 -*-
-# ==============================================================================
-# Archivo: routes/faltas.py
-# Proyecto: Sistema de Gestión Escolar
-# Desarrollado por: Avrora Soft - Vibola LLC
-# Descripción: Blueprint unificado para la gestión y administración de Asistencia
-# ==============================================================================
+"""
+==============================================================================
+Archivo: routes/faltas.py
+Proyecto: ASestud-Konetz / Sistema de Gestión Escolar
+Desarrollado por: Avrora Soft - Vibola LLC
+Descripción: Panel Central Administrativo para el control de asistencias.
+             Acceso libre a visualización, blindado con contraseña para modificaciones.
+==============================================================================
+"""
 
 import os
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app
-from models import db, Falta, Estudiante, Profesor, PersonalAdministrativo, Padre, Mensaje
-from datetime import datetime
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 from werkzeug.utils import secure_filename
+from sqlalchemy import func
+from models import db, Asistencia, Estudiante, ControlAsistenciaDiaria, ConfiguracionSuperadmin, ahora_bolivia
 
 faltas_bp = Blueprint('faltas', __name__, template_folder='templates/faltas')
 
-# =========================================================================
-# LISTADO GENERAL DE ASISTENCIA (ADMINISTRATIVO)
-# =========================================================================
+# ==============================================================================
+# SEGURIDAD ESTRICTA: CANDADO DE BÓVEDA OBLIGATORIO PARA ACCIONES DE ESCRITURA
+# ==============================================================================
+def boveda_requerida(f):
+    from functools import wraps
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if not session.get('faltas_boveda_abierta'):
+            flash('🔒 Se requiere ingresar la contraseña de Bóveda para realizar esta modificación.', 'warning')
+            return redirect(url_for('faltas.login_boveda', next=request.path))
+        return f(*args, **kwargs)
+    return decorated_function
+
+# ==============================================================================
+# ACCESO A LA BÓVEDA DE ASISTENCIAS
+# ==============================================================================
+@faltas_bp.route('/boveda', methods=['GET', 'POST'])
+def login_boveda():
+    if request.method == 'POST':
+        password = request.form.get('password', '').strip()
+        
+        config = ConfiguracionSuperadmin.query.filter_by(clave='superadmin_password').first()
+        clave_boveda = config.valor if config and config.valor else 'admin2026'
+
+        if password == clave_boveda:
+            session['faltas_boveda_abierta'] = True
+            flash('🔓 Acceso concedido: Bóveda de Asistencia desbloqueada.', 'success')
+            
+            # Capturamos el 'next' pero filtramos las rutas POST (editar/eliminar/desbloquear) para evitar el error 405
+            siguiente = request.args.get('next') or url_for('faltas.index')
+            if any(ruta in siguiente for ruta in ['/editar/', '/eliminar/', '/desbloquear']):
+                siguiente = url_for('faltas.index')
+                
+            return redirect(siguiente)
+        else:
+            flash('❌ Contraseña de Bóveda incorrecta. Acceso denegado.', 'danger')
+            
+    return render_template('faltas/login_boveda.html')
+
+@faltas_bp.route('/cerrar_boveda')
+def cerrar_boveda():
+    session.pop('faltas_boveda_abierta', None)
+    flash('🔒 Bóveda de Asistencia cerrada por seguridad.', 'info')
+    return redirect(url_for('dashboard.index'))
+
+# ==============================================================================
+# PANEL GLOBAL DE ASISTENCIAS (ACCESO LIBRE DE VISUALIZACIÓN)
+# ==============================================================================
 @faltas_bp.route('/')
-def lista_faltas():
-    """Muestra el historial unificado de asistencia de estudiantes con filtros y paginación."""
-    curso_filtro = request.args.get('curso', '')
-    tipo_filtro = request.args.get('tipo', 'Todos')
-    estado_filtro = request.args.get('estado', 'Todos')
-    pagina = request.args.get('pagina', 1, type=int)
-    por_pagina = 25
-
-    query = Falta.query.filter(Falta.tipo_sujeto == 'Estudiante')
-
-    if curso_filtro:
-        estudiante_ids = [e.id for e in Estudiante.query.filter_by(curso=curso_filtro, estado='Activo').all()]
-        query = query.filter(Falta.sujeto_id.in_(estudiante_ids))
-
-    if tipo_filtro != 'Todos':
-        query = query.filter(Falta.tipo_falta == tipo_filtro)
-
-    if estado_filtro != 'Todos':
-        query = query.filter(Falta.estado == estado_filtro)
-
-    pagination = query.order_by(Falta.fecha.desc()).paginate(
-        page=pagina, per_page=por_pagina, error_out=False
-    )
-    faltas = pagination.items
-
-    ids = {f.sujeto_id for f in faltas}
-    mapa = {}
-    if ids:
-        estudiantes = Estudiante.query.filter(Estudiante.id.in_(ids)).all()
-        mapa = {e.id: f"{e.apellidos}, {e.nombres}" for e in estudiantes}
-
-    for falta in faltas:
-        falta.nombre_estudiante = mapa.get(falta.sujeto_id, f"ID: {falta.sujeto_id}")
-
-    cursos = db.session.query(Estudiante.curso).filter_by(estado='Activo').distinct().all()
-    cursos = [c[0] for c in cursos]
-
-    return render_template('faltas/lista.html', faltas=faltas, cursos=cursos,
-                         curso_actual=curso_filtro, tipo_actual=tipo_filtro,
-                         estado_actual=estado_filtro, pagination=pagination)
-
-# =========================================================================
-# REGISTRAR ASISTENCIA / LICENCIA ADMINISTRATIVA
-# =========================================================================
-@faltas_bp.route('/nuevo', methods=['GET', 'POST'])
-def nueva_falta():
-    if request.method == 'POST':
-        try:
-            estudiante_id = int(request.form['estudiante_id'])
-            est = Estudiante.query.get_or_404(estudiante_id)
-
-            fecha = datetime.strptime(request.form['fecha'], '%Y-%m-%d').date()
-            tipo_falta = request.form['tipo_falta']
-            observaciones = request.form.get('observaciones', '')
-
-            archivo_nombre = None
-            if 'archivo' in request.files:
-                archivo = request.files['archivo']
-                if archivo and archivo.filename != '':
-                    filename = secure_filename(f"asistencia_{estudiante_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{archivo.filename}")
-                    upload_folder = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'static/uploads'), 'faltas')
-                    os.makedirs(upload_folder, exist_ok=True)
-                    archivo.save(os.path.join(upload_folder, filename))
-                    archivo_nombre = filename
-
-            nueva = Falta(
-                tipo_sujeto='Estudiante',
-                sujeto_id=estudiante_id,
-                rude_estudiante=est.rude,
-                fecha=fecha,
-                tipo_falta=tipo_falta,
-                observaciones=observaciones,
-                estado=tipo_falta,
-                archivo_adjunto=archivo_nombre
-            )
-            db.session.add(nueva)
-            db.session.commit()
-
-            # Notificación automática al chat del padre
-            try:
-                padre = Padre.query.filter_by(estudiante_id=estudiante_id).first()
-                nombre_tutor = padre.nombres if padre and padre.nombres else "Padre/Tutor"
-                telefono = (padre.telefono1 or padre.telefono2) if padre else "Sin teléfono"
-                nombre_estudiante = f"{est.nombres} {est.apellidos}"
-
-                fecha_formato = fecha.strftime('%d/%m/%Y')
-                contenido = (
-                    f"ACTUALIZACIÓN DE ASISTENCIA - INSTITUCIÓN EDUCATIVA\n"
-                    f"━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                    f"Estimado/a Sr./Sra. {nombre_tutor}:\n\n"
-                    f"Le informamos sobre el registro de asistencia de {nombre_estudiante} para el día {fecha_formato}: *{tipo_falta}*.\n\n"
-                    f"Observaciones: {observaciones or 'Ninguna'}\n\n"
-                    f"Atentamente,\nLA DIRECCIÓN"
-                )
-
-                mensaje_interno = Mensaje(
-                    destinatario=nombre_tutor,
-                    estudiante_id=estudiante_id,
-                    telefono=telefono,
-                    tipo_mensaje=f'Asistencia {tipo_falta}',
-                    contenido=contenido,
-                    remitente='Institución'
-                )
-                db.session.add(mensaje_interno)
-                db.session.commit()
-            except Exception as msg_err:
-                print(f"⚠️ Aviso: No se pudo generar el mensaje interno: {msg_err}")
-
-            flash('✅ Registro de asistencia guardado y comunicado correctamente.', 'success')
-            return redirect(url_for('faltas.lista_faltas'))
-
-        except Exception as e:
-            db.session.rollback()
-            flash(f'❌ Error al registrar: {str(e)}', 'danger')
-
-    curso_filtro = request.args.get('curso', '')
-    estudiantes = []
-    if curso_filtro:
-        estudiantes = Estudiante.query.filter_by(curso=curso_filtro, estado='Activo').order_by(Estudiante.apellidos).all()
-
-    cursos = db.session.query(Estudiante.curso).filter_by(estado='Activo').distinct().all()
-    cursos = [c[0] for c in cursos]
-
-    return render_template('faltas/form.html', estudiantes=estudiantes, cursos=cursos,
-                         curso_actual=curso_filtro, today=datetime.now().strftime('%Y-%m-%d'))
-
-# =========================================================================
-# EDITAR / JUSTIFICAR ASISTENCIA (EXCLUSIVO ADMINISTRACIÓN)
-# =========================================================================
-@faltas_bp.route('/editar/<int:id>', methods=['GET', 'POST'])
-def editar_falta(id):
-    falta = Falta.query.get_or_404(id)
-    estudiante_actual = Estudiante.query.get(falta.sujeto_id)
-
-    if request.method == 'POST':
-        try:
-            falta.fecha = datetime.strptime(request.form['fecha'], '%Y-%m-%d').date()
-            falta.tipo_falta = request.form['tipo_falta']
-            falta.estado = 'Justificada' if falta.tipo_falta in ['Justificada', 'Licencia', 'Permiso', 'Falta Justificada'] else 'Injustificada'
-            falta.observaciones = request.form.get('observaciones', '')
-
-            if 'archivo' in request.files:
-                archivo = request.files['archivo']
-                if archivo and archivo.filename != '':
-                    filename = secure_filename(f"asistencia_{falta.sujeto_id}_{datetime.now().strftime('%Y%m%d%H%M%S')}_{archivo.filename}")
-                    upload_folder = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'static/uploads'), 'faltas')
-                    os.makedirs(upload_folder, exist_ok=True)
-                    archivo.save(os.path.join(upload_folder, filename))
-                    falta.archivo_adjunto = filename
-
-            db.session.commit()
-
-            flash('✅ Registro de asistencia actualizado y justificado correctamente.', 'success')
-            return redirect(url_for('faltas.lista_faltas'))
-
-        except Exception as e:
-            db.session.rollback()
-            flash(f'❌ Error al actualizar: {str(e)}', 'danger')
-
-    cursos = db.session.query(Estudiante.curso).filter_by(estado='Activo').distinct().all()
-    cursos = [c[0] for c in cursos]
+def index():
+    fecha_str = request.args.get('fecha', ahora_bolivia().strftime('%Y-%m-%d'))
+    curso = request.args.get('curso', '').strip()
     
-    estudiantes = []
-    if estudiante_actual and estudiante_actual.curso:
-        estudiantes = Estudiante.query.filter_by(curso=estudiante_actual.curso, estado='Activo').order_by(Estudiante.apellidos).all()
+    turno = request.args.get('turno', 'Mañana').strip()
+    if turno not in ['Mañana', 'Tarde']:
+        turno = 'Mañana'
+        
+    solo_faltas = request.args.get('solo_faltas') 
 
-    return render_template('faltas/form.html', falta=falta, estudiante_actual=estudiante_actual,
-                         estudiantes=estudiantes, cursos=cursos, 
-                         curso_actual=estudiante_actual.curso if estudiante_actual else '',
-                         today=datetime.now().strftime('%Y-%m-%d'))
+    query = db.session.query(Asistencia, Estudiante).join(
+        Estudiante, Asistencia.estudiante_id == Estudiante.id
+    ).filter(
+        db.func.date(Asistencia.fecha) == fecha_str,
+        db.func.trim(db.func.lower(Estudiante.turno)) == turno.lower()
+    )
+    
+    if curso:
+        query = query.filter(func.lower(func.trim(Asistencia.curso)) == curso.lower())
+        
+    if solo_faltas:
+        query = query.filter(Asistencia.estado == 'Falta')
 
-# =========================================================================
-# ELIMINAR REGISTRO DE ASISTENCIA
-# =========================================================================
-@faltas_bp.route('/eliminar/<int:id>', methods=['POST'])
-def eliminar_falta(id):
-    falta = Falta.query.get_or_404(id)
+    resultados = query.order_by(Asistencia.curso, Estudiante.apellidos).all()
+    asistencias = [r[0] for r in resultados]
+
+    controles = ControlAsistenciaDiaria.query.filter(db.func.date(ControlAsistenciaDiaria.fecha) == fecha_str).all()
+
+    cursos_estandar = set()
+    cursos_asistencia = db.session.query(Asistencia.curso).filter(Asistencia.curso != None).distinct().all()
+    for c in cursos_asistencia:
+        cursos_estandar.add(c[0].strip())
+        
+    cursos_db = db.session.query(Estudiante.curso).filter(Estudiante.estado == 'Activo', Estudiante.curso != None).distinct().all()
+    for c in cursos_db:
+        nombre = c[0].strip().upper().replace(' DE ', ' ')
+        partes = nombre.split()
+        clean_partes = []
+        for p in partes:
+            if len(p) == 1 and p in 'ABCDEFGH':
+                clean_partes.append(p)
+            else:
+                clean_partes.append(p.capitalize())
+        cursos_estandar.add(" ".join(clean_partes))
+
+    return render_template(
+        'faltas/index.html', 
+        asistencias=asistencias, 
+        fecha_str=fecha_str, 
+        curso_seleccionado=curso, 
+        turno_seleccionado=turno,
+        solo_faltas=solo_faltas,
+        cursos=sorted(list(cursos_estandar)), 
+        controles=controles
+    )
+
+# ==============================================================================
+# EDITAR / JUSTIFICAR ASISTENCIA Y SUBIR ARCHIVO (PROTEGIDO)
+# ==============================================================================
+@faltas_bp.route('/editar/<int:id>', methods=['POST'])
+@boveda_requerida
+def editar(id):
+    asistencia = Asistencia.query.get_or_404(id)
+    nuevo_estado = request.form.get('estado', asistencia.estado)
+    nueva_obs = request.form.get('observacion', asistencia.observacion)
+    
+    asistencia.estado = nuevo_estado
+    asistencia.observacion = nueva_obs
+    
+    if 'documento' in request.files:
+        file = request.files['documento']
+        if file and file.filename != '':
+            filename = secure_filename(f"justificativo_{asistencia.id}_{file.filename}")
+            upload_folder = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'static/uploads'), 'justificaciones')
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            filepath = os.path.join(upload_folder, filename)
+            file.save(filepath)
+            asistencia.archivo_adjunto = f"justificaciones/{filename}"
+    
     try:
-        db.session.delete(falta)
         db.session.commit()
-        flash('✅ Registro eliminado correctamente.', 'success')
+        flash('✅ Registro de asistencia actualizado correctamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ Error al actualizar: {str(e)}', 'danger')
+        
+    return redirect(request.referrer or url_for('faltas.index'))
+
+# ==============================================================================
+# ELIMINAR ASISTENCIA (PROTEGIDO)
+# ==============================================================================
+@faltas_bp.route('/eliminar/<int:id>', methods=['POST'])
+@boveda_requerida
+def eliminar(id):
+    asistencia = Asistencia.query.get_or_404(id)
+    
+    if asistencia.estado in ['Justificada', 'Retraso']:
+        flash(f'⚠️ No se puede eliminar este registro porque cuenta con estado de "{asistencia.estado}". Por normativa institucional, las justificaciones y retrasos deben conservarse en el kárdex.', 'danger')
+        return redirect(url_for('faltas.index'))
+
+    try:
+        db.session.delete(asistencia)
+        db.session.commit()
+        flash('🗑 Registro de asistencia eliminado definitivamente.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'❌ Error al eliminar: {str(e)}', 'danger')
+        
+    return redirect(request.referrer or url_for('faltas.index'))
 
-    return redirect(url_for('faltas.lista_faltas'))
-
-# =========================================================================
-# REPORTE DE ASISTENCIA POR ESTUDIANTE
-# =========================================================================
-@faltas_bp.route('/reporte/<int:estudiante_id>')
-def reporte_estudiante(estudiante_id):
-    faltas = Falta.query.filter_by(sujeto_id=estudiante_id, tipo_sujeto='Estudiante').order_by(Falta.fecha.desc()).all()
-    estudiante = Estudiante.query.get_or_404(estudiante_id)
-    return render_template('faltas/reporte.html', faltas=faltas, estudiante=estudiante)
-
-# =========================================================================
-# MONITOR EXTERNO DE DIRECCIÓN (ASISTENCIAS + CUADRO DE HONOR + VALORES)
-# =========================================================================
-@faltas_bp.route('/monitor-direccion')
-def monitor_direccion():
-    """Pantalla pública en tiempo real para colocar fuera de dirección."""
-    from datetime import date
-    hoy = date.today()
+# ==============================================================================
+# DESBLOQUEAR CURSO (PROTEGIDO)
+# ==============================================================================
+@faltas_bp.route('/desbloquear', methods=['POST'])
+@boveda_requerida
+def desbloquear():
+    control_id = request.form.get('control_id')
+    control = ControlAsistenciaDiaria.query.get_or_404(control_id)
+    curso_nombre = control.curso
     
-    # 1. Ausencias del día (registradas como Falta Injustificada, Ausente o Falta)
-    ausencias_hoy = Falta.query.filter(
-        Falta.tipo_sujeto == 'Estudiante',
-        Falta.fecha == hoy,
-        Falta.tipo_falta.in_(['Falta Injustificada', 'Ausente', 'Falta'])
-    ).all()
-    
-    est_ids = [a.sujeto_id for a in ausencias_hoy]
-    estudiantes_ausentes = Estudiante.query.filter(Estudiante.id.in_(est_ids)).all() if est_ids else []
-    mapa_est = {e.id: e for e in estudiantes_ausentes}
-    
-    lista_ausentes = []
-    for aus in ausencias_hoy:
-        est = mapa_est.get(aus.sujeto_id)
-        if est:
-            lista_ausentes.append({
-                'apellidos': est.apellidos,
-                'nombres': est.nombres,
-                'curso': est.curso
-            })
-
-    # Ordenar ausentes por curso y apellido
-    lista_ausentes = sorted(lista_ausentes, key=lambda x: (x['curso'], x['apellidos']))
-
-    return render_template(
-        'faltas/monitor.html',
-        ausentes=lista_ausentes,
-        fecha_hoy=hoy.strftime('%d/%m/%Y')
-    )
+    try:
+        db.session.delete(control)
+        db.session.commit()
+        flash(f'🔓 El curso {curso_nombre} ha sido desbloqueado. Regencia ya puede volver a tomar lista.', 'info')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ Error al desbloquear el curso: {str(e)}', 'danger')
+        
+    return redirect(request.referrer or url_for('faltas.index'))

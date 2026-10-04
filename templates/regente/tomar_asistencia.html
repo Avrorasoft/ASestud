@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tomar Asistencia - Regencia</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #0b0f19; color: #f8fafc; font-family: sans-serif; }
+    </style>
+</head>
+<body>
+<div class="container mt-4 mb-5" style="max-width: 900px;">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="text-info fw-bold text-uppercase mb-1">
+                <i class="bi bi-clipboard2-check-fill text-warning"></i> Control de Asistencia
+            </h2>
+            <span class="badge bg-secondary fs-6"><i class="bi bi-person-badge"></i> {{ session.get('nombre_regente', 'Regencia') }} | Turno: {{ session.get('turno_regente', 'Mañana') }}</span>
+        </div>
+        <a href="{{ url_for('regente.monitor') }}" class="btn btn-outline-light fw-bold">
+            <i class="bi bi-arrow-left"></i> Volver al Monitor
+        </a>
+    </div>
+
+    <div class="card bg-dark text-light border-secondary shadow mb-4" style="border-radius: 10px;">
+        <div class="card-body p-4">
+            <form method="GET" action="{{ url_for('regente.tomar_asistencia') }}" class="row gx-3 align-items-end">
+                <div class="col-md-8">
+                    <label class="form-label fw-bold text-warning fs-5">Seleccione el Curso para tomar lista:</label>
+                    <select name="curso" class="form-select bg-secondary text-light border-0 fw-bold fs-5 p-3" required>
+                        <option value="">-- Seleccionar Curso --</option>
+                        {% for c in cursos %}
+                            <option value="{{ c }}" {% if curso_seleccionado == c %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button type="submit" class="btn btn-warning w-100 fw-bold fs-5 shadow p-3">
+                        <i class="bi bi-funnel-fill"></i> Cargar Lista
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if curso_seleccionado %}
+        {% if control and control.bloqueado %}
+            <div class="alert alert-danger shadow-lg border-danger text-center p-5 rounded-4">
+                <i class="bi bi-lock-fill text-danger mb-3" style="font-size: 4rem;"></i>
+                <h3 class="fw-bold text-danger text-uppercase">Curso Procesado</h3>
+                <p class="fs-5 text-dark mb-0">La asistencia del curso <strong>{{ curso_seleccionado }}</strong> ya fue enviada en su turno.</p>
+                <p class="text-muted mt-2">Cualquier corrección debe ser reportada a la Administración Central.</p>
+            </div>
+        {% elif estudiantes %}
+            <form method="POST" action="{{ url_for('regente.tomar_asistencia') }}" id="formAsistencia">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <input type="hidden" name="curso" value="{{ curso_seleccionado }}">
+                
+                <div class="card bg-dark text-light border-warning shadow-lg" style="border-radius: 12px;">
+                    <div class="card-header bg-warning text-dark p-3 d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0 fw-bold">
+                            Nómina: {{ curso_seleccionado }} ({{ session.get('turno_regente', 'Mañana') }})
+                        </h4>
+                        <span class="badge bg-dark fs-5">{{ estudiantes|length }} Alumnos</span>
+                    </div>
+                    
+                    <div class="card-body p-0">
+                        <div class="table-responsive">
+                            <table class="table table-dark table-hover mb-0 align-middle">
+                                <thead>
+                                    <tr class="text-uppercase small text-secondary">
+                                        <th class="ps-4">Nº</th>
+                                        <th>Apellidos y Nombres</th>
+                                        <th class="text-center bg-secondary text-dark fs-5" style="width: 250px;">¿FALTÓ A CLASES?</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for e in estudiantes %}
+                                    <tr class="border-bottom border-secondary" style="height: 60px;">
+                                        <td class="ps-4 text-muted fs-5">{{ loop.index }}</td>
+                                        <td class="fw-bold text-light fs-5">{{ e.apellidos }}, {{ e.nombres }}</td>
+                                        
+                                        <td class="text-center bg-secondary">
+                                            <input type="hidden" name="estudiante_id" value="{{ e.id }}">
+                                            <div class="form-check form-switch d-flex justify-content-center mb-0">
+                                                <input class="form-check-input border-dark" type="checkbox" name="faltas" value="{{ e.id }}" id="falta_{{ e.id }}" style="width: 3.5em; height: 1.8em; cursor: pointer;">
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="card-footer border-top border-warning bg-dark p-4">
+                        <div class="alert alert-warning text-dark border-0 shadow-sm d-flex align-items-center">
+                            <i class="bi bi-exclamation-triangle-fill fs-2 me-3"></i>
+                            <div class="fs-6">
+                                <strong>¡Atención!</strong> Al guardar se bloqueará esta lista bajo su responsabilidad (<strong>{{ session.get('nombre_regente', 'Regencia') }}</strong>).
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-danger btn-lg w-100 fw-bold text-uppercase shadow-lg border-2 border-light py-3 fs-4" onclick="return confirm('¿Confirma que la lista es correcta? Esto publicará las faltas en el sistema.');">
+                            <i class="bi bi-send-check-fill"></i> Confirmar y Enviar Lista
+                        </button>
+                    </div>
+                </div>
+            </form>
+        {% else %}
+            <div class="alert alert-secondary text-center border-0 shadow-sm p-5 mt-4">
+                <i class="bi bi-people mb-2 text-muted" style="font-size: 3rem;"></i>
+                <h4 class="text-dark fw-bold">No hay estudiantes activos de este curso en su turno ({{ session.get('turno_regente', 'Mañana') }}).</h4>
+            </div>
+        {% endif %}
+    {% endif %}
+</div>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

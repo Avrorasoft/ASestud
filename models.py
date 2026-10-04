@@ -21,6 +21,7 @@ from datetime import datetime, timezone, timedelta
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from werkzeug.security import generate_password_hash, check_password_hash
+import sqlite3
 
 db = SQLAlchemy()
 
@@ -497,7 +498,6 @@ class Gasto(db.Model):
     metodo_pago = db.Column(db.String(20), default='Efectivo')
     archivo = db.Column(db.String(255), nullable=True)
     
-    # Definido con nullable=True para que las consultas antiguas no fallen antes de la migración automática
     estado = db.Column(db.String(20), nullable=True, default='Activo')
 
     def __repr__(self):
@@ -606,7 +606,6 @@ class Tarea(db.Model):
     puntaje_maximo = db.Column(db.Float, default=100.0)
     archivo_adjunto = db.Column(db.String(255), nullable=True)
 
-    # Relación bidireccional con Materia
     materia = db.relationship(
         'Materia',
         backref=db.backref('tareas', lazy=True, cascade='all, delete-orphan')
@@ -617,7 +616,7 @@ class Tarea(db.Model):
 
 
 # ==============================================================================
-# PORTAL DEL PROFESOR: ASISTENCIAS (POR C.I.)
+# SISTEMA DE ASISTENCIAS (AHORA EXCLUSIVO PARA LA REGENTE)
 # ==============================================================================
 
 class Asistencia(db.Model):
@@ -625,14 +624,24 @@ class Asistencia(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     estudiante_id = db.Column(db.Integer, db.ForeignKey('estudiantes.id'), nullable=False)
-    materia_id = db.Column(db.Integer, db.ForeignKey('materias.id'), nullable=False)
+    
+    # Este campo originó el error. Al crearse la BD antes, seguía exigiendo que no sea Nulo.
+    # En el pragma de abajo aplicamos la cirugía automática.
+    materia_id = db.Column(db.Integer, db.ForeignKey('materias.id'), nullable=True)
 
     ci_estudiante = db.Column(db.String(20), nullable=False, index=True)
     rude_estudiante = db.Column(db.String(20), nullable=True)
 
+    curso = db.Column(db.String(50), nullable=True)
     fecha = db.Column(db.Date, nullable=False)
     estado = db.Column(db.String(20), default='Presente')
     observacion = db.Column(db.Text, nullable=True)
+    
+    # ⭐ NUEVO CAMPO AÑADIDO: Documento para justificar faltas
+    archivo_adjunto = db.Column(db.String(255), nullable=True)
+    
+    notificado_padre = db.Column(db.Boolean, default=False)
+    
     fecha_registro = db.Column(db.DateTime, default=ahora_bolivia)
 
     estudiante = db.relationship(
@@ -646,7 +655,25 @@ class Asistencia(db.Model):
     )
 
     def __repr__(self):
-        return f"<Asistencia {self.fecha}>"
+        return f"<Asistencia {self.fecha} - Estudiante CI: {self.ci_estudiante}>"
+
+
+# ==============================================================================
+# CONTROL DIARIO DE ASISTENCIA (BLOQUEO DE REGISTRO PARA LA REGENTE)
+# ==============================================================================
+
+class ControlAsistenciaDiaria(db.Model):
+    __tablename__ = 'control_asistencia_diaria'
+
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.Date, nullable=False)
+    curso = db.Column(db.String(50), nullable=False)
+    bloqueado = db.Column(db.Boolean, default=True)
+    registrado_por = db.Column(db.String(100), default='Regente')
+    fecha_registro = db.Column(db.DateTime, default=ahora_bolivia)
+
+    def __repr__(self):
+        return f"<ControlAsistenciaDiaria {self.curso} - {self.fecha} (Bloqueado:{self.bloqueado})>"
 
 
 # ==============================================================================
@@ -739,6 +766,11 @@ class ConfiguracionInstitucion(db.Model):
     institucion_linea2 = db.Column(db.String(150), default='')
     institucion_linea3 = db.Column(db.String(150), default='')
     institucion_logo = db.Column(db.String(255), default='uploads/logo_institucion.png')
+    
+    modalidad_descuento_faltas = db.Column(db.String(20), default='Proporcional') 
+    puntaje_base_asistencia = db.Column(db.Float, default=10.0)
+    descuento_fijo_por_falta = db.Column(db.Float, default=2.0)
+    dias_habiles_trimestre = db.Column(db.Integer, default=60)
 
 
 # ==============================================================================
@@ -758,12 +790,6 @@ def interceptar_eliminacion_estudiante(mapper, connection, target):
 
 @event.listens_for(Profesor, 'before_delete')
 def interceptar_eliminacion_profesor(mapper, connection, target):
-    """
-    Antes de eliminar un profesor:
-    1. Deja sus materias disponibles (profesor_id = NULL).
-    2. Elimina sus faltas.
-    3. Elimina sus pagos de personal.
-    """
     connection.execute(
         Materia.__table__.update().where(
             Materia.__table__.c.profesor_id == target.id
@@ -787,7 +813,6 @@ def interceptar_eliminacion_profesor(mapper, connection, target):
 
 @event.listens_for(PersonalAdministrativo, 'before_delete')
 def interceptar_eliminacion_personal(mapper, connection, target):
-    """Elimina faltas y pagos asociados al personal administrativo antes de borrarlo."""
     connection.execute(
         Falta.__table__.delete().where(
             Falta.__table__.c.tipo_sujeto.in_(['Personal', 'PersonalAdministrativo', 'Administrativo']) &
@@ -810,7 +835,6 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor.execute("PRAGMA synchronous = NORMAL;")
     cursor.execute("PRAGMA busy_timeout = 5000;")
     
-    # ⭐ AUTOCORRECCIÓN AUTOMÁTICA DE ESQUEMA PARA LA TABLA GASTOS
     try:
         cursor.execute("PRAGMA table_info(gastos);")
         columnas = [col[1] for col in cursor.fetchall()]
@@ -819,6 +843,79 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
             dbapi_connection.commit()
     except Exception:
         pass
+        
+    try:
+        cursor.execute("PRAGMA table_info(configuracion_institucion);")
+        columnas = [col[1] for col in cursor.fetchall()]
+        if columnas and 'modalidad_descuento_faltas' not in columnas:
+            cursor.execute("ALTER TABLE configuracion_institucion ADD COLUMN modalidad_descuento_faltas TEXT DEFAULT 'Proporcional';")
+            cursor.execute("ALTER TABLE configuracion_institucion ADD COLUMN puntaje_base_asistencia REAL DEFAULT 10.0;")
+            cursor.execute("ALTER TABLE configuracion_institucion ADD COLUMN descuento_fijo_por_falta REAL DEFAULT 2.0;")
+            cursor.execute("ALTER TABLE configuracion_institucion ADD COLUMN dias_habiles_trimestre INTEGER DEFAULT 60;")
+            dbapi_connection.commit()
+    except Exception:
+        pass
+
+    # ⭐ AUTOCORRECCIÓN PARA ASISTENCIAS CON MAPEO EXACTO DE COLUMNAS
+    try:
+        cursor.execute("PRAGMA table_info(asistencias);")
+        columnas_asis = cursor.fetchall()
+        columnas = [col[1] for col in columnas_asis]
+        
+        # 1. Agregar las nuevas columnas si no existen
+        if columnas and 'curso' not in columnas:
+            cursor.execute("ALTER TABLE asistencias ADD COLUMN curso TEXT;")
+            cursor.execute("ALTER TABLE asistencias ADD COLUMN notificado_padre BOOLEAN DEFAULT 0;")
+            dbapi_connection.commit()
+            
+        # 2. Agregar columna archivo_adjunto
+        if columnas and 'archivo_adjunto' not in columnas:
+            cursor.execute("ALTER TABLE asistencias ADD COLUMN archivo_adjunto TEXT;")
+            dbapi_connection.commit()
+            
+        # Refrescar info de columnas para la reconstrucción final
+        cursor.execute("PRAGMA table_info(asistencias);")
+        columnas_asis = cursor.fetchall()
+
+        # 3. Cirugía reconstructiva para eliminar el bloqueo de materia_id (NOT NULL)
+        # Identificar si materia_id exige ser NO NULO (col[3] es la bandera notnull)
+        for col in columnas_asis:
+            if col[1] == 'materia_id' and col[3] == 1:
+                cursor.execute("CREATE TABLE asistencias_temporal AS SELECT * FROM asistencias;")
+                cursor.execute("DROP TABLE asistencias;")
+                
+                cursor.execute("""
+                    CREATE TABLE asistencias (
+                        id INTEGER NOT NULL, 
+                        estudiante_id INTEGER NOT NULL, 
+                        materia_id INTEGER, 
+                        ci_estudiante VARCHAR(20) NOT NULL, 
+                        rude_estudiante VARCHAR(20), 
+                        curso TEXT, 
+                        fecha DATE NOT NULL, 
+                        estado VARCHAR(20), 
+                        observacion TEXT, 
+                        archivo_adjunto TEXT,
+                        notificado_padre BOOLEAN DEFAULT 0, 
+                        fecha_registro DATETIME, 
+                        PRIMARY KEY (id), 
+                        FOREIGN KEY(estudiante_id) REFERENCES estudiantes (id), 
+                        FOREIGN KEY(materia_id) REFERENCES materias (id)
+                    );
+                """)
+                
+                # Inserción con mapeo explícito para evitar mezclas de datos por alteraciones previas
+                cursor.execute("""
+                    INSERT INTO asistencias (id, estudiante_id, materia_id, ci_estudiante, rude_estudiante, curso, fecha, estado, observacion, archivo_adjunto, notificado_padre, fecha_registro)
+                    SELECT id, estudiante_id, materia_id, ci_estudiante, rude_estudiante, curso, fecha, estado, observacion, archivo_adjunto, notificado_padre, fecha_registro 
+                    FROM asistencias_temporal;
+                """)
+                cursor.execute("DROP TABLE asistencias_temporal;")
+                cursor.execute("CREATE INDEX ix_asistencias_ci_estudiante ON asistencias (ci_estudiante);")
+                dbapi_connection.commit()
+                break
+    except Exception as e:
+        print(f"Error en Pragma Asistencias: {e}")
 
     cursor.close()
 
@@ -840,9 +937,14 @@ class EntregaTarea(db.Model):
     calificacion = db.Column(db.Float, nullable=True)
     retroalimentacion = db.Column(db.Text, nullable=True)
 
-    # Relaciones bidireccionales con Tarea y Estudiante
-    tarea = db.relationship('Tarea', backref=db.backref('entregas', lazy=True, cascade='all, delete-orphan'))
-    estudiante = db.relationship('Estudiante', backref=db.backref('entregas_tareas', lazy=True))
+    tarea = db.relationship(
+        'Tarea',
+        backref=db.backref('entregas', lazy=True, cascade='all, delete-orphan')
+    )
+    estudiante = db.relationship(
+        'Estudiante',
+        backref=db.backref('entregas_tareas', lazy=True)
+    )
 
     def __repr__(self):
         return f"<EntregaTarea {self.tarea_id} - Estudiante ID: {self.estudiante_id}>"

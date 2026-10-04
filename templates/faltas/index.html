@@ -1,0 +1,240 @@
+{% extends "base.html" %}
+
+{% block title %}Administración de Asistencias - ASestud{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold text-uppercase text-warning mb-0" style="letter-spacing: 1px;">
+                <i class="bi bi-calendar2-check-fill"></i> Control Central de Asistencias
+            </h2>
+            <span class="badge bg-danger text-white fs-6 mt-1 shadow-sm"><i class="bi bi-shield-lock-fill"></i> Módulo Blindado (Bóveda)</span>
+        </div>
+        <a href="{{ url_for('faltas.cerrar_boveda') }}" class="btn btn-outline-danger fw-bold shadow-sm">
+            <i class="bi bi-safe-fill"></i> Cerrar Bóveda
+        </a>
+    </div>
+
+    <!-- PANEL DE FILTROS -->
+    <div class="card bg-dark text-light border-secondary shadow-lg mb-4" style="border-radius: 12px;">
+        <div class="card-body p-4">
+            <form method="GET" action="{{ url_for('faltas.index') }}" id="formFiltros" class="row g-3 align-items-end">
+                
+                <!-- Fecha -->
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-info"><i class="bi bi-calendar-event"></i> Fecha</label>
+                    <input type="date" name="fecha" class="form-control bg-secondary text-light border-0 fw-bold fs-5 p-2 shadow-sm" value="{{ fecha_str }}" required>
+                </div>
+
+                <!-- Curso -->
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-info"><i class="bi bi-funnel"></i> Curso</label>
+                    <select name="curso" class="form-select bg-secondary text-light border-0 fw-bold fs-5 p-2 shadow-sm">
+                        <option value="">-- Todos los Cursos --</option>
+                        {% for c in cursos %}
+                            <option value="{{ c }}" {% if curso_seleccionado == c %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- SLIDE SWITCH DE TURNO (CORREGIDO Y ESPACIADO) -->
+                <div class="col-md-3">
+                    <label class="form-label fw-bold text-warning d-block mb-2 text-center"><i class="bi bi-clock-history"></i> Turno Activo</label>
+                    <div class="bg-secondary px-3 py-2 rounded-3 shadow-inner d-flex align-items-center justify-content-between">
+                        <span class="fw-bold fs-6 {% if turno_seleccionado != 'Tarde' %}text-info{% else %}text-light opacity-50{% endif %}">Mañana</span>
+                        
+                        <div class="form-check form-switch m-0 px-2">
+                            <input class="form-check-input bg-warning border-0 shadow" type="checkbox" role="switch" id="slideTurno" name="turno" value="Tarde" {% if turno_seleccionado == 'Tarde' %}checked{% endif %} style="transform: scale(1.4); cursor: pointer;" onchange="document.getElementById('formFiltros').submit();">
+                        </div>
+                        
+                        <span class="fw-bold fs-6 {% if turno_seleccionado == 'Tarde' %}text-warning{% else %}text-light opacity-50{% endif %}">Tarde</span>
+                    </div>
+                </div>
+
+                <!-- Solo Faltones -->
+                <div class="col-md-3 text-center pb-2">
+                    <div class="form-check form-switch d-inline-block">
+                        <input class="form-check-input bg-danger border-0 shadow-sm" type="checkbox" role="switch" id="soloFaltasSwitch" name="solo_faltas" {% if solo_faltas %}checked{% endif %} style="transform: scale(1.5); cursor: pointer;">
+                        <label class="form-check-label fw-bold text-danger ms-2 fs-5" for="soloFaltasSwitch" style="cursor: pointer;">Solo Faltones</label>
+                    </div>
+                </div>
+
+                <!-- Botón Aplicar -->
+                <div class="col-md-12 text-end mt-3">
+                    <button type="submit" class="btn btn-info fw-bold fs-5 shadow px-5 py-2 text-dark">
+                        <i class="bi bi-search"></i> Aplicar Filtros
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- TABLA DE ASISTENCIAS -->
+        <div class="col-md-9 mb-4">
+            <div class="card bg-dark text-light border-info shadow-lg h-100" style="border-radius: 12px;">
+                <div class="card-header border-bottom border-info p-3 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold text-info">
+                        <i class="bi bi-list-columns-reverse"></i> Registros de la Fecha: {{ fecha_str }} &nbsp;|&nbsp; Turno: <span class="text-warning">{{ turno_seleccionado }}</span>
+                    </h5>
+                    <span class="badge bg-info text-dark fs-6">{{ asistencias|length }} Resultados</span>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover table-striped align-middle mb-0">
+                            <thead class="table-secondary text-uppercase small text-dark">
+                                <tr>
+                                    <th class="ps-4">Estudiante</th>
+                                    <th>Curso</th>
+                                    <th>Estado</th>
+                                    <th>Detalles / Justificativo</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for a in asistencias %}
+                                <tr>
+                                    <td class="ps-4 fw-bold text-light fs-5">{{ a.estudiante.apellidos }}, {{ a.estudiante.nombres }}</td>
+                                    <td><span class="badge bg-secondary text-light fs-6 shadow-sm">{{ a.curso }}</span></td>
+                                    <td>
+                                        {% if a.estado == 'Falta' %}
+                                            <span class="badge bg-danger fs-6 shadow-sm">{{ a.estado }}</span>
+                                        {% elif a.estado == 'Retraso' %}
+                                            <span class="badge bg-warning text-dark fs-6 shadow-sm">{{ a.estado }}</span>
+                                        {% elif a.estado == 'Justificada' %}
+                                            <span class="badge bg-info text-dark fs-6 shadow-sm">{{ a.estado }}</span>
+                                        {% else %}
+                                            <span class="badge bg-success fs-6 shadow-sm">{{ a.estado }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-muted small">
+                                        {% if a.observacion %}
+                                            <span class="text-light fst-italic">{{ a.observacion }}</span>
+                                        {% else %}
+                                            <span class="text-secondary">-</span>
+                                        {% endif %}
+                                        
+                                        {% if a.archivo_adjunto %}
+                                            <div class="mt-2">
+                                                <a href="{{ url_for('servir_archivo_subido', filename=a.archivo_adjunto) }}" target="_blank" class="badge bg-primary text-decoration-none shadow-sm p-2">
+                                                    <i class="bi bi-paperclip"></i> Ver Documento Adjunto
+                                                </a>
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <button class="btn btn-sm btn-outline-info fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalEditar{{ a.id }}" title="Editar / Justificar">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                        <form action="{{ url_for('faltas.eliminar', id=a.id) }}" method="POST" class="d-inline" onsubmit="return confirm('¿Está seguro de borrar definitivamente este registro?');">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger fw-bold shadow-sm ms-1" title="Eliminar Registro">
+                                                <i class="bi bi-trash-fill"></i>
+                                            </button>
+                                        </form>
+                                    </td>
+                                </tr>
+
+                                <div class="modal fade" id="modalEditar{{ a.id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content bg-dark text-light border-info shadow-lg" style="border-radius: 12px;">
+                                            <form action="{{ url_for('faltas.editar', id=a.id) }}" method="POST" enctype="multipart/form-data">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                                <div class="modal-header border-bottom border-info">
+                                                    <h5 class="modal-title fw-bold text-info"><i class="bi bi-shield-check"></i> Editar Asistencia</h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                                </div>
+                                                <div class="modal-body p-4">
+                                                    <p class="text-muted small mb-3">Modificando el registro de <strong class="text-light">{{ a.estudiante.apellidos }}, {{ a.estudiante.nombres }}</strong>.</p>
+                                                    
+                                                    <div class="mb-4">
+                                                        <label class="form-label fw-bold text-warning">Estado del Estudiante</label>
+                                                        <select name="estado" class="form-select bg-secondary text-light border-0 fw-bold shadow-sm p-2">
+                                                            <option value="Falta" {% if a.estado == 'Falta' %}selected{% endif %}>Falta</option>
+                                                            <option value="Retraso" {% if a.estado == 'Retraso' %}selected{% endif %}>Retraso</option>
+                                                            <option value="Justificada" {% if a.estado == 'Justificada' %}selected{% endif %}>Justificada</option>
+                                                            <option value="Presente" {% if a.estado == 'Presente' %}selected{% endif %}>Presente</option>
+                                                        </select>
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold text-warning">Observación / Justificación</label>
+                                                        <textarea name="observacion" class="form-control bg-secondary text-light border-0 shadow-sm" rows="3" placeholder="Ej. Certificado médico entregado en dirección...">{{ a.observacion or '' }}</textarea>
+                                                    </div>
+                                                    
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold text-warning"><i class="bi bi-paperclip"></i> Adjuntar Documento (Opcional)</label>
+                                                        <input type="file" name="documento" class="form-control bg-secondary text-light border-0 shadow-sm" accept=".pdf,.jpg,.jpeg,.png">
+                                                        <small class="text-secondary fst-italic">Solo si aplica. Subir un nuevo archivo reemplazará al anterior.</small>
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer border-top border-info">
+                                                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                                                    <button type="submit" class="btn btn-info fw-bold text-dark"><i class="bi bi-save"></i> Guardar Cambios</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center p-5 text-secondary">
+                                        <i class="bi bi-folder-x" style="font-size: 4rem;"></i>
+                                        <h5 class="mt-3 fw-bold">No se encontraron registros de asistencia para el Turno {{ turno_seleccionado }}.</h5>
+                                        <p class="small">Cambie los filtros de fecha o curso para buscar nuevamente.</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COLUMNA DERECHA: SEGURIDAD Y BLOQUEOS -->
+        <div class="col-md-3 mb-4">
+            <div class="card bg-dark text-light border-danger shadow-lg h-100" style="border-radius: 12px;">
+                <div class="card-header bg-danger text-white p-3 border-0">
+                    <h5 class="mb-0 fw-bold text-uppercase"><i class="bi bi-shield-lock-fill"></i> Seguridad</h5>
+                </div>
+                <div class="card-body p-4">
+                    <p class="small text-secondary fw-bold mb-4">
+                        Cursos bloqueados en el día. Si hubo un error en la lista, puede desbloquearlos.
+                    </p>
+                    
+                    {% if controles %}
+                        <div class="d-flex flex-column gap-3">
+                        {% for c in controles %}
+                            {% if c.bloqueado %}
+                            <div class="bg-secondary p-3 rounded shadow-sm border border-danger">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-bold text-light fs-5">{{ c.curso }}</span>
+                                    <form action="{{ url_for('faltas.desbloquear') }}" method="POST" class="m-0" onsubmit="return confirm('¿Está seguro de DESBLOQUEAR el curso {{ c.curso }}? Regencia podrá alterar la lista nuevamente.');">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                        <input type="hidden" name="control_id" value="{{ c.id }}">
+                                        <button type="submit" class="btn btn-danger btn-sm fw-bold shadow" title="Desbloquear Curso">
+                                            <i class="bi bi-unlock-fill"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                                <span class="badge bg-dark text-warning border border-warning w-100 text-start py-2">
+                                    <i class="bi bi-person-badge me-1"></i> Por: {{ c.registrado_por }}
+                                </span>
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-dark border border-secondary text-center mb-0 p-4 shadow-sm">
+                            <i class="bi bi-check-circle-fill text-success fs-1 d-block mb-2"></i>
+                            <span class="text-muted fw-bold">Ningún curso bloqueado en esta fecha.</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

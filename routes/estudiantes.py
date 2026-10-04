@@ -20,6 +20,7 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash,
 from models import (
     db, Estudiante, Padre, Pago, Calificacion, Materia, Egresado,
     HistorialCalificacion, Mensaje, ConfiguracionSuperadmin,
+    ConfiguracionInstitucion, Asistencia,
     CURSOS_POR_NIVEL, NIVELES, TURNOS, nivel_de_curso
 )
 from decorators import profesor_autorizado_requerido
@@ -45,9 +46,58 @@ def asegurar_turno_activo():
 
 
 # ==============================================================================
+# MOTOR CENTRAL DE CÁLCULO DE NOTAS DE ASISTENCIA
+# ==============================================================================
+def calcular_nota_asistencia(estudiante_id):
+    """
+    Calcula la nota de asistencia trimestral o anual del estudiante leyendo la configuración
+    del colegio. Faltas = 1, Retrasos = 0.5, Justificadas = 0.
+    """
+    config = ConfiguracionInstitucion.query.first()
+    if not config:
+        modalidad = 'Proporcional'
+        base = 10.0
+        desc_fijo = 2.0
+        dias = 60
+    else:
+        modalidad = getattr(config, 'modalidad_descuento_faltas', 'Proporcional')
+        base = float(getattr(config, 'puntaje_base_asistencia', 10.0))
+        desc_fijo = float(getattr(config, 'descuento_fijo_por_falta', 2.0))
+        dias = int(getattr(config, 'dias_habiles_trimestre', 60))
+
+    anio_actual = datetime.now().year
+    asistencias = Asistencia.query.filter(
+        Asistencia.estudiante_id == estudiante_id,
+        db.extract('year', Asistencia.fecha) == anio_actual
+    ).all()
+
+    total_faltas = 0.0
+
+    for a in asistencias:
+        estado = (a.estado or '').lower().strip()
+        if estado == 'falta':
+            total_faltas += 1.0
+        elif estado == 'retraso':
+            total_faltas += 0.5
+        # 'justificada' y 'presente' suman 0.0
+
+    if modalidad.lower() == 'fijo':
+        nota = base - (total_faltas * desc_fijo)
+    else:
+        # Proporcional
+        if dias > 0:
+            valor_falta = base / dias
+            nota = base - (total_faltas * valor_falta)
+        else:
+            nota = base
+
+    return round(max(0.0, nota), 2), total_faltas
+
+
+# ==============================================================================
 # LISTADO DE ESTUDIANTES POR CURSO, NIVEL, TURNO O BÚSQUEDA LIBRE (POR C.I.)
 # ==============================================================================
-from sqlalchemy import or_, and_, func # <-- Asegúrate de incluir 'or_' aquí
+from sqlalchemy import or_, and_, func
 
 # Mapeo flexible de niveles según las palabras clave de los cursos en tu BD
 CURSOS_POR_NIVEL = {
@@ -172,7 +222,10 @@ def nuevo_estudiante():
       db.session.rollback()
       flash(f'❌ Error al registrar: {str(e)}', 'danger')
 
-  return render_template('estudiantes/nuevo.html')# ==============================================================================
+  return render_template('estudiantes/nuevo.html')
+
+
+# ==============================================================================
 # ELIMINAR ESTUDIANTE
 # ==============================================================================
 
@@ -198,7 +251,7 @@ def eliminar_estudiante(id):
 
 
 # ==============================================================================
-# CARDEX DEL ESTUDIANTE (BÚSQUEDA BLINDADA ID + C.I. Y PAGOS CRONOLÓGICOS)
+# CARDEX DEL ESTUDIANTE (CON NOTAS, PAGOS Y ASISTENCIAS INTEGRADAS)
 # ==============================================================================
 
 @estudiantes_bp.route('/ver/<int:id>')
@@ -217,6 +270,10 @@ def ver_estudiante(id):
         meses_orden.get(str(p.mes).strip().lower(), 99) if p.mes else 99, 
         p.fecha_pago.timestamp() if p.fecha_pago else 0
     ))
+
+    # ⭐ Historial y Motor de Asistencias
+    historial_asistencias = Asistencia.query.filter_by(estudiante_id=id).order_by(Asistencia.fecha.desc()).all()
+    nota_asistencia, total_faltas_calculadas = calcular_nota_asistencia(id)
 
     # ⭐ Búsqueda dual robusta por ID y por C.I.
     calificaciones_raw = Calificacion.query.filter(Calificacion.estudiante_id == id).options(joinedload(Calificacion.materia)).all()
@@ -321,8 +378,84 @@ def ver_estudiante(id):
         est=est,
         padre=padre,
         pagos=pagos,
-        materias_notas=materias_notas
+        materias_notas=materias_notas,
+        historial_asistencias=historial_asistencias,
+        nota_asistencia=nota_asistencia,
+        total_faltas_calculadas=total_faltas_calculadas
     )
+
+
+# ==============================================================================
+# EDICIÓN ADMINISTRATIVA Y JUSTIFICACIÓN DIRECTA DE ASISTENCIA
+# ==============================================================================
+@estudiantes_bp.route('/editar_asistencia/<int:asistencia_id>', methods=['POST'])
+def editar_asistencia(asistencia_id):
+    """
+    Permite a la Administración cambiar manualmente el estado (ej. a Retraso) 
+    sin subir un archivo obligatorio.
+    """
+    asistencia = Asistencia.query.get_or_404(asistencia_id)
+    nuevo_estado = request.form.get('estado', asistencia.estado).strip()
+    observacion = request.form.get('observacion', '').strip()
+    
+    try:
+        asistencia.estado = nuevo_estado
+        asistencia.observacion = observacion
+        db.session.commit()
+        flash('✅ Registro de asistencia actualizado correctamente.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ Error al actualizar asistencia: {str(e)}', 'danger')
+        
+    return redirect(url_for('estudiantes.ver_estudiante', id=asistencia.estudiante_id))
+
+
+@estudiantes_bp.route('/justificar_asistencia/<int:asistencia_id>', methods=['POST'])
+def justificar_asistencia(asistencia_id):
+    """
+    Botón directo: Convierte la asistencia en 'Falta Justificada', guarda 
+    la observación y sube el documento PDF/Imagen de respaldo médico.
+    """
+    asistencia = Asistencia.query.get_or_404(asistencia_id)
+    observacion = request.form.get('observacion', 'Falta Justificada').strip()
+    
+    documento_url = ""
+    # Recepción y subida del documento
+    if 'documento_justificacion' in request.files:
+        file = request.files['documento_justificacion']
+        if file and file.filename != '':
+            filename = secure_filename(file.filename)
+            ext = filename.rsplit('.', 1)[1].lower() if '.' in filename else 'pdf'
+            nuevo_nombre = f"justif_{asistencia.ci_estudiante}_{int(datetime.now().timestamp())}.{ext}"
+            
+            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'justificaciones')
+            os.makedirs(upload_folder, exist_ok=True)
+            
+            filepath = os.path.join(upload_folder, nuevo_nombre)
+            file.save(filepath)
+            documento_url = f"uploads/justificaciones/{nuevo_nombre}"
+
+    try:
+        asistencia.estado = 'Justificada'
+        
+        # Truco brillante: Guardamos el documento adjunto dentro del texto de la observación
+        # usando una etiqueta especial "ARCHIVO_ADJUNTO:ruta" para no tener que 
+        # realizar migraciones forzosas en la base de datos de SQLite.
+        if documento_url:
+            if observacion:
+                asistencia.observacion = f"{observacion} | ARCHIVO_ADJUNTO:{documento_url}"
+            else:
+                asistencia.observacion = f"ARCHIVO_ADJUNTO:{documento_url}"
+        else:
+            asistencia.observacion = observacion
+            
+        db.session.commit()
+        flash('✅ Falta justificada correctamente y documento de respaldo almacenado.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ Error al justificar la falta: {str(e)}', 'danger')
+        
+    return redirect(url_for('estudiantes.ver_estudiante', id=asistencia.estudiante_id))
 
 
 # ==============================================================================

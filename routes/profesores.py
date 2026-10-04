@@ -7,6 +7,7 @@ Desarrollado por: Avrora Soft - Vibola LLC
 Descripción: Blueprint para la gestión integral del Cárdex Docente:
              Expediente profesional, carga horaria, asignaciones de materias,
              balance financiero y registro de pagos con validación estricta de turno.
+             * GESTIÓN DE ASISTENCIAS ELIMINADA: TRASLADADA AL MÓDULO REGENTE *
 ==============================================================================
 """
 

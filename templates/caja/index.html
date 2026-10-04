@@ -9,20 +9,85 @@
 <div class="container-fluid d-flex flex-column h-100" style="background-color: #0f172a; color: #f8fafc; margin: -20px; padding: 20px !important; max-height: calc(100vh - 80px); overflow: hidden;">
     
     <!-- ========================================================= -->
-    <!-- MEMBRETE INSTITUCIONAL EXCLUSIVO PARA IMPRESIÓN (ARRIBA)  -->
+    <!-- FORMATO DE IMPRESIÓN LIMPIO Y EXCLUSIVO (PDF / IMPRESORA) -->
     <!-- ========================================================= -->
-    <div class="d-none d-print-block mb-3" style="background: #ffffff !important; color: #000000 !important; border-bottom: 2px solid #000000; padding-bottom: 8px; width: 100%;">
-        <table style="width: 100%; border-collapse: collapse; background: #ffffff !important;">
+    <div class="d-none d-print-block" style="background-color: #ffffff !important; color: #000000 !important; width: 100%; padding: 10px; font-family: Arial, sans-serif;">
+        
+        <!-- Membrete -->
+        <table style="width: 100%; border-collapse: collapse; border-bottom: 2px solid #000000; margin-bottom: 15px; padding-bottom: 5px;">
             <tr>
-                <td style="width: 75%; text-align: left; vertical-align: middle; background: #ffffff !important;">
-                    <h3 style="font-size: 16px; font-weight: bold; margin: 0; color: #000000 !important;">COLEGIO DR. ANTONIO VACA DÍEZ</h3>
-                    <p style="font-size: 11px; margin: 2px 0; color: #000000 !important;">Riberalta - Beni - Bolivia</p>
-                    <p style="font-size: 12px; font-weight: bold; margin: 2px 0 0 0; color: #000000 !important;">REPORTE CONSOLIDADO DE CAJA Y TESORERÍA</p>
+                <td style="text-align: left; vertical-align: middle;">
+                    <h3 style="font-size: 15px; font-weight: bold; margin: 0; color: #000000 !important;">COLEGIO DR. ANTONIO VACA DÍEZ</h3>
+                    <p style="font-size: 10px; margin: 2px 0; color: #000000 !important;">Riberalta - Beni - Bolivia</p>
+                    <p style="font-size: 11px; font-weight: bold; margin: 2px 0 0 0; color: #000000 !important;">REPORTE CONSOLIDADO DE CAJA Y TESORERÍA</p>
                 </td>
-                <td style="width: 25%; text-align: right; vertical-align: middle; font-size: 11px; color: #000000 !important; background: #ffffff !important;">
+                <td style="text-align: right; vertical-align: middle; font-size: 10px; color: #000000 !important;">
                     <strong>Fecha:</strong> {{ now().strftime('%d/%m/%Y') if now else 'Actual' }}
                 </td>
             </tr>
+        </table>
+
+        <!-- Resumen de Flujos para Impresión -->
+        <div style="margin-bottom: 15px; font-size: 11px;">
+            <table style="width: 100%; border-collapse: collapse; border: 1px solid #000000;">
+                <tr style="background-color: #f2f2f2 !important;">
+                    <th style="border: 1px solid #000000; padding: 5px; text-align: left; color: #000000 !important;">Periodo</th>
+                    <th style="border: 1px solid #000000; padding: 5px; text-align: right; color: #000000 !important;">Ingresos</th>
+                    <th style="border: 1px solid #000000; padding: 5px; text-align: right; color: #000000 !important;">Egresos / Gastos</th>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #000000; padding: 5px; color: #000000 !important;"><strong>Flujo Diario</strong></td>
+                    <td style="border: 1px solid #000000; padding: 5px; text-align: right; color: #000000 !important;">Bs. {{ "%.2f"|format(ingresos_dia or 0) }}</td>
+                    <td style="border: 1px solid #000000; padding: 5px; text-align: right; color: #000000 !important;">Bs. {{ "%.2f"|format(egresos_dia or 0) }}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #000000; padding: 5px; color: #000000 !important;"><strong>Flujo Semanal</strong></td>
+                    <td style="border: 1px solid #000000; padding: 5px; text-align: right; color: #000000 !important;">Bs. {{ "%.2f"|format(ingresos_semana or 0) }}</td>
+                    <td style="border: 1px solid #000000; padding: 5px; text-align: right; color: #000000 !important;">Bs. {{ "%.2f"|format(egresos_semana or 0) }}</td>
+                </tr>
+                <tr>
+                    <td style="border: 1px solid #000000; padding: 5px; color: #000000 !important;"><strong>Flujo Mensual</strong></td>
+                    <td style="border: 1px solid #000000; padding: 5px; text-align: right; color: #000000 !important;">Bs. {{ "%.2f"|format(ingresos_mes or 0) }}</td>
+                    <td style="border: 1px solid #000000; padding: 5px; text-align: right; color: #000000 !important;">Bs. {{ "%.2f"|format(total_egresos_mes or 0) }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- Tabla de Historial para Impresión -->
+        <h4 style="font-size: 12px; font-weight: bold; margin-bottom: 5px; color: #000000 !important;">Historial de Egresos y Pagos Institucionales</h4>
+        <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+            <thead>
+                <tr style="background-color: #e6e6e6 !important;">
+                    <th style="border: 1px solid #000000; padding: 4px; text-align: left; color: #000000 !important;">Fecha</th>
+                    <th style="border: 1px solid #000000; padding: 4px; text-align: left; color: #000000 !important;">Categoría</th>
+                    <th style="border: 1px solid #000000; padding: 4px; text-align: left; color: #000000 !important;">Descripción / Proveedor</th>
+                    <th style="border: 1px solid #000000; padding: 4px; text-align: left; color: #000000 !important;">Método</th>
+                    <th style="border: 1px solid #000000; padding: 4px; text-align: right; color: #000000 !important;">Monto</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set ns_print = namespace(total=0) %}
+                {% if gastos_recientes %}
+                    {% for g in gastos_recientes %}
+                    {% set ns_print.total = ns_print.total + g.monto %}
+                    <tr>
+                        <td style="border: 1px solid #000000; padding: 4px; color: #000000 !important;">{{ g.fecha.strftime('%d/%m/%Y') if g.fecha else '--/--/----' }}</td>
+                        <td style="border: 1px solid #000000; padding: 4px; color: #000000 !important;">{{ g.categoria }}</td>
+                        <td style="border: 1px solid #000000; padding: 4px; color: #000000 !important;">{{ g.descripcion }} - Prov: {{ g.proveedor or 'N/E' }}</td>
+                        <td style="border: 1px solid #000000; padding: 4px; color: #000000 !important;">{{ g.metodo_pago or 'Efectivo' }}</td>
+                        <td style="border: 1px solid #000000; padding: 4px; text-align: right; color: #000000 !important;">Bs. {{ "%.2f"|format(g.monto) }}</td>
+                    </tr>
+                    {% endfor %}
+                    <tr>
+                        <td colspan="4" style="border: 1px solid #000000; padding: 5px; text-align: right; font-weight: bold; color: #000000 !important;">TOTAL GENERAL:</td>
+                        <td style="border: 1px solid #000000; padding: 5px; text-align: right; font-weight: bold; color: #000000 !important;">Bs. {{ "%.2f"|format(ns_print.total) }}</td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="5" style="border: 1px solid #000000; padding: 10px; text-align: center; color: #000000 !important;">No se registran egresos o pagos institucionales.</td>
+                    </tr>
+                {% endif %}
+            </tbody>
         </table>
     </div>
 
@@ -58,8 +123,8 @@
         </div>
     </div>
 
-    <!-- TARJETAS DE INGRESOS Y EGRESOS POR PERIODOS -->
-    <div class="row g-3 mb-3 flex-shrink-0">
+    <!-- TARJETAS DE INGRESOS Y EGRESOS POR PERIODOS (Ocultas al imprimir para evitar duplicidad conflictiva) -->
+    <div class="row g-3 mb-3 flex-shrink-0 no-print">
         
         <!-- DIARIO -->
         <div class="col-lg-4 col-md-6">
@@ -117,8 +182,8 @@
 
     </div>
 
-    <!-- SECCIÓN INFERIOR: HISTORIAL DE EGRESOS Y PAGOS CON SCROLL EXCLUSIVO -->
-    <div class="row flex-grow-1 overflow-hidden">
+    <!-- SECCIÓN INFERIOR: HISTORIAL DE EGRESOS Y PAGOS (Oculto en impresión para usar el formato limpio de arriba) -->
+    <div class="row flex-grow-1 overflow-hidden no-print">
         <div class="col-lg-12 h-100 d-flex flex-column">
             <div class="card border-0 shadow-lg rounded-4 p-3 h-100 d-flex flex-column" style="background-color: #1e293b; color: #f8fafc;">
                 
@@ -127,9 +192,9 @@
                     <h5 class="fw-bold text-white mb-0">
                         <i class="bi bi-receipt text-warning me-2"></i> Historial de Egresos y Pagos Institucionales
                     </h5>
-                    <span class="badge bg-secondary text-light no-print">Listado y Acciones</span>
+                    <span class="badge bg-secondary text-light">Listado y Acciones</span>
                 </div>
-                <p class="text-light opacity-75 mb-2 no-print small">Detalle completo de los pagos realizados por la institución, con opción de comprobante individual y archivo adjunto.</p>
+                <p class="text-light opacity-75 mb-2 small">Detalle completo de los pagos realizados por la institución, con opción de comprobante individual y archivo adjunto.</p>
                 
                 <!-- CONTENEDOR CON SCROLL EXCLUSIVO PARA LA TABLA -->
                 <div class="table-responsive flex-grow-1 overflow-auto" style="scrollbar-width: thin; scrollbar-color: #475569 #1e293b;">
@@ -141,7 +206,7 @@
                                 <th>Descripción / Proveedor</th>
                                 <th>Método</th>
                                 <th class="text-end">Monto</th>
-                                <th class="text-center no-print">Comprobante / Acciones</th>
+                                <th class="text-center">Comprobante / Acciones</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -166,7 +231,7 @@
                                         </span>
                                     </td>
                                     <td class="text-end fw-bold fs-6" style="color: #fb923c !important;">Bs. {{ "%.2f"|format(g.monto) }}</td>
-                                    <td class="text-center no-print">
+                                    <td class="text-center">
                                         <div class="d-flex justify-content-center gap-2 align-items-center">
                                             <!-- Botón Imprimir Transacción Individual -->
                                             <a href="{{ url_for('gastos.comprobante_gasto', gasto_id=g.id) }}" target="_blank" class="btn btn-sm btn-outline-warning rounded-pill px-2 py-1" title="Imprimir Comprobante Individual">
@@ -187,7 +252,7 @@
                                 <tr class="border-top border-secondary fw-bold" style="position: sticky; bottom: 0; background-color: #1e293b; z-index: 10;">
                                     <td colspan="4" class="text-end text-light pt-3">TOTAL GENERAL MOSTRADO:</td>
                                     <td class="text-end fs-5 pt-3" style="color: #fb923c !important;">Bs. {{ "%.2f"|format(ns.total_tabla) }}</td>
-                                    <td class="no-print"></td>
+                                    <td></td>
                                 </tr>
                             {% else %}
                                 <tr>
@@ -196,7 +261,7 @@
                                             <i class="bi bi-wallet2 display-5 text-secondary opacity-50"></i>
                                         </div>
                                         <p class="mb-0 text-light fw-medium">No se registran egresos o pagos institucionales todavía.</p>
-                                        <small class="text-muted">Utiliza el botón "Pago Nuevo" arriba a la derecha para registrar el primeiro.</small>
+                                        <small class="text-muted">Utiliza el botón "Pago Nuevo" arriba a la derecha para registrar el primero.</small>
                                     </td>
                                 </tr>
                             {% endif %}
@@ -209,4 +274,20 @@
     </div>
 
 </div>
+
+<!-- REGLAS DE IMPRESIÓN PARA OCULTAR LA INTERFAZ OSCURA Y MOSTRAR EL BLOQUE LIMPIO -->
+<style>
+    @media print {
+        body {
+            background-color: #ffffff !important;
+            color: #000000 !important;
+        }
+        .no-print {
+            display: none !important;
+        }
+        .d-print-block {
+            display: block !important;
+        }
+    }
+</style>
 {% endblock %}

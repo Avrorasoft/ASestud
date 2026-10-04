@@ -684,6 +684,15 @@
                     Planillas de pago
                 </a>
 
+                <!-- ⭐ ACCESO A BÓVEDA / CONFIGURACIÓN SUPERADMIN (OCULTO EN PCS COMUNES SI NO ESTÁN AUTORIZADAS) -->
+                {% if session.get('es_superadmin') or session.get('superadmin_boveda') %}
+                <div class="sidebar-separator"></div>
+                <a class="nav-link text-warning fw-bold" href="{{ url_for('superadmin.boveda') }}">
+                    <i class="bi bi-shield-lock-fill"></i>
+                    <span>Bóveda Superadmin</span>
+                </a>
+                {% endif %}
+
                 <div class="sidebar-separator"></div>
 
                 <!-- MÓDULOS DE COMUNICACIÓN RESCATADOS -->
@@ -854,21 +863,16 @@
             if (!url || precargados.has(url) || url.startsWith('javascript:') || url.includes('#')) return;
             precargados.add(url);
             
-            // Petición silenciosa en segundo plano para almacenar en caché
             fetch(url, { method: 'GET', mode: 'no-cors' })
-                .catch(() => {
-                    // Silenciar errores de red si la ruta es externa o no disponible temporalmente
-                });
+                .catch(() => {});
         }
 
-        // Detectar cuando el usuario pasa el mouse o toca un enlace para precargarlo al instante
         document.querySelectorAll('a[href]').forEach(function(enlace) {
             let url = enlace.getAttribute('href');
-            // Solo aplicamos a enlaces internos de la aplicación
             if (url && (url.startsWith('/') || url.includes(window.location.hostname))) {
                 enlace.addEventListener('mouseenter', function() {
                     precargarPagina(url);
-                }, { once: true }); // Se ejecuta una sola vez por enlace para optimizar recursos
+                }, { once: true });
                 
                 enlace.addEventListener('touchstart', function() {
                     precargarPagina(url);

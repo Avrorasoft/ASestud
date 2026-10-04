@@ -122,7 +122,7 @@
         }
         .carousel, .carousel-inner, .carousel-item { height: 100%; }
         .carousel-item img {
-            width: 100%; height: 100%; object-fit: cover; position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; object-fit: contain; background-color: #0b0f19; position: absolute; top: 0; left: 0;
         }
         .carousel-caption-custom {
             position: absolute; bottom: 0; left: 0; right: 0;
@@ -130,26 +130,27 @@
             padding: 40px 20px 20px 20px; text-align: center;
         }
 
-        /* EFECTO TABLERO DE AEROPUERTO */
+        /* EFECTO TABLERO DE AEROPUERTO CORREGIDO */
         .airport-board {
             background-color: #000000;
             border: 3px solid #1e293b;
             border-radius: 10px;
             flex-grow: 1; 
+            min-height: 200px; /* Evita que el contenedor se aplaste */
             overflow: hidden !important; 
             position: relative;
             box-shadow: inset 0 0 20px rgba(0,0,0,1);
             display: flex;
             flex-direction: column;
         }
+        
         .airport-scroll {
             width: 100%;
-            display: flex;
-            flex-direction: column;
             position: absolute;
-            top: 100%;
+            /* La animación se encargará de las posiciones exactas */
             animation: scroll-airport linear infinite; 
         }
+        
         .airport-row {
             display: flex;
             justify-content: space-between;
@@ -158,18 +159,18 @@
             border-bottom: 2px solid #111827;
             font-family: 'Courier New', Courier, monospace;
             color: #fbbf24;
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             font-weight: 700;
             text-transform: uppercase;
             text-shadow: 0 0 8px rgba(251, 191, 36, 0.6);
             letter-spacing: 1px;
-            flex-shrink: 0;
         }
         .airport-row .curso { color: #38bdf8; text-shadow: 0 0 8px rgba(56, 189, 248, 0.6); }
         
+        /* Animación matemática precisa: nace del 100% (fondo) y sube hasta -100% (fuera de cámara) */
         @keyframes scroll-airport {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(-100%); }
+            0% { top: 100%; transform: translateY(0); }
+            100% { top: 0; transform: translateY(-100%); }
         }
 
         /* Ticker de Noticias Inferior */
@@ -209,18 +210,10 @@
             100% { transform: translateX(-100%); }
         }
     </style>
+    <!-- Actualización automática cada 5 minutos para captar a los nuevos que registre regencia -->
     <meta http-equiv="refresh" content="300">
 </head>
 <body>
-
-    {% set lista_mostrar = ausentes if ausentes else [
-        {'apellidos': 'RIVERO PINTO', 'nombres': 'CARLOS', 'curso': '5TO SECUNDARIA'},
-        {'apellidos': 'SUÁREZ ROSELLÓN', 'nombres': 'RAISA', 'curso': '3RO SECUNDARIA'},
-        {'apellidos': 'MENDIETA', 'nombres': 'ROBERTO', 'curso': '6TO PRIMARIA'},
-        {'apellidos': 'VACA DÍEZ', 'nombres': 'ANTONIO', 'curso': '1RO SECUNDARIA'},
-        {'apellidos': 'MAMANI', 'nombres': 'JOSÉ', 'curso': '2DO PRIMARIA'},
-        {'apellidos': 'GÓMEZ', 'nombres': 'ANA LAURA', 'curso': 'NIDITO 2'}
-    ] %}
 
     <div class="header-monitor d-flex justify-content-between align-items-center">
         <div class="d-flex align-items-center gap-3">
@@ -296,7 +289,7 @@
                                         {% if fotos_excelencia %}
                                             {% for foto in fotos_excelencia %}
                                             <div class="carousel-item {% if loop.first %}active{% endif %}" data-bs-interval="{{ configuracion.intervalo_carrusel }}">
-                                                <img src="{{ url_for('reportes.imagen_album', filename=foto) }}" style="width: 100%; height: 100%; object-fit: cover; position: absolute;" alt="Excelencia">
+                                                <img src="{{ url_for('reportes.imagen_album', filename=foto) }}" style="width: 100%; height: 100%; object-fit: contain; background-color: #0b0f19; position: absolute;" alt="Excelencia">
                                             </div>
                                             {% endfor %}
                                         {% else %}
@@ -320,7 +313,7 @@
                                         {% if fotos_valores %}
                                             {% for foto in fotos_valores %}
                                             <div class="carousel-item {% if loop.first %}active{% endif %}" data-bs-interval="{{ configuracion.intervalo_carrusel }}">
-                                                <img src="{{ url_for('reportes.imagen_album', filename=foto) }}" style="width: 100%; height: 100%; object-fit: cover; position: absolute;" alt="Valores y Deportes">
+                                                <img src="{{ url_for('reportes.imagen_album', filename=foto) }}" style="width: 100%; height: 100%; object-fit: contain; background-color: #0b0f19; position: absolute;" alt="Valores y Deportes">
                                             </div>
                                             {% endfor %}
                                         {% else %}
@@ -342,20 +335,25 @@
                         <!-- TABLERO DE AUSENCIAS -->
                         <div class="d-flex justify-content-between align-items-end mb-2 flex-shrink-0">
                             <h5 class="text-danger fw-bold mb-0"><i class="bi bi-exclamation-octagon-fill me-2"></i> Ausencias de Hoy</h5>
-                            <span class="badge bg-danger fs-5">{{ lista_mostrar|length }}</span>
+                            <span class="badge bg-danger fs-5">{{ ausentes|length if ausentes else 0 }}</span>
                         </div>
                         
                         <div class="airport-board shadow" id="tablero-aeropuerto">
                             <div class="airport-scroll" id="lista-ausentes">
-                                {% for est in lista_mostrar %}
-                                <div class="airport-row"><span>{{ est.apellidos }}, {{ est.nombres }}</span><span class="curso">{{ est.curso }}</span></div>
-                                {% endfor %}
-                                {% for est in lista_mostrar %}
-                                <div class="airport-row"><span>{{ est.apellidos }}, {{ est.nombres }}</span><span class="curso">{{ est.curso }}</span></div>
-                                {% endfor %}
-                                {% for est in lista_mostrar %}
-                                <div class="airport-row"><span>{{ est.apellidos }}, {{ est.nombres }}</span><span class="curso">{{ est.curso }}</span></div>
-                                {% endfor %}
+                                {% if ausentes %}
+                                    <!-- Iteramos una sola vez con los datos puros sin clones falsos -->
+                                    {% for est in ausentes %}
+                                    <div class="airport-row">
+                                        <span>{{ est.apellidos }}, {{ est.nombres }}</span>
+                                        <span class="curso">{{ est.curso }}</span>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <!-- Espaciador para centrar si hay asistencia perfecta -->
+                                    <div class="h-100 w-100 d-flex align-items-center justify-content-center" style="height: 100px;">
+                                        <span class="text-success fw-bold fs-4"><i class="bi bi-check-circle-fill me-2"></i> ASISTENCIA PERFECTA HOY</span>
+                                    </div>
+                                {% endif %}
                             </div>
                         </div>
 
@@ -381,6 +379,7 @@
             const velTicker = {{ configuracion.velocidad_ticker | default(150) }};
             const velBoard = {{ configuracion.velocidad_aeropuerto | default(40) }};
 
+            // Cálculo dinámico para la cinta inferior
             const tickerEl = document.getElementById('cinta-ticker');
             if(tickerEl && velTicker > 0) {
                 const distanceX = window.innerWidth + tickerEl.scrollWidth;
@@ -388,11 +387,22 @@
                 tickerEl.style.animationDuration = timeX + 's';
             }
 
+            // Cálculo dinámico impecable para el scroll vertical (Suma Altura Contenedor + Altura Contenido)
             const boardEl = document.getElementById('lista-ausentes');
-            if(boardEl && velBoard > 0) {
-                const distanceY = boardEl.scrollHeight;
-                const timeY = distanceY / velBoard;
-                boardEl.style.animationDuration = timeY + 's';
+            const boardContainer = document.getElementById('tablero-aeropuerto');
+            
+            if(boardEl && boardContainer && velBoard > 0) {
+                // Si la lista está vacía (asistencia perfecta), no necesitamos animar el scroll
+                if(boardEl.children.length === 1 && boardEl.children[0].innerText.includes('ASISTENCIA PERFECTA')) {
+                    boardEl.style.animation = 'none';
+                    boardEl.style.position = 'relative';
+                    boardEl.style.top = '0';
+                    boardEl.classList.add('h-100');
+                } else {
+                    const distanceY = boardContainer.offsetHeight + boardEl.offsetHeight;
+                    const timeY = distanceY / velBoard;
+                    boardEl.style.animationDuration = timeY + 's';
+                }
             }
         });
     </script>

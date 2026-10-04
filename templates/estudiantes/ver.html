@@ -2,7 +2,6 @@
 
 {% block title %}
 Cardex - {{ est.apellidos }}, {{ est.nombres }} - Colegio Dr. Antonio Vaca Díez
-
 {% endblock %}
 
 {% block content %}
@@ -20,7 +19,7 @@ Cardex - {{ est.apellidos }}, {{ est.nombres }} - Colegio Dr. Antonio Vaca Díez
 
 <div class="container-fluid mt-4">
 
-    <!-- =============================================================== -->
+<!-- =============================================================== -->
 <!-- TARJETA PRINCIPAL: FOTO + DATOS -->
 <!-- =============================================================== -->
 
@@ -457,6 +456,165 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
 
         </div>
     </div>
+
+    <!-- =============================================================== -->
+    <!-- HISTORIAL DE ASISTENCIAS Y DISCIPLINA -->
+    <!-- =============================================================== -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-calendar-x-fill text-warning"></i>
+                Control de Asistencias e Inasistencias
+            </h5>
+            <div class="text-end">
+                <span class="badge bg-danger fs-6 me-2" title="Faltas Acumuladas">
+                    Faltas Acumuladas: {{ "%.1f"|format(total_faltas_calculadas) }}
+                </span>
+                <span class="badge bg-success fs-6" title="Puntaje de Asistencia del Trimestre">
+                    Nota de Asistencia: {{ "%.2f"|format(nota_asistencia) }}/10
+                </span>
+            </div>
+        </div>
+
+        <div class="card-body">
+            {% if historial_asistencias %}
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Estado</th>
+                            <th>Observación / Justificación</th>
+                            <th class="text-center no-print">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for a in historial_asistencias %}
+                        <tr>
+                            <td>{{ a.fecha.strftime('%d/%m/%Y') }}</td>
+                            <td>
+                                {% if a.estado == 'Falta' %}
+                                    <span class="badge bg-danger">{{ a.estado }}</span>
+                                {% elif a.estado == 'Retraso' %}
+                                    <span class="badge bg-warning text-dark">{{ a.estado }}</span>
+                                {% elif a.estado == 'Justificada' %}
+                                    <span class="badge bg-info text-dark">{{ a.estado }}</span>
+                                {% else %}
+                                    <span class="badge bg-success">{{ a.estado }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if a.observacion %}
+                                    {% if 'ARCHIVO_ADJUNTO:' in a.observacion %}
+                                        {% set partes = a.observacion.split('ARCHIVO_ADJUNTO:') %}
+                                        <span class="text-dark d-block mb-1">{{ partes[0] }}</span>
+                                        <a href="{{ url_for('static', filename=partes[1].strip()) }}" target="_blank" class="btn btn-sm btn-info text-dark fw-bold shadow-sm">
+                                            <i class="bi bi-cloud-arrow-down-fill"></i> Ver Respaldo
+                                        </a>
+                                    {% else %}
+                                        <span class="text-dark">{{ a.observacion }}</span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="text-muted fst-italic">Sin observaciones</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-center no-print">
+                                <!-- Botón para Justificar Directamente -->
+                                {% if a.estado in ['Falta', 'Retraso'] %}
+                                <button type="button" class="btn btn-sm btn-outline-warning fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalJustificar{{ a.id }}" title="Justificar Inasistencia">
+                                    <i class="bi bi-file-earmark-medical"></i> Justificar
+                                </button>
+                                
+                                <!-- Modal de Justificación Médica / Permiso -->
+                                <div class="modal fade text-start" id="modalJustificar{{ a.id }}" tabindex="-1" aria-labelledby="modalJustificarLabel{{ a.id }}" aria-hidden="true">
+                                  <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-content bg-dark text-light border-warning shadow-lg" style="border-radius: 12px;">
+                                      <div class="modal-header border-bottom border-warning">
+                                        <h5 class="modal-title text-warning fw-bold" id="modalJustificarLabel{{ a.id }}">
+                                            <i class="bi bi-shield-check"></i> Justificar Inasistencia
+                                        </h5>
+                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                      </div>
+                                      
+                                      <form action="{{ url_for('estudiantes.justificar_asistencia', asistencia_id=a.id) }}" method="POST" enctype="multipart/form-data">
+                                          <div class="modal-body">
+                                              <p class="text-info small mb-3">La falta corresponde al día <strong>{{ a.fecha.strftime('%d/%m/%Y') }}</strong>.</p>
+                                              
+                                              <div class="mb-3">
+                                                  <label for="observacion{{ a.id }}" class="form-label text-light fw-bold">Motivo o Diagnóstico Médico</label>
+                                                  <textarea class="form-control bg-secondary text-light border-0 shadow-sm" id="observacion{{ a.id }}" name="observacion" rows="2" placeholder="Ej. Certificado médico por reposo de 2 días..." required></textarea>
+                                              </div>
+                                              
+                                              <div class="mb-3">
+                                                  <label for="documento{{ a.id }}" class="form-label text-light fw-bold">Subir Respaldo (Opcional pero recomendado)</label>
+                                                  <input class="form-control bg-secondary text-light border-0 shadow-sm" type="file" id="documento{{ a.id }}" name="documento_justificacion" accept=".pdf, .jpg, .jpeg, .png">
+                                                  <div class="form-text text-white-50 mt-1">Sube un PDF o foto de la receta o certificado médico.</div>
+                                              </div>
+                                          </div>
+                                          
+                                          <div class="modal-footer border-top border-warning">
+                                              <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                                              <button type="submit" class="btn btn-warning text-dark fw-bold">Guardar Justificación</button>
+                                          </div>
+                                      </form>
+                                    </div>
+                                  </div>
+                                </div>
+                                {% endif %}
+                                
+                                {% if session.get('superadmin_activo') %}
+                                <!-- Edición Administrativa Abierta (Solo visible para superadmin) -->
+                                <button type="button" class="btn btn-sm btn-outline-danger shadow-sm ms-1" data-bs-toggle="modal" data-bs-target="#modalEditarAsistencia{{ a.id }}" title="Edición de Estado Administrativo">
+                                    <i class="bi bi-pencil-square"></i>
+                                </button>
+
+                                <div class="modal fade text-start" id="modalEditarAsistencia{{ a.id }}" tabindex="-1" aria-hidden="true">
+                                    <div class="modal-dialog modal-dialog-centered">
+                                        <div class="modal-content">
+                                            <form action="{{ url_for('estudiantes.editar_asistencia', asistencia_id=a.id) }}" method="POST">
+                                                <div class="modal-header bg-danger text-white">
+                                                    <h5 class="modal-title">Editar Asistencia (Administrador)</h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <div class="modal-body text-dark">
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold">Modificar Estado</label>
+                                                        <select class="form-select" name="estado">
+                                                            <option value="Falta" {% if a.estado == 'Falta' %}selected{% endif %}>Falta (1.0)</option>
+                                                            <option value="Retraso" {% if a.estado == 'Retraso' %}selected{% endif %}>Retraso (0.5)</option>
+                                                            <option value="Justificada" {% if a.estado == 'Justificada' %}selected{% endif %}>Justificada (0.0)</option>
+                                                            <option value="Presente" {% if a.estado == 'Presente' %}selected{% endif %}>Presente (0.0)</option>
+                                                        </select>
+                                                    </div>
+                                                    <div class="mb-3">
+                                                        <label class="form-label fw-bold">Observación Administrativa</label>
+                                                        <input type="text" class="form-control" name="observacion" value="{{ a.observacion or '' }}">
+                                                    </div>
+                                                </div>
+                                                <div class="modal-footer">
+                                                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                                                    <button type="submit" class="btn btn-danger btn-sm">Guardar Cambios</button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info mb-0">
+                <i class="bi bi-info-circle-fill"></i>
+                No hay faltas ni retrasos registrados para este estudiante. ¡Tiene asistencia perfecta!
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
 
     <!-- =============================================================== -->
     <!-- Historial de Pagos -->

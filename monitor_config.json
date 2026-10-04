@@ -1,7 +1,7 @@
 {
     "velocidad_ticker": 150,
     "velocidad_aeropuerto": 40,
-    "intervalo_carrusel": 4071,
+    "intervalo_carrusel": 5000,
     "texto_ticker": "🔴 AVISO: Inscripciones abiertas para las Olimpiadas. 🟢 DEPORTES: Final de Futsal el sábado a las 10:00 AM.🟢Reunión DE PADRES EL MARTES A LAS 18:00",
     "agenda_1": "Viernes Cívico: Acto a las 08:00 AM.",
     "agenda_2": "Reunión Padres: Secundaria, martes 19:00 hrs.",

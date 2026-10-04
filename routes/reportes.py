@@ -11,11 +11,12 @@ consolidado general para caja única. Incluye Panel de Control, Monitor Mural y 
 
 import os
 import json
-from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, send_from_directory
+from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, send_from_directory, make_response
 from werkzeug.utils import secure_filename
-from models import db, Pago, Gasto, PagoPersonal, Falta, Estudiante
+from models import db, Pago, Gasto, PagoPersonal, Falta, Estudiante, Asistencia, ahora_bolivia
 from sqlalchemy import func, or_, and_
 
+# ⭐ BLUEPRINT DEFINIDO PRIMERO PARA EVITAR ERRORES DE REFERENCIA
 reportes_bp = Blueprint('reportes', __name__, url_prefix='/reportes', template_folder='templates/reportes')
 
 # =========================================================================
@@ -82,7 +83,6 @@ def economico_manana():
 
     pagos_personal = [p for p in todos_personal if getattr(p, 'estado', 'Pagado') != 'Anulado']
     
-    # Separación visual de sueldos y adelantos para la vista
     sueldos = [p for p in pagos_personal if getattr(p, 'tipo', 'Profesor') != 'Adelanto']
     adelantos = [p for p in pagos_personal if getattr(p, 'tipo', 'Profesor') == 'Adelanto']
 
@@ -93,7 +93,7 @@ def economico_manana():
     return render_template('reportes/economico.html', 
                            pagos=pagos,
                            gastos=gastos,
-                           pagos_personal=pagos_personal,  # Mantenido para retrocompatibilidad
+                           pagos_personal=pagos_personal,
                            sueldos=sueldos,
                            adelantos=adelantos,
                            total=total,
@@ -200,11 +200,10 @@ def economico_general():
 
 
 # =========================================================================
-# PANEL DE CONTROL DEL MONITOR MURAL (Soporte Masivo de Fotos y Carruseles)
+# PANEL DE CONTROL DEL MONITOR MURAL
 # =========================================================================
 @reportes_bp.route('/monitor-config', methods=['GET', 'POST'])
 def monitor_config():
-    """Formulario para ajustar velocidades, textos y subida masiva de fotos para los tres carruseles."""
     config_actual = cargar_configuracion_monitor()
     
     upload_folder = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'static/uploads'), 'monitor_album')
@@ -212,7 +211,6 @@ def monitor_config():
 
     if request.method == 'POST':
         try:
-            # 1. Guardar Configuración General
             nueva_config = {
                 'velocidad_ticker': int(request.form.get('velocidad_ticker', 150)),
                 'velocidad_aeropuerto': int(request.form.get('velocidad_aeropuerto', 40)),
@@ -225,7 +223,6 @@ def monitor_config():
             }
             guardar_configuracion_monitor(nueva_config)
 
-            # 2. Eliminar fotos seleccionadas
             fotos_a_eliminar = request.form.getlist('eliminar_fotos')
             for foto in fotos_a_eliminar:
                 try:
@@ -233,21 +230,18 @@ def monitor_config():
                 except Exception as e:
                     print(f"Error eliminando foto {foto}: {e}")
 
-            # 3. Subir fotos masivas al Álbum General
             if 'fotos_album' in request.files:
                 for file in request.files.getlist('fotos_album'):
                     if file and file.filename != '':
                         filename = secure_filename(file.filename)
                         file.save(os.path.join(upload_folder, filename))
 
-            # 4. Subir fotos masivas al Carrusel de Excelencia Académica
             if 'fotos_excelencia' in request.files:
                 for file in request.files.getlist('fotos_excelencia'):
                     if file and file.filename != '':
                         filename = secure_filename("excelencia_" + file.filename)
                         file.save(os.path.join(upload_folder, filename))
 
-            # 5. Subir fotos masivas al Carrusel de Valores y Deportes
             if 'fotos_valores' in request.files:
                 for file in request.files.getlist('fotos_valores'):
                     if file and file.filename != '':
@@ -260,7 +254,6 @@ def monitor_config():
         except ValueError:
             flash('❌ Error: Asegúrese de ingresar números válidos para las velocidades.', 'danger')
 
-    # Leer todas las fotos actuales divididas por categoría
     todas_fotos = [f for f in os.listdir(upload_folder) if os.path.isfile(os.path.join(upload_folder, f))]
     
     fotos_album = [f for f in todas_fotos if not f.startswith('excelencia_') and not f.startswith('valores_')]
@@ -275,27 +268,32 @@ def monitor_config():
                            fotos_valores=fotos_valores)
 
 
-# =========================================================================
-# RUTAS DE SERVICIO PARA ARCHIVOS DEL MONITOR
-# =========================================================================
 @reportes_bp.route('/album/<path:filename>')
 def imagen_album(filename):
-    """Fuerza la entrega de la imagen evitando fallos de configuración de static_folder."""
     upload_folder = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'static/uploads'), 'monitor_album')
     return send_from_directory(upload_folder, filename)
 
 
 # =========================================================================
-# PANTALLA PÚBLICA: MONITOR EXTERNO DE DIRECCIÓN
+# PANTALLA PÚBLICA: MONITOR EXTERNO DE DIRECCIÓN (CON FILTRO ESTRICTO DE TURNO)
 # =========================================================================
 @reportes_bp.route('/monitor-direccion')
 def monitor_direccion():
-    """Pantalla pública en tiempo real con 3 carruseles independientes."""
-    from datetime import date
-    hoy = date.today()
+    """Pantalla pública en tiempo real filtrada estrictamente por el turno del estudiante."""
+    
+    ahora_local = ahora_bolivia()
+    hoy = ahora_local.date()
+    
+    # 1. Detección automática del turno según la hora (Antes de las 13:00 = Mañana, desde las 13:00 = Tarde)
+    turno_por_defecto = 'Tarde' if ahora_local.hour >= 13 else 'Mañana'
+    
+    # Permite forzar el turno mediante parámetro en la URL si se desea (ej: /reportes/monitor-direccion?turno=Tarde)
+    turno_activo = request.args.get('turno', turno_por_defecto).capitalize()
+    if turno_activo not in ['Mañana', 'Tarde']:
+        turno_activo = turno_por_defecto
+
     configuracion = cargar_configuracion_monitor()
     
-    # 1. Leer y clasificar fotos del directorio
     upload_folder = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'static/uploads'), 'monitor_album')
     os.makedirs(upload_folder, exist_ok=True)
     todas_fotos = [f for f in os.listdir(upload_folder) if os.path.isfile(os.path.join(upload_folder, f))]
@@ -304,50 +302,52 @@ def monitor_direccion():
     fotos_excelencia = [f for f in todas_fotos if f.startswith('excelencia_')]
     fotos_valores = [f for f in todas_fotos if f.startswith('valores_')]
     
-    # 2. Consultar ausencias
-    ausencias_hoy = Falta.query.filter(
-        Falta.tipo_sujeto == 'Estudiante',
-        Falta.fecha == hoy,
-        Falta.tipo_falta.in_(['Falta Injustificada', 'Ausente', 'Falta'])
+    # 2. CONSULTA BLINDADA CON JOIN: Filtra estrictamente por la fecha, estado Falta Y el turno del Estudiante
+    ausencias_hoy = db.session.query(Asistencia, Estudiante).join(
+        Estudiante, Asistencia.estudiante_id == Estudiante.id
+    ).filter(
+        db.func.date(Asistencia.fecha) == hoy,
+        Asistencia.estado == 'Falta',
+        db.func.trim(db.func.lower(Estudiante.turno)) == turno_activo.lower()
     ).all()
     
-    est_ids = [a.sujeto_id for a in ausencias_hoy]
-    estudiantes_ausentes = Estudiante.query.filter(Estudiante.id.in_(est_ids)).all() if est_ids else []
-    mapa_est = {e.id: e for e in estudiantes_ausentes}
-    
     lista_ausentes = []
-    for aus in ausencias_hoy:
-        est = mapa_est.get(aus.sujeto_id)
+    for aus, est in ausencias_hoy:
         if est:
             lista_ausentes.append({
                 'apellidos': est.apellidos,
                 'nombres': est.nombres,
-                'curso': est.curso
+                'curso': aus.curso
             })
 
     lista_ausentes = sorted(lista_ausentes, key=lambda x: (x['curso'], x['apellidos']))
 
-    return render_template(
+    respuesta = make_response(render_template(
         'reportes/monitor.html',
         ausentes=lista_ausentes,
         fecha_hoy=hoy.strftime('%d/%m/%Y'),
+        turno_activo=turno_activo,
         configuracion=configuracion,
         fotos_album=fotos_album,
         fotos_excelencia=fotos_excelencia,
         fotos_valores=fotos_valores
-    )
+    ))
+    
+    respuesta.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    respuesta.headers['Pragma'] = 'no-cache'
+    respuesta.headers['Expires'] = '-1'
+    
+    return respuesta
 
 
 # =========================================================================
-# CEREMONIA DE PROMOCIÓN Y CLAUSURA (SECUENCIA INVERTIDA: NIDITO -> 6TO SEC -> EGRESADOS)
+# CEREMONIA DE PROMOCIÓN Y CLAUSURA
 # =========================================================================
 @reportes_bp.route('/ceremonia/curso/<curso_nombre>', methods=['GET', 'POST'])
 def ceremonia_curso(curso_nombre):
-    """Pantalla solemne e interactiva para la ceremonia con secuencia invertida (desde Nidito hasta Egresados)."""
     try:
         curso_actual = curso_nombre.strip()
         
-        # Consultamos los estudiantes activos de este curso específico
         estudiantes_curso = Estudiante.query.filter(
             db.func.trim(Estudiante.curso) == curso_actual,
             Estudiante.estado != 'Egresado',
@@ -355,7 +355,6 @@ def ceremonia_curso(curso_nombre):
         ).all()
 
         if request.method == 'POST':
-            # Secuencia invertida: de los más pequeños hacia los mayores, culminando en Egresados
             secuencia_cursos_invertida = {
                 'NIDITO 1': 'NIDITO 2',
                 'NIDITO 2': 'PRE-KINDER',

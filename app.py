@@ -193,6 +193,11 @@ from routes.profesores_portal import profesores_portal_bp
 csrf.exempt(profesores_portal_bp)
 app.register_blueprint(profesores_portal_bp, url_prefix='/profesor-portal')
 
+# >>> Blueprint de la Regencia inyectado aquí <<<
+from routes.regente import regente_bp
+csrf.exempt(regente_bp) # Excepción de seguridad para el portal de regencia
+app.register_blueprint(regente_bp)
+
 from routes.faltas import faltas_bp
 app.register_blueprint(faltas_bp, url_prefix='/faltas')
 
@@ -305,6 +310,7 @@ def proteger_acceso_global():
         path.startswith('/uploads') or 
         path.startswith('/portal-padres') or 
         path.startswith('/profesor-portal') or 
+        path.startswith('/regente') or 
         path.startswith('/pwa') or 
         path == '/login-sistema' or 
         path == '/setup'):
