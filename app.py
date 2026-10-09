@@ -2,7 +2,7 @@
 """
 ==============================================================================
 Archivo: app.py
-Proyecto: ASestud-Konetz - Sistema de Gestion Escolar
+Proyecto: ASestud - Sistema de Gestion Escolar
 Desarrollado por: Avrora Soft - Vibola LLC
 ==============================================================================
 """
@@ -18,18 +18,32 @@ from functools import wraps
 
 from flask import (
     Flask, redirect, url_for, jsonify, request, session,
-    render_template, render_template_string, flash, send_from_directory
+    render_template, render_template_string, flash, send_from_directory, make_response
 )
 from flask_wtf.csrf import CSRFProtect, CSRFError
 from werkzeug.utils import secure_filename
-
+from routes.pagos import obtener_meses_activos
 # 1. IMPORTAMOS EL PUENTE DE SEGURIDAD PARA EL TÚNEL
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 # ==============================================================================
-# AUDITORIA FASE 1: IMPORTAR GESTOR DE RUTAS BLINDADAS (%APPDATA%)
+# CONFIGURACIÓN ABSOLUTA EN LA RAÍZ DEL DISCO C:\ASestud
 # ==============================================================================
-from config_paths import BASE_DIR, APPDATA_DIR, DB_PATH, UPLOAD_FOLDER
+BASE_SYSTEM_DIR = r"C:\ASestud"
+if not os.path.exists(BASE_SYSTEM_DIR):
+    try:
+        os.makedirs(BASE_SYSTEM_DIR, exist_ok=True)
+    except Exception:
+        pass
+
+# Directorio de subidas absoluto en C:\ASestud\uploads
+# Reemplaza esto en app.py:
+UPLOAD_FOLDER = r"C:\ASestud\uploads"
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Ruta absoluta de la base de datos genérica en C:\ASestud
+DB_PATH = os.path.join(BASE_SYSTEM_DIR, 'sistema.db')
 
 from models import db, Estudiante, ConfiguracionSuperadmin
 from config import Config
@@ -37,10 +51,23 @@ from routes.auth import auth_bp
 from utils_backup import realizar_respaldo_db
 from validador_licencia import comprobar_licencia_local
 
+
 # Zona horaria Bolivia (UTC-4)
 BOLIVIA_TZ = timezone(timedelta(hours=-4))
 
-app = Flask(__name__)
+def resolver_ruta(ruta_relativa):
+    """Devuelve la ruta absoluta, compatible con el ejecutable de PyInstaller."""
+    try:
+        # PyInstaller crea una carpeta temporal y almacena la ruta en _MEIPASS
+        ruta_base = sys._MEIPASS
+    except Exception:
+        ruta_base = os.path.abspath(".")
+    return os.path.join(ruta_base, ruta_relativa)
+
+# Al inicializar Flask, dile exactamente dónde están las carpetas:
+app = Flask(__name__, 
+            template_folder=resolver_ruta('templates'),
+            static_folder=resolver_ruta('static'))
 
 # 2. INYECTAMOS LA REGLA DE CONFIANZA PARA CLOUDFLARED (PWA / HTTPS)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
@@ -48,7 +75,7 @@ app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 # Optimizacion de cache para activos estaticos
 app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 31536000
 # ==============================================================================
-# CONFIGURACION ROBUSTA (PERSISTENTE EN %APPDATA%)
+# CONFIGURACION ROBUSTA (PERSISTENTE EN C:\ASestud)
 # ==============================================================================
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
@@ -58,8 +85,8 @@ def inject_now():
     
 app.config.from_object(Config)
 
-# FORZAR LA BASE DE DATOS HACIA EL DIRECTORIO BLINDADO
-app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH}'
+# FORZAR LA BASE DE DATOS HACIA EL DIRECTORIO ABSOLUTO EN C:\ASestud
+app.config['SQLALCHEMY_DATABASE_URI'] = f'sqlite:///{DB_PATH.replace(os.sep, "/")}'
 
 db.init_app(app)
 csrf = CSRFProtect(app)
@@ -67,6 +94,19 @@ csrf = CSRFProtect(app)
 # Ejecutar respaldo dentro del contexto de la app para evitar errores de SQLAlchemy
 with app.app_context():
     realizar_respaldo_db()
+
+@app.context_processor
+def inject_meses_activos():
+    return {'obtener_meses_activos': obtener_meses_activos}
+    
+# ==============================================================================
+# MIDDLEWARE ANTI-ADVERTENCIA DE NGROK
+# ==============================================================================
+@app.after_request
+def bypass_ngrok_warning(response):
+    """Inyecta la cabecera necesaria para omitir la página de advertencia de Ngrok."""
+    response.headers['ngrok-skip-browser-warning'] = 'true'
+    return response
 
 def _obtener_clave(clave, valor_por_defecto='N/A'):
     """Funcion auxiliar segura para recuperar valores de configuracion."""
@@ -80,7 +120,7 @@ def _obtener_clave(clave, valor_por_defecto='N/A'):
 
 @app.context_processor
 def inject_configuracion_institucional():
-    """Inyector optimizado con tunel directo a la imagen fisica en APPDATA."""
+    r"""Inyector optimizado con tunel directo a la imagen fisica en C:\ASestud\uploads."""
     import time
     
     config_dict = {
@@ -123,11 +163,116 @@ def inject_configuracion_institucional():
 
 @app.route('/uploads/<path:filename>')
 def servir_archivo_subido(filename):
-    """Entrega fotos y PDFs respetando la boveda segura en APPDATA."""
+    """Entrega fotos y PDFs de forma limpia evitando duplicidad de carpetas."""
     import os
     from flask import send_from_directory
+    
+    # Normalizar barras
     nombre_limpio = filename.replace('\\', '/')
+    
+    # CORRECCIÓN MAESTRA: Si el path incluye 'uploads/', lo depuramos para evitar el 404
+    if nombre_limpio.startswith('uploads/'):
+        nombre_limpio = nombre_limpio[8:]
+        
     return send_from_directory(app.config['UPLOAD_FOLDER'], nombre_limpio)
+    
+@app.route('/ver-foto-profesor/<int:id>')
+def ver_foto_profesor(id):
+    """Entrega la foto del profesor de manera directa e infalible por ID."""
+    from models import Profesor
+    from flask import abort
+    prof = Profesor.query.get_or_404(id)
+    if not prof.foto_path:
+        abort(404)
+    
+    # Limpiamos cualquier prefijo de ruta guardado en la base de datos
+    limpio = prof.foto_path.replace('\\', '/').strip('/')
+    if limpio.startswith('uploads/'):
+        limpio = limpio[len('uploads/'):]
+        
+    return send_from_directory(app.config['UPLOAD_FOLDER'], limpio)
+
+# ==============================================================================
+# RUTA PARA CAMBIO RÁPIDO DE CONTRASEÑA DESDE EL EXTERIOR
+# ==============================================================================
+@app.route('/cambiar-password-rapido', methods=['POST'])
+def cambiar_password_rapido():
+    """Permite cambiar la contraseña del sistema, superadmin o turnos previa validación de la anterior."""
+    try:
+        tipo = request.form.get('tipo_password')  # 'sistema', 'superadmin' o 'turno'
+        password_antigua = request.form.get('password_antigua', '').strip()
+        nueva_pass = request.form.get('nueva_password', '').strip()
+        
+        if not password_antigua or not nueva_pass or len(nueva_pass) < 6:
+            flash('❌ Debes ingresar la contraseña actual y la nueva (mínimo 6 caracteres).', 'danger')
+            return redirect(request.referrer or url_for('dashboard.index'))
+            
+        if tipo == 'sistema':
+            clave_actual = _obtener_clave('sistema_password', 'VacaDiez2026')
+            if password_antigua != clave_actual:
+                flash('❌ La contraseña actual del sistema es incorrecta.', 'danger')
+                return redirect(request.referrer or url_for('dashboard.index'))
+            
+            _set_clave('sistema_password', nueva_pass)
+            flash('✅ Contraseña de acceso al sistema actualizada con éxito.', 'success')
+            
+        elif tipo == 'superadmin':
+            clave_actual_super = _obtener_clave('superadmin_password', 'admin2026')
+            from werkzeug.security import check_password_hash, generate_password_hash
+            from models import PersonalAdministrativo
+            
+            admin_user = PersonalAdministrativo.query.filter_by(usuario="admin").first()
+            valido_super = (password_antigua == clave_actual_super) or (admin_user and check_password_hash(admin_user.contrasena_hash, password_antigua))
+            
+            if not valido_super:
+                flash('❌ La contraseña actual de Superadmin es incorrecta.', 'danger')
+                return redirect(request.referrer or url_for('dashboard.index'))
+                
+            _set_clave('superadmin_password', nueva_pass)
+            if admin_user:
+                admin_user.contrasena_hash = generate_password_hash(nueva_pass)
+                db.session.commit()
+            flash('✅ Contraseña de Bóveda (Superadmin) actualizada con éxito.', 'success')
+            
+        elif tipo == 'turno':
+            nombre_turno = request.form.get('nombre_turno', '').strip()
+            if not nombre_turno:
+                flash('❌ Selecciona el turno que deseas modificar.', 'danger')
+                return redirect(request.referrer or url_for('dashboard.index'))
+                
+            # Normalizar nombre del turno
+            turno_key = nombre_turno.lower().replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u')
+            
+            # Contraseñas por defecto del sistema para los turnos
+            passwords_por_defecto = {
+                'mañana': 'manana2026',
+                'tarde': 'tarde2026',
+                'noche': 'noche2026'
+            }
+            default_pass = passwords_por_defecto.get(turno_key, '123456')
+            
+            # Buscar clave guardada en la base de datos o usar respaldo
+            clave_guardada = _obtener_clave(f'turno_password_{turno_key}', default_pass)
+            clave_sistema = _obtener_clave('sistema_password', 'VacaDiez2026')
+            
+            valido_turno = (password_antigua == clave_guardada) or (password_antigua == clave_sistema) or (password_antigua == default_pass)
+            
+            if not valido_turno:
+                flash(f'❌ La contraseña actual para el turno "{nombre_turno}" es incorrecta.', 'danger')
+                return redirect(request.referrer or url_for('dashboard.index'))
+                
+            # Guardar la nueva contraseña en ambas nomenclaturas
+            _set_clave(f'turno_password_{turno_key}', nueva_pass)
+            _set_clave(f'turno_password_{nombre_turno}', nueva_pass)
+            flash(f'✅ Contraseña del turno "{nombre_turno}" actualizada con éxito.', 'success')
+            
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ Error al actualizar la contraseña: {str(e)}', 'danger')
+        
+    return redirect(request.referrer or url_for('dashboard.index'))
+
+csrf.exempt(cambiar_password_rapido)
 
 # ==============================================================================
 # BLOQUEO GLOBAL DE TRANSACCIONES SIN TURNO ACTIVO
@@ -308,6 +453,7 @@ def proteger_acceso_global():
 
     if (path.startswith('/static') or 
         path.startswith('/uploads') or 
+        path.startswith('/ver-foto-profesor') or  # <--- EXCEPCIÓN AÑADIDA AQUÍ
         path.startswith('/portal-padres') or 
         path.startswith('/profesor-portal') or 
         path.startswith('/regente') or 
@@ -769,7 +915,6 @@ if __name__ == '__main__':
                     conn_sqlite.commit()
                     print(f"✅ [Migración Profesional]: Columna 'estado' añadida con éxito en: {db_file_path}")
             else:
-                # Si la tabla no existe aún, se creará por db.create_all() con su estructura completa
                 pass
             
             conn_sqlite.close()

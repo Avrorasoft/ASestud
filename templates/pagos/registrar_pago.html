@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Registrar Pago - Colegio Vaca D√≠ez{% endblock %}
+{% block title %}Registrar Pago - Colegio Vaca D®™ez{% endblock %}
 
 {% block content %}
 <div class="container mt-4">
@@ -8,7 +8,7 @@
         <div class="col-md-8">
             <div class="card shadow">
                 <div class="card-header bg-primary text-white">
-                    <h4 class="mb-0">üí∞ Registrar Nuevo Pago</h4>
+                    <h4 class="mb-0">?? Registrar Nuevo Pago</h4>
                 </div>
                 <div class="card-body">
                     <form method="POST" action="{{ url_for('pagos.registrar') }}" id="formPago">
@@ -19,10 +19,10 @@
                                 <input type="text" class="form-control" id="ci_estudiante" name="ci_estudiante" 
                                        placeholder="Ej: 1234567" required>
                                 <button class="btn btn-outline-secondary" type="button" id="btnBuscar">
-                                    üîç Buscar
+                                    ?? Buscar
                                 </button>
                             </div>
-                            <small class="text-muted">Ingresa la c√©dula del estudiante</small>
+                            <small class="text-muted">Ingresa la c®¶dula del estudiante</small>
                         </div>
 
                         <div class="form-group mb-3">
@@ -48,18 +48,18 @@
                                     <option value="{{ value }}">{{ label }}</option>
                                     {% endfor %}
                                 {% else %}
-                                    <option value="Pensi√≥n">Pensi√≥n Mensual</option>
-                                    <option value="Inscripci√≥n">Inscripci√≥n</option>
-                                    <option value="Matr√≠cula">Matr√≠cula</option>
+                                    <option value="Pensi®Æn">Pensi®Æn Mensual</option>
+                                    <option value="Inscripci®Æn">Inscripci®Æn</option>
+                                    <option value="Matr®™cula">Matr®™cula</option>
                                     <option value="Varios">Varios</option>
                                 {% endif %}
                             </select>
                         </div>
 
                         <div class="form-group mb-3">
-                            <label for="descripcion">Descripci√≥n (opcional)</label>
+                            <label for="descripcion">Descripci®Æn (opcional)</label>
                             <input type="text" class="form-control" id="descripcion" name="descripcion" 
-                                   placeholder="Ej: Pago de pensi√≥n mes de marzo, Inscripci√≥n 2026, etc.">
+                                   placeholder="Ej: Pago de pensi®Æn mes de marzo, Inscripci®Æn 2026, etc.">
                         </div>
 
                         <div class="row">
@@ -68,8 +68,7 @@
                                     <label for="mes">Mes <span class="text-danger">*</span></label>
                                     <select class="form-control" id="mes" name="mes" required>
                                         <option value="">Seleccione mes</option>
-                                        {% set lista_meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] %}
-                                        {% for m in lista_meses %}
+                                        {% for m in obtener_meses_activos() %}
                                         <option value="{{ m }}" {% if m == mes_actual %}selected{% endif %}>{{ m }}</option>
                                         {% endfor %}
                                     </select>
@@ -77,9 +76,9 @@
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group mb-3">
-                                    <label for="anio">A√±o <span class="text-danger">*</span></label>
+                                    <label for="anio">A?o <span class="text-danger">*</span></label>
                                     <select class="form-control" id="anio" name="anio" required>
-                                        <option value="">Seleccione a√±o</option>
+                                        <option value="">Seleccione a?o</option>
                                         {% set lista_anios = [2025, 2026, 2027] %}
                                         {% for a in lista_anios %}
                                         <option value="{{ a }}" {% if a == anio_actual %}selected{% endif %}>{{ a }}</option>
@@ -115,16 +114,16 @@
                         </div>
 
                         <div class="form-group mb-3">
-                            <label for="metodo_pago">M√©todo de Pago</label>
+                            <label for="metodo_pago">M®¶todo de Pago</label>
                             <select class="form-control" id="metodo_pago" name="metodo_pago">
-                                <option value="Efectivo">üíµ Efectivo</option>
-                                <option value="Bancario">üè¶ Bancario</option>
+                                <option value="Efectivo">?? Efectivo</option>
+                                <option value="Bancario">?? Bancario</option>
                             </select>
                         </div>
 
                         <div class="d-grid gap-2 d-md-flex justify-content-md-end">
                             <a href="{{ url_for('pagos.index') }}" class="btn btn-secondary me-md-2">Cancelar</a>
-                            <button type="submit" class="btn btn-primary">üíæ Registrar Pago</button>
+                            <button type="submit" class="btn btn-primary">?? Registrar Pago</button>
                         </div>
                     </form>
                 </div>
@@ -141,7 +140,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const nombreInput = document.getElementById('nombre_estudiante');
     const rudeInput = document.getElementById('rude_estudiante');
     
-    // Elementos de c√°lculo de montos
+    // Elementos de c®¢lculo de montos
     const inputBase = document.getElementById('monto_total');
     const inputAdelanto = document.getElementById('descuento');
     const inputNeto = document.getElementById('monto_pagado');
@@ -175,7 +174,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     nombreInput.classList.remove('border-danger');
                     nombreInput.classList.add('border-success');
                 } else {
-                    nombreInput.value = '‚ö†Ô∏è Estudiante no encontrado';
+                    nombreInput.value = '?? Estudiante no encontrado';
                     rudeInput.value = '';
                     nombreInput.classList.remove('border-success');
                     nombreInput.classList.add('border-danger');
@@ -183,7 +182,7 @@ document.addEventListener('DOMContentLoaded', function() {
             })
             .catch(error => {
                 console.error('Error:', error);
-                nombreInput.value = '‚ùå Error al buscar';
+                nombreInput.value = '? Error al buscar';
             });
     }
     

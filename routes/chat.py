@@ -29,14 +29,14 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # ==============================================================================
-# FUNCIONES PARA MANEJAR ARCHIVOS ADJUNTOS LOCALES
+# FUNCIONES PARA MANEJAR ARCHIVOS ADJUNTOS EN C:\ASestud\uploads
 # ==============================================================================
 
 def extraer_adjunto(contenido):
     """
     Separa el texto del mensaje y la ruta del archivo adjunto.
     El formato usado es:
-    ---ARCHIVO_ADJUNTO---/static/boletines/archivo.pdf
+    ---ARCHIVO_ADJUNTO---uploads/chat/archivo.pdf
     """
     if not contenido or '---ARCHIVO_ADJUNTO---' not in contenido:
         return None, contenido or ''
@@ -47,29 +47,32 @@ def extraer_adjunto(contenido):
 
 def ruta_local_segura(ruta):
     """
-    Convierte una ruta /static/... o una URL local en una ruta real del disco.
-    Solo permite archivos dentro de la carpeta static del proyecto.
+    Convierte una ruta de archivo subido o URL local en una ruta real del disco en UPLOAD_FOLDER.
     """
     if not ruta:
         return None
 
     ruta = ruta.strip()
-
     parsed = urlparse(ruta)
     if parsed.scheme:
         ruta = parsed.path
 
     ruta = ruta.replace('\\', '/')
 
-    if '/static/' in ruta:
-        ruta = ruta.split('/static/', 1)[1]
-    elif ruta.startswith('static/'):
-        ruta = ruta[len('static/'):]
+    # Normalizar prefijos para buscar directamente en C:\ASestud\uploads
+    if '/uploads/' in ruta:
+        ruta = ruta.split('/uploads/', 1)[1]
+    elif ruta.startswith('uploads/'):
+        ruta = ruta[len('uploads/'):]
+    elif '/static/uploads/' in ruta:
+        ruta = ruta.split('/static/uploads/', 1)[1]
+    elif ruta.startswith('static/uploads/'):
+        ruta = ruta[len('static/uploads/'):]
 
-    static_root = os.path.abspath(current_app.static_folder)
-    filepath = os.path.abspath(os.path.join(static_root, ruta))
+    base_upload = os.path.abspath(current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads"))
+    filepath = os.path.abspath(os.path.join(base_upload, ruta))
 
-    if not filepath.startswith(static_root):
+    if not filepath.startswith(base_upload):
         return None
 
     if not os.path.isfile(filepath):
@@ -120,16 +123,13 @@ def personalizar_texto_mensaje(texto_base, estudiante, padre, calificaciones=Non
     texto = texto_base
     nombre_tutor = padre.nombres if padre and padre.nombres else 'Padre de Familia'
     
-    # 1. Corrección de saludos y nombres
     texto = texto.replace('Sr./Sra. Sr./Sra. [Tutor]', f'Sr./Sra. {nombre_tutor}')
     texto = texto.replace('Sr./Sra. [Tutor]', f'Sr./Sra. {nombre_tutor}')
     texto = texto.replace('[Tutor]', nombre_tutor)
     
-    # 2. Datos del estudiante
     texto = texto.replace('[Estudiante]', f"{estudiante.nombres} {estudiante.apellidos}")
     texto = texto.replace('[Curso]', estudiante.curso or 'S/C')
     
-    # 3. Solución "Única Fuente de Verdad" para evitar contradicciones con el PDF
     if "RESUMEN ACADÉMICO:" in texto:
         partes = texto.split("RESUMEN ACADÉMICO:")
         texto = partes[0] + "RESUMEN ACADÉMICO:\n• Por favor, descargue y revise el documento PDF adjunto para visualizar el promedio oficial, las calificaciones detalladas y el estado final de aprobación de materias con total precisión."
@@ -281,7 +281,7 @@ def index():
                            filtro_actual=filtro_tipo)
 
 # =========================================================================
-# ENVIAR MENSAJE (Individual o Masivo con Plantillas y Archivos)
+# ENVIAR MENSAJE (Individual o Masivo con Plantillas y Archivos en C:\ASestud\uploads)
 # =========================================================================
 @chat_bp.route('/enviar', methods=['GET', 'POST'])
 def enviar():
@@ -296,11 +296,12 @@ def enviar():
                 file = request.files['archivo']
                 if file and file.filename != '' and allowed_file(file.filename):
                     filename = secure_filename(f"chat_{int(datetime.now().timestamp())}_{file.filename}")
-                    upload_folder = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'static/uploads'), 'chat')
+                    base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+                    upload_folder = os.path.join(base_upload, 'chat')
                     os.makedirs(upload_folder, exist_ok=True)
                     filepath = os.path.join(upload_folder, filename)
                     file.save(filepath)
-                    archivo_path_manual = f"/static/uploads/chat/{filename}"
+                    archivo_path_manual = f"uploads/chat/{filename}"
 
             # -------------------------------------------------------------
             # MASIVO A TODOS
@@ -320,7 +321,7 @@ def enviar():
                                 
                             pdf_bytes = generar_boletin_pdf(est, calificaciones, materias)
                             nombre_archivo = guardar_boletin_localmente(pdf_bytes, est.id, ahora_bolivia().year, est.rude)
-                            ruta_pdf = f"/static/boletines/{nombre_archivo}"
+                            ruta_pdf = f"uploads/boletines/{nombre_archivo}"
                             
                             texto_limpio = personalizar_texto_mensaje(contenido_base, est, padre, calificaciones, materias)
                             contenido_final = f"{texto_limpio}\n\n---ARCHIVO_ADJUNTO---{ruta_pdf}"
@@ -368,7 +369,7 @@ def enviar():
                                 
                             pdf_bytes = generar_boletin_pdf(est, calificaciones, materias)
                             nombre_archivo = guardar_boletin_localmente(pdf_bytes, est.id, ahora_bolivia().year, est.rude)
-                            ruta_pdf = f"/static/boletines/{nombre_archivo}"
+                            ruta_pdf = f"uploads/boletines/{nombre_archivo}"
                             
                             texto_limpio = personalizar_texto_mensaje(contenido_base, est, padre, calificaciones, materias)
                             contenido_final = f"{texto_limpio}\n\n---ARCHIVO_ADJUNTO---{ruta_pdf}"
@@ -457,7 +458,7 @@ def enviar():
                             
                         pdf_bytes = generar_boletin_pdf(est, calificaciones, materias)
                         nombre_archivo = guardar_boletin_localmente(pdf_bytes, est.id, ahora_bolivia().year, est.rude)
-                        ruta_pdf = f"/static/boletines/{nombre_archivo}"
+                        ruta_pdf = f"uploads/boletines/{nombre_archivo}"
                         
                         texto_limpio = personalizar_texto_mensaje(contenido_base, est, padre, calificaciones, materias)
                         contenido_final = f"{texto_limpio}\n\n---ARCHIVO_ADJUNTO---{ruta_pdf}"
@@ -513,11 +514,12 @@ def enviar_mensaje(estudiante_id):
             file = request.files['archivo']
             if file and file.filename != '' and allowed_file(file.filename):
                 filename = secure_filename(f"chat_{int(datetime.now().timestamp())}_{file.filename}")
-                upload_folder = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'static/uploads'), 'chat')
+                base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+                upload_folder = os.path.join(base_upload, 'chat')
                 os.makedirs(upload_folder, exist_ok=True)
                 filepath = os.path.join(upload_folder, filename)
                 file.save(filepath)
-                archivo_path_manual = f"/static/uploads/chat/{filename}"
+                archivo_path_manual = f"uploads/chat/{filename}"
         
         texto_limpio = personalizar_texto_mensaje(contenido_base, estudiante, padre)
         
@@ -553,7 +555,6 @@ def api_datos_estudiante(id):
     
     padre = Padre.query.filter_by(estudiante_id=id).first()
     
-    # Motor unificado de meses escolares para la mora
     meses_escolares = ["Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre"]
     anio_actual = ahora_bolivia().year
     pension_base = float(est.pension or 0.0)

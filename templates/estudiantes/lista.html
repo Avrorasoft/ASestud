@@ -1,9 +1,7 @@
-        
 {% extends "base.html" %}
 
 {% block title %}
 Gestión de Estudiantes - Colegio Dr. Antonio Vaca Díez
-
 {% endblock %}
 
 {% block content %}
@@ -196,18 +194,19 @@ Gestión de Estudiantes - Colegio Dr. Antonio Vaca Díez
                                 {% endif %}
                             </td>
 
-						<td>
-							{% if est.foto_path and est.foto_path != 'default.png' %}
-							<img src="{{ url_for('static', filename=est.foto_path) }}?v={{ now().timestamp()|int }}"
-								class="img-thumbnail"
-								style="max-width:60px;">
-							{% else %}
-							<div class="bg-light border text-center p-2"
-								style="width:60px;">
-								<small>S/F</small>
-							</div>
-							{% endif %}
-						</td>
+                            <!-- ⭐ MINIATURA CORREGIDA USANDO EL ENDPOINT ABSOLUTO -->
+                            <td class="text-center">
+                                {% if est.foto_path and est.foto_path != 'default.png' %}
+                                    <img src="{{ url_for('servir_archivo_subido', filename=est.foto_path.replace('uploads/', '')) }}?v={{ now().timestamp()|int }}"
+                                         class="rounded-circle shadow-sm"
+                                         style="width: 40px; height: 40px; object-fit: cover;">
+                                {% else %}
+                                    <div class="bg-secondary rounded-circle d-flex align-items-center justify-content-center text-white mx-auto"
+                                         style="width: 40px; height: 40px; font-size: 0.8rem;">
+                                        <i class="bi bi-person-fill"></i>
+                                    </div>
+                                {% endif %}
+                            </td>
 
                             <td>
                                 {{ est.apellidos }}, {{ est.nombres }}
@@ -304,6 +303,3 @@ Gestión de Estudiantes - Colegio Dr. Antonio Vaca Díez
 </div>
 
 {% endblock %}
-
-
-

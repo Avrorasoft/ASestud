@@ -105,18 +105,39 @@ def login():
 
 @auth_bp.route('/login-turno', methods=['GET', 'POST'])
 def login_turno():
-    """Sistema de turnos independiente (El Santuario inyecta el logo globalmente)."""
+    """Sistema de turnos independiente consultando la base de datos local en APPDATA."""
     if request.method == 'POST':
         turno = request.form.get('turno')
         password = request.form.get('password', '').strip()
-        passwords_validas = {'Mañana': 'manana2026', 'Tarde': 'tarde2026'}
         
-        if turno in passwords_validas and passwords_validas[turno] == password:
+        if not turno:
+            flash('❌ Seleccione un turno válido.', 'danger')
+            return render_template('auth/login_turno.html')
+            
+        # Normalizar turno para buscar en la base de datos
+        turno_key = turno.lower().replace('á', 'a').replace('é', 'e').replace('í', 'i').replace('ó', 'o').replace('ú', 'u')
+        
+        # Contraseñas predeterminadas de respaldo
+        passwords_por_defecto = {
+            'mañana': 'manana2026',
+            'tarde': 'tarde2026',
+            'noche': 'noche2026'
+        }
+        default_pass = passwords_por_defecto.get(turno_key, '123456')
+        
+        # Buscar la contraseña personalizada en ConfiguracionSuperadmin
+        try:
+            cfg = ConfiguracionSuperadmin.query.filter_by(clave=f'turno_password_{turno_key}').first()
+            clave_real = cfg.valor if cfg and cfg.valor else default_pass
+        except Exception:
+            clave_real = default_pass
+            
+        if password == clave_real:
             session['turno_activo'] = turno
             flash(f'✅ Sesión iniciada correctamente en el Turno {turno}.', 'success')
             return redirect(url_for('estudiantes.index'))
         else:
-            flash('❌ Contraseña de turno incorrecta o turno inválido.', 'danger')
+            flash('❌ Contraseña de turno incorrecta.', 'danger')
             return render_template('auth/login_turno.html')
             
     return render_template('auth/login_turno.html')

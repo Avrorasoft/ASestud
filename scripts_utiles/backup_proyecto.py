@@ -4,11 +4,12 @@ import zipfile
 from datetime import datetime
 
 def crear_respaldo_esencial():
-    directorio_actual = os.path.abspath(os.path.dirname(__file__))
-    carpeta_backups = os.path.join(directorio_actual, 'backups')
+    directorio_actual = r"C:\ASestud"
+    base_upload = r"C:\ASestud\uploads"
+    carpeta_backups = os.path.join(base_upload, 'backups')
     
     if not os.path.exists(carpeta_backups):
-        os.makedirs(carpeta_backups)
+        os.makedirs(carpeta_backups, exist_ok=True)
         
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     nombre_zip = os.path.join(carpeta_backups, f"respaldo_esencial_{timestamp}.zip")
@@ -16,7 +17,7 @@ def crear_respaldo_esencial():
     exclusiones_directorios = {'__pycache__', 'venv', 'env', '.venv', 'backups', '.git'}
     exclusiones_extensiones = ('.pyc', '.pyo', '.log')
     
-    print("📦 Iniciando compresión de archivos esenciales...")
+    print("📦 Iniciando compresión de archivos esenciales en C:\\ASestud...")
     archivos_respaldados = 0
     
     with zipfile.ZipFile(nombre_zip, 'w', zipfile.ZIP_DEFLATED) as zipf:

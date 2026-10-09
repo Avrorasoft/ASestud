@@ -206,7 +206,8 @@ def economico_general():
 def monitor_config():
     config_actual = cargar_configuracion_monitor()
     
-    upload_folder = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'static/uploads'), 'monitor_album')
+    base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+    upload_folder = os.path.join(base_upload, 'monitor_album')
     os.makedirs(upload_folder, exist_ok=True)
 
     if request.method == 'POST':
@@ -270,7 +271,8 @@ def monitor_config():
 
 @reportes_bp.route('/album/<path:filename>')
 def imagen_album(filename):
-    upload_folder = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'static/uploads'), 'monitor_album')
+    base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+    upload_folder = os.path.join(base_upload, 'monitor_album')
     return send_from_directory(upload_folder, filename)
 
 
@@ -294,7 +296,8 @@ def monitor_direccion():
 
     configuracion = cargar_configuracion_monitor()
     
-    upload_folder = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'static/uploads'), 'monitor_album')
+    base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+    upload_folder = os.path.join(base_upload, 'monitor_album')
     os.makedirs(upload_folder, exist_ok=True)
     todas_fotos = [f for f in os.listdir(upload_folder) if os.path.isfile(os.path.join(upload_folder, f))]
     

@@ -5,10 +5,6 @@ Cardex - {{ est.apellidos }}, {{ est.nombres }} - Colegio Dr. Antonio Vaca Díez
 {% endblock %}
 
 {% block content %}
-{# MARCA DE AGUA INTEGRADA DE FONDO (DETRÁS DEL TEXTO) #}
-    {% set _est = est if (est is defined and est) else (estudiante if (estudiante is defined and estudiante) else (alumno if (alumno is defined and alumno) else None)) %}
-    {% if _est %}
-    {% endif %}
 <style>
     @media print {
         .no-print {
@@ -33,9 +29,10 @@ Cardex - {{ est.apellidos }}, {{ est.nombres }} - Colegio Dr. Antonio Vaca Díez
                 <!-- Contenedor dinámico de la foto con un ID para actualizar sin recargar -->
                 <div id="contenedorFotoPerfil" class="mb-2">
                     {% if est.foto_path and est.foto_path != 'default.png' %}
-                        <img id="imgPerfilEstudiante" src="{{ url_for('static', filename=est.foto_path) }}?v={{ now().timestamp()|int }}"
-                             class="img-thumbnail rounded-circle shadow-sm"
-                             style="width: 160px; height: 160px; object-fit: cover;">
+                        <!-- Ruta corregida apuntando al endpoint servir_archivo_subido respetando la subcarpeta -->
+						<img id="imgPerfilEstudiante" src="{{ url_for('servir_archivo_subido', filename=est.foto_path.replace('uploads/', '')) }}?v={{ now().timestamp()|int }}"
+							 class="img-thumbnail rounded-circle shadow-sm"
+							 style="width: 160px; height: 160px; object-fit: cover;">
                     {% else %}
                         <div id="divSinFoto" class="bg-light border rounded-circle d-flex flex-column align-items-center justify-content-center mx-auto"
                              style="width: 160px; height: 160px;">
@@ -142,6 +139,7 @@ Cardex - {{ est.apellidos }}, {{ est.nombres }} - Colegio Dr. Antonio Vaca Díez
                           action="{{ url_for('estudiantes.cambiar_turno', id=est.id) }}"
                           class="d-inline no-print"
                           style="margin-left: 10px;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                         <button type="submit" 
                                 class="btn btn-sm btn-outline-secondary"
                                 title="Cambiar turno">
@@ -180,13 +178,11 @@ Cardex - {{ est.apellidos }}, {{ est.nombres }} - Colegio Dr. Antonio Vaca Díez
 <!-- Script JavaScript para manejar la subida asíncrona (AJAX) -->
 <script>
 document.getElementById('formSubirFoto').addEventListener('submit', async function(e) {
-    e.preventDefault(); // Detiene la recarga tradicional de la página
-    
+    e.preventDefault();
     const form = this;
     const formData = new FormData(form);
     const btnSubir = document.getElementById('btnSubirFoto');
     
-    // Cambiar estado visual del botón
     btnSubir.disabled = true;
     btnSubir.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Subiendo...';
 
@@ -196,36 +192,22 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
             body: formData
         });
         
-        const textoRespuesta = await response.text();
-        let resultado;
-        
-        try {
-            resultado = JSON.parse(textoRespuesta);
-        } catch (err) {
-            console.error("Respuesta no válida del servidor:", textoRespuesta);
-            alert("❌ Error: El servidor no respondió con un formato JSON válido.");
-            return;
-        }
+        const resultado = await response.json();
         
         if (resultado.success) {
             const contenedor = document.getElementById('contenedorFotoPerfil');
-            const timestamp = new Date().getTime(); // Evita caché del navegador
-            const nuevaUrlConCache = resultado.nueva_url + '?t=' + timestamp;
+            const timestamp = new Date().getTime();
             
-            // Reemplaza el contenido del contenedor con la nueva imagen de forma fluida
             contenedor.innerHTML = `
-                <img id="imgPerfilEstudiante" src="${nuevaUrlConCache}"
+                <img id="imgPerfilEstudiante" src="${resultado.nueva_url}?t=${timestamp}"
                      class="img-thumbnail rounded-circle shadow-sm"
                      style="width: 160px; height: 160px; object-fit: cover;">
             `;
             
-            // Mostrar el botón de borrar foto si estaba oculto
             const btnBorrar = document.getElementById('contenedorBtnBorrar');
             if (btnBorrar) {
                 btnBorrar.classList.remove('d-none');
             }
-            
-            // Limpiar el input de archivos
             document.getElementById('inputArchivoFoto').value = '';
         } else {
             alert('❌ Error al subir la foto: ' + (resultado.message || 'Desconocido'));
@@ -281,10 +263,41 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
             <i class="bi bi-heart-pulse-fill"></i> Salud
         </a>
 
+        <!-- Botón para eliminar kárdex con Bóveda / Superadmin -->
+        <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminarCardex">
+            <i class="bi bi-trash-fill"></i> Eliminar Kárdex
+        </button>
+
         <button onclick="window.print()" class="btn btn-light border">
             <i class="bi bi-printer-fill"></i> Imprimir
         </button>
 
+    </div>
+
+    <!-- MODAL DE ELIMINACIÓN DE KÁRDEX PROTEGIDO CON SUPERADMIN -->
+    <div class="modal fade" id="modalEliminarCardex" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-white">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title text-danger"><i class="bi bi-shield-lock-fill me-2"></i>Zona de Peligro: Eliminar Kárdex</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form action="{{ url_for('estudiantes.eliminar_cardex_estudiante', id=est.id) }}" method="POST">
+                    <div class="modal-body">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                        <p class="text-warning">⚠ Advertencia: Esta acción borrará permanentemente al estudiante <strong>{{ est.apellidos }}, {{ est.nombres }}</strong>, junto con sus pagos, notas y asistencias.</p>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Ingrese la Contraseña de Superadmin (Bóveda):</label>
+                            <input type="password" name="boveda_password" class="form-control bg-secondary text-white border-0" placeholder="Contraseña de autorización" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-secondary">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-danger fw-bold">Confirmar Eliminación Definitiva</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
     <!-- =============================================================== -->
@@ -297,7 +310,7 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
         <form method="POST"
               action="{{ url_for('superadmin.quick_login') }}"
               class="d-flex justify-content-center align-items-center gap-2 mb-0">
-
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <i class="bi bi-unlock-fill text-warning"></i>
 
             <input type="password"
@@ -315,7 +328,7 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
         <form method="POST"
               action="{{ url_for('auth.logout') }}"
               class="text-center mb-0">
-
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
             <button type="submit"
                     class="btn btn-sm btn-link text-warning text-decoration-none fw-bold">
                 <i class="bi bi-lock-fill"></i> Cerrar Admin
@@ -508,7 +521,7 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
                                     {% if 'ARCHIVO_ADJUNTO:' in a.observacion %}
                                         {% set partes = a.observacion.split('ARCHIVO_ADJUNTO:') %}
                                         <span class="text-dark d-block mb-1">{{ partes[0] }}</span>
-                                        <a href="{{ url_for('static', filename=partes[1].strip()) }}" target="_blank" class="btn btn-sm btn-info text-dark fw-bold shadow-sm">
+                                        <a href="{{ url_for('estudiantes.ver_justificacion', filename=partes[1].strip()) }}" target="_blank" class="btn btn-sm btn-info text-dark fw-bold shadow-sm">
                                             <i class="bi bi-cloud-arrow-down-fill"></i> Ver Respaldo
                                         </a>
                                     {% else %}
@@ -527,38 +540,39 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
                                 
                                 <!-- Modal de Justificación Médica / Permiso -->
                                 <div class="modal fade text-start" id="modalJustificar{{ a.id }}" tabindex="-1" aria-labelledby="modalJustificarLabel{{ a.id }}" aria-hidden="true">
-                                  <div class="modal-dialog modal-dialog-centered">
+                                 <div class="modal-dialog modal-dialog-centered">
                                     <div class="modal-content bg-dark text-light border-warning shadow-lg" style="border-radius: 12px;">
-                                      <div class="modal-header border-bottom border-warning">
+                                     <div class="modal-header border-bottom border-warning">
                                         <h5 class="modal-title text-warning fw-bold" id="modalJustificarLabel{{ a.id }}">
                                             <i class="bi bi-shield-check"></i> Justificar Inasistencia
                                         </h5>
                                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-                                      </div>
-                                      
-                                      <form action="{{ url_for('estudiantes.justificar_asistencia', asistencia_id=a.id) }}" method="POST" enctype="multipart/form-data">
-                                          <div class="modal-body">
-                                              <p class="text-info small mb-3">La falta corresponde al día <strong>{{ a.fecha.strftime('%d/%m/%Y') }}</strong>.</p>
-                                              
-                                              <div class="mb-3">
-                                                  <label for="observacion{{ a.id }}" class="form-label text-light fw-bold">Motivo o Diagnóstico Médico</label>
-                                                  <textarea class="form-control bg-secondary text-light border-0 shadow-sm" id="observacion{{ a.id }}" name="observacion" rows="2" placeholder="Ej. Certificado médico por reposo de 2 días..." required></textarea>
-                                              </div>
-                                              
-                                              <div class="mb-3">
-                                                  <label for="documento{{ a.id }}" class="form-label text-light fw-bold">Subir Respaldo (Opcional pero recomendado)</label>
-                                                  <input class="form-control bg-secondary text-light border-0 shadow-sm" type="file" id="documento{{ a.id }}" name="documento_justificacion" accept=".pdf, .jpg, .jpeg, .png">
-                                                  <div class="form-text text-white-50 mt-1">Sube un PDF o foto de la receta o certificado médico.</div>
-                                              </div>
-                                          </div>
-                                          
-                                          <div class="modal-footer border-top border-warning">
-                                              <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
-                                              <button type="submit" class="btn btn-warning text-dark fw-bold">Guardar Justificación</button>
-                                          </div>
-                                      </form>
+                                     </div>
+                                     
+                                     <form action="{{ url_for('estudiantes.justificar_asistencia', asistencia_id=a.id) }}" method="POST" enctype="multipart/form-data">
+                                         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                         <div class="modal-body">
+                                             <p class="text-info small mb-3">La falta corresponde al día <strong>{{ a.fecha.strftime('%d/%m/%Y') }}</strong>.</p>
+                                             
+                                             <div class="mb-3">
+                                                 <label for="observacion{{ a.id }}" class="form-label text-light fw-bold">Motivo o Diagnóstico Médico</label>
+                                                 <textarea class="form-control bg-secondary text-light border-0 shadow-sm" id="observacion{{ a.id }}" name="observacion" rows="2" placeholder="Ej. Certificado médico por reposo de 2 días..." required></textarea>
+                                             </div>
+                                             
+                                             <div class="mb-3">
+                                                 <label for="documento{{ a.id }}" class="form-label text-light fw-bold">Subir Respaldo (Opcional pero recomendado)</label>
+                                                 <input class="form-control bg-secondary text-light border-0 shadow-sm" type="file" id="documento{{ a.id }}" name="documento_justificacion" accept=".pdf, .jpg, .jpeg, .png">
+                                                 <div class="form-text text-white-50 mt-1">Sube un PDF o foto de la receta o certificado médico.</div>
+                                             </div>
+                                         </div>
+                                         
+                                         <div class="modal-footer border-top border-warning">
+                                             <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                                             <button type="submit" class="btn btn-warning text-dark fw-bold">Guardar Justificación</button>
+                                         </div>
+                                    </form>
                                     </div>
-                                  </div>
+                                 </div>
                                 </div>
                                 {% endif %}
                                 
@@ -572,6 +586,7 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
                                     <div class="modal-dialog modal-dialog-centered">
                                         <div class="modal-content">
                                             <form action="{{ url_for('estudiantes.editar_asistencia', asistencia_id=a.id) }}" method="POST">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <div class="modal-header bg-danger text-white">
                                                     <h5 class="modal-title">Editar Asistencia (Administrador)</h5>
                                                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -690,6 +705,7 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
                                     <div class="modal-dialog">
                                         <div class="modal-content">
                                             <form action="{{ url_for('estudiantes.anular_pago', pago_id=p.id) }}" method="POST">
+                                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                                 <div class="modal-header bg-danger text-white">
                                                     <h5 class="modal-title">
                                                         <i class="bi bi-shield-lock-fill"></i> Autorización de Bóveda - Anular Pago
@@ -783,25 +799,25 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
                                                     <span class="fw-bold mt-1" 
                                                           style="font-size: 1.05rem; color: {{ '#065f46' if es_final else '#1e293b' }};">
                                                         {{ "%.1f"|format(n.nota) if n.nota is number else n.nota }}
-                                                    </span>
-                                                </div>
-                                            {% endif %}
-                                            
-                                            <!-- VALORACIÓN CUALITATIVA -->
-                                            {% if n.valoracion_cualitativa %}
-                                                <div class="p-2 mb-2 bg-light border-start border-4 border-success rounded">
-                                                    <div class="fw-bold text-dark small">{{ n.tipo }}</div>
-                                                    <span class="badge bg-success text-white px-2 py-1 mt-1">{{ n.valoracion_cualitativa }}</span>
-                                                </div>
-                                            {% endif %}
-                                            
-                                            <!-- INFORME DESCRIPTIVO -->
-                                            {% if n.informe_descriptivo %}
-                                                <div class="p-2 mb-2 bg-light border-start border-4 border-info rounded">
-                                                    <div class="fw-bold text-dark small">{{ n.tipo }}</div>
-                                                    <div class="text-dark fst-italic small mt-1">{{ n.informe_descriptivo }}</div>
-                                                </div>
-                                            {% endif %}
+                                                </span>
+                                        </div>
+                                        {% endif %}
+                                        
+                                        <!-- VALORACIÓN CUALITATIVA -->
+                                        {% if n.valoracion_cualitativa %}
+                                            <div class="p-2 mb-2 bg-light border-start border-4 border-success rounded">
+                                                <div class="fw-bold text-dark small">{{ n.tipo }}</div>
+                                                <span class="badge bg-success text-white px-2 py-1 mt-1">{{ n.valoracion_cualitativa }}</span>
+                                            </div>
+                                        {% endif %}
+                                        
+                                        <!-- INFORME DESCRIPTIVO -->
+                                        {% if n.informe_descriptivo %}
+                                            <div class="p-2 mb-2 bg-light border-start border-4 border-info rounded">
+                                                <div class="fw-bold text-dark small">{{ n.tipo }}</div>
+                                                <div class="text-dark fst-italic small mt-1">{{ n.informe_descriptivo }}</div>
+                                            </div>
+                                        {% endif %}
 
                                         {% endfor %}
                                     </div>
@@ -845,8 +861,7 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
             </div>
 
             {% else %}
-            <div class="alert alert-info mb-0">Ya voy
-
+            <div class="alert alert-info mb-0">
                 <i class="bi bi-info-circle-fill"></i>
                 No hay calificaciones registradas para este estudiante.
                 Las notas aparecerán aquí automáticamente cuando los profesores las ingresen.

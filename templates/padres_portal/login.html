@@ -2,47 +2,184 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pizarra Escolar de Tareas - Acceso Tutores</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, user-scalable=yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Portal de Padres - {{ institucion.get('institucion_linea1', 'Colegio') if institucion else 'Colegio' }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#0f172a">
     <style>
-        body { background: #f0f2f5; font-family: system-ui, -apple-system, sans-serif; }
-        .card-login { max-width: 420px; border-radius: 16px; border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.08); }
+        body {
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+        .login-card {
+            width: 100%;
+            max-width: 450px;
+            margin: 20px;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            border: none;
+        }
+        .login-header {
+            background: #0f172a;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+            border-radius: 16px 16px 0 0;
+        }
+        .login-header i {
+            font-size: 3rem;
+            color: #38bdf8;
+        }
+        .login-header .logo-img {
+            max-width: 100px;
+            max-height: 100px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border: 2px solid rgba(255,255,255,0.2);
+        }
+        .login-body {
+            padding: 30px;
+            background: white;
+            border-radius: 0 0 16px 16px;
+        }
+        .form-control {
+            min-height: 50px;
+            font-size: 16px;
+            border-radius: 10px;
+        }
+        .btn-login {
+            min-height: 50px;
+            font-size: 1.1rem;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+        .footer-text {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.8rem;
+            margin-top: 20px;
+        }
+        .telefono-section {
+            background: #fef3c7;
+            border: 2px solid #f59e0b;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        .telefono-section label {
+            color: #92400e;
+        }
     </style>
 </head>
-<body class="d-flex align-items-center min-vh-100 py-4">
-    <div class="container">
-        <div class="card card-login mx-auto p-4 bg-white">
-            <div class="text-center mb-4">
-                <div class="bg-primary text-white rounded-circle d-inline-flex align-items-center justify-content-center mb-3" style="width: 64px; height: 64px;">
-                    <i class="bi bi-grid-3x3-gap-fill fs-2"></i>
-                </div>
-                <h4 class="fw-bold mb-1 text-dark">Pizarra de Tareas</h4>
-                <p class="text-muted small">Seguimiento Pedagógico de Estudiantes</p>
-            </div>
-
+<body>
+    <div class="login-card card">
+        <div class="login-header">
+            {% if institucion and institucion.get('institucion_logo') %}
+            <img src="{{ institucion.institucion_logo_url }}" alt="Logo" style="max-height: 70px; object-fit: contain;">
+            {% else %}
+            <i class="bi bi-mortarboard-fill"></i>
+            {% endif %}
+            
+            <h4 class="mt-3 mb-1">
+                {{ institucion.get('institucion_linea1', 'Colegio Dr. Antonio Vaca Díez') if institucion else 'Colegio Dr. Antonio Vaca Díez' }}
+            </h4>
+            {% if institucion and institucion.get('institucion_linea2') %}
+            <div style="font-size: 1rem; color: #cbd5e1;">{{ institucion['institucion_linea2'] }}</div>
+            {% endif %}
+            {% if institucion and institucion.get('institucion_linea3') %}
+            <div style="font-size: 0.9rem; color: #94a3b8;">{{ institucion['institucion_linea3'] }}</div>
+            {% endif %}
+            <small class="text-white-50">Portal de Padres</small>
+        </div>
+        <div class="login-body">
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
-                        <div class="alert alert-{{ category }} py-2 small rounded-3 mb-3">{{ message }}</div>
+                        <div class="alert alert-{{ category if category in ['success','danger','warning','info'] else 'secondary' }} alert-dismissible fade show">
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                        </div>
                     {% endfor %}
                 {% endif %}
             {% endwith %}
 
-            <form method="POST">
+            <form method="POST" id="loginForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                
                 <div class="mb-3">
-                    <label class="form-label small fw-bold text-muted">C.I. o Código RUDE del Estudiante</label>
-                    <div class="input-group">
-                        <span class="input-group-text bg-light"><i class="bi bi-person-badge"></i></span>
-                        <input type="text" name="ci_rude" class="form-control" placeholder="Ingrese el C.I. o RUDE" required autofocus>
-                    </div>
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-person-badge text-primary"></i> Carnet de Identidad (CI)
+                    </label>
+                    <input type="text" name="ci" id="ciInput" class="form-control"
+                           placeholder="Ingrese su Carnet de Identidad" autocomplete="off" required>
                 </div>
-                <button type="submit" class="btn btn-primary w-100 fw-bold py-2 rounded-3">
-                    <i class="bi bi-door-open me-1"></i> Abrir Pizarra
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-lock text-primary"></i> Contraseña
+                    </label>
+                    <input type="password" name="password" id="passwordInput" class="form-control"
+                           placeholder="Contraseña (por defecto 1234)" value="1234" required>
+                </div>
+
+                {% if pedir_telefono %}
+                <div class="telefono-section">
+                    <label class="form-label fw-bold">
+                        <i class="bi bi-phone-fill text-warning"></i> Verificación de seguridad
+                    </label>
+                    <input type="text" name="telefono" class="form-control"
+                           placeholder="Ingrese uno de sus teléfonos registrados (ej: 70123456)"
+                           required autofocus>
+                    <small class="text-muted">Debe ser un teléfono registrado en el sistema</small>
+                </div>
+                {% endif %}
+
+                <div class="form-check mb-3 mt-3">
+                    <input class="form-check-input" type="checkbox" id="recordarDatos" checked>
+                    <label class="form-check-label" for="recordarDatos">
+                        <i class="bi bi-shield-check text-success"></i> Recordar mis datos en este dispositivo
+                    </label>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-login w-100">
+                    <i class="bi bi-box-arrow-in-right"></i> Ingresar al Portal
                 </button>
             </form>
+
+            <div class="footer-text">
+                <i class="bi bi-shield-check"></i> Acceso privado e individual
+            </div>
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ciGuardado = localStorage.getItem('padre_ci');
+            
+            if (ciGuardado) {
+                document.getElementById('ciInput').value = ciGuardado;
+            }
+        });
+        
+        document.getElementById('loginForm').addEventListener('submit', function(e) {
+            const recordar = document.getElementById('recordarDatos').checked;
+            const ci = document.getElementById('ciInput').value.trim();
+            
+            if (recordar) {
+                if (ci) localStorage.setItem('padre_ci', ci);
+            } else {
+                localStorage.removeItem('padre_ci');
+            }
+        });
+    </script>
 </body>
 </html>

@@ -1,56 +1,149 @@
 {% extends "base.html" %}
-{% block title %}Registrar Pago{% endblock %}
+
+{% block title %}
+Registrar Cobro - Colegio Dr. Antonio Vaca Díez
+{% endblock %}
+
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-8">
-        <div class="card">
-            <div class="card-header bg-success text-white"><h5 class="mb-0">Nuevo Registro de Pago</h5></div>
-            <div class="card-body">
-                <form method="POST">
-                    <div class="mb-3">
-                        <label class="form-label">Estudiante</label>
-                        <select name="estudiante_id" class="form-select" required>
-                            <option value="">Seleccionar...</option>
-                            {% for e in estudiantes %}
-                            <option value="{{ e.id }}">{{ e.apellidos }}, {{ e.nombres }} ({{ e.curso }})</option>
+<div class="container-fluid mt-4 mb-5">
+    
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+        <h2 class="mb-0 fw-bold text-dark">
+            <i class="bi bi-cash-stack text-success me-2"></i>Módulo de Cobros y Caja
+        </h2>
+        <a href="{{ url_for('pagos.index') }}" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i> Volver a Caja
+        </a>
+    </div>
+
+    <div class="card shadow border-0">
+        <div class="card-header bg-dark text-white py-3">
+            <h5 class="mb-0 fw-bold">
+                <i class="bi bi-receipt-cutoff text-warning me-2"></i>Registro de Pago de Pensiones y Cobros Múltiples
+            </h5>
+        </div>
+        
+        <div class="card-body p-4">
+            <form method="POST" action="{{ url_for('pagos.registrar') }}" id="formRegistrarPago">
+                
+                <!-- SECCIÓN 1: SELECCIÓN DE ESTUDIANTE Y GESTIÓN -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-8">
+                        <label for="estudiante_id" class="form-label fw-bold text-dark">
+                            <i class="bi bi-person-fill text-primary me-1"></i> Seleccionar Estudiante:
+                        </label>
+                        <select name="estudiante_id" id="estudiante_id" class="form-select form-select-lg" required>
+                            <option value="">-- Buscar por Apellidos, Nombres o C.I. --</option>
+                            {% for est in estudiantes %}
+                                <option value="{{ est.id }}" data-pension="{{ est.pension or 350.0 }}">
+                                    {{ est.apellidos }}, {{ est.nombres }} (C.I.: {{ est.ci or 'S/N' }} - Curso: {{ est.curso or 'Sin Curso' }})
+                                </option>
                             {% endfor %}
                         </select>
                     </div>
+
+                    <div class="col-md-4">
+                        <label for="anio" class="form-label fw-bold text-dark">
+                            <i class="bi bi-calendar-event text-primary me-1"></i> Gestión (Año):
+                        </label>
+                        <input type="number" name="anio" id="anio" class="form-control form-control-lg" value="2026" required>
+                    </div>
+                </div>
+
+                <hr class="text-muted mb-4">
+
+                <!-- SECCIÓN 2: SELECCIÓN MÚLTIPLE DE MESES (DINÁMICA DESDE SUPERADMIN) -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold text-dark fs-5 mb-3">
+                        <i class="bi bi-check2-square text-success me-1"></i> Paso 1: Seleccione los meses a cancelar
+                    </label>
+                    
                     <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label">Mes</label>
-                            <select name="mes" class="form-select" required>
-                                <option value="Enero">Enero</option><option value="Febrero">Febrero</option>
-                                <option value="Marzo">Marzo</option><option value="Abril">Abril</option>
-                                <option value="Mayo">Mayo</option><option value="Junio">Junio</option>
-                                <option value="Julio">Julio</option><option value="Agosto">Agosto</option>
-                                <option value="Septiembre">Septiembre</option><option value="Octubre">Octubre</option>
-                                <option value="Noviembre">Noviembre</option><option value="Diciembre">Diciembre</option>
+                        {% for mes in obtener_meses_activos() %}
+                        <div class="col-md-3 col-sm-6">
+                            <div class="card h-100 border shadow-sm select-mes-card">
+                                <div class="card-body d-flex align-items-center">
+                                    <div class="form-check form-switch w-100 fs-5">
+                                        <input class="form-check-input mes-checkbox" type="checkbox" name="meses_seleccionados" value="{{ mes }}" id="mes_{{ mes }}" style="cursor: pointer;">
+                                        <label class="form-check-label fw-bold text-dark ms-2" for="mes_{{ mes }}" style="cursor: pointer;">
+                                            {{ mes }}
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <hr class="text-muted mb-4">
+
+                <!-- SECCIÓN 3: MONTOS Y MÉTODO DE PAGO -->
+                <div class="card bg-light border-0 p-3 mb-4">
+                    <h5 class="fw-bold text-dark mb-3">
+                        <i class="bi bi-calculator text-warning me-1"></i> Paso 2: Verifique los montos y confirme la transacción
+                    </h5>
+                    
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label for="monto_abono" class="form-label fw-bold">Monto Real a Entregar Hoy (Bs.) *</label>
+                            <input type="number" step="1" name="monto_abono" id="monto_abono" class="form-control form-control-lg text-success fw-bold" placeholder="0.00" required>
+                            <div class="form-text text-muted">Permite 0 para becas o abonos parciales.</div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="descuento" class="form-label fw-bold">Descuento Global (Bs.)</label>
+                            <input type="number" step="1" name="descuento" id="descuento" class="form-control form-control-lg text-danger fw-bold" value="0.00">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label for="metodo_pago" class="form-label fw-bold">Método de Pago</label>
+                            <select name="metodo_pago" id="metodo_pago" class="form-select form-select-lg" required>
+                                <option value="Efectivo" selected>💵 Efectivo</option>
+                                <option value="Bancario">🏦 Transferencia Bancaria</option>
                             </select>
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Año</label>
-                            <input type="number" name="anio" class="form-control" value="2026" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Monto Total (Pensión)</label>
-                            <input type="number" step="0.01" name="monto_total" class="form-control" required>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Descuento</label>
-                            <input type="number" step="0.01" name="descuento" class="form-control" value="0">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Monto Pagado</label>
-                            <input type="number" step="0.01" name="monto_pagado" class="form-control" required>
-                        </div>
                     </div>
-                    <div class="mt-4 text-end">
-                        <button type="submit" class="btn btn-primary"><i class="bi bi-save me-1"></i>Guardar y Generar Recibo</button>
-                    </div>
-                </form>
-            </div>
+                </div>
+
+                <!-- BOTÓN DE CONFIRMACIÓN -->
+                <div class="d-grid gap-2">
+                    <button type="submit" class="btn btn-success btn-lg fw-bold py-3 shadow">
+                        <i class="bi bi-check-circle-fill me-2 fs-5"></i> Procesar Cobro y Generar Recibo Oficial
+                    </button>
+                </div>
+
+            </form>
         </div>
     </div>
 </div>
+
+<!-- SCRIPT AUXILIAR PARA CÁLCULO DINÁMICO DE PENSIÓN -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const selectEstudiante = document.getElementById('estudiante_id');
+        const inputMonto = document.getElementById('monto_abono');
+        const checkboxesMeses = document.querySelectorAll('.mes-checkbox');
+
+        function actualizarMontoSugerido() {
+            let pensionBase = 350.0;
+            const selectedOption = selectEstudiante.options[selectEstudiante.selectedIndex];
+            if (selectedOption && selectedOption.dataset.pension) {
+                pensionBase = parseFloat(selectedOption.dataset.pension) || 350.0;
+            }
+
+            let mesesMarcados = document.querySelectorAll('.mes-checkbox:checked').length;
+            if (mesesMarcados > 0) {
+                inputMonto.value = (pensionBase * mesesMarcados).toFixed(2);
+            } else {
+                inputMonto.value = '';
+            }
+        }
+
+        selectEstudiante.addEventListener('change', actualizarMontoSugerido);
+        checkboxesMeses.forEach(cb => {
+            cb.addEventListener('change', actualizarMontoSugerido);
+        });
+    });
+</script>
 {% endblock %}

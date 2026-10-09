@@ -238,9 +238,9 @@
                                                 <i class="bi bi-printer"></i> Imprimir
                                             </a>
                                             
-                                            <!-- Botón Ver Archivo Adjunto -->
+                                            <!-- Botón Ver Archivo Adjunto (Ruta Segura APPDATA) -->
                                             {% if g.archivo %}
-                                                <a href="{{ url_for('static', filename='uploads/gastos/' + g.archivo) }}" target="_blank" class="btn btn-sm btn-outline-info rounded-pill px-2 py-1" title="Ver Archivo">
+                                                <a href="{{ url_for('servir_archivo_subido', filename=g.archivo) }}" target="_blank" class="btn btn-sm btn-outline-info rounded-pill px-2 py-1" title="Ver Archivo Adjunto">
                                                     <i class="bi bi-paperclip"></i> Archivo
                                                 </a>
                                             {% endif %}

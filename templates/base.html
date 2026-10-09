@@ -684,15 +684,6 @@
                     Planillas de pago
                 </a>
 
-                <!-- ⭐ ACCESO A BÓVEDA / CONFIGURACIÓN SUPERADMIN (OCULTO EN PCS COMUNES SI NO ESTÁN AUTORIZADAS) -->
-                {% if session.get('es_superadmin') or session.get('superadmin_boveda') %}
-                <div class="sidebar-separator"></div>
-                <a class="nav-link text-warning fw-bold" href="{{ url_for('superadmin.boveda') }}">
-                    <i class="bi bi-shield-lock-fill"></i>
-                    <span>Bóveda Superadmin</span>
-                </a>
-                {% endif %}
-
                 <div class="sidebar-separator"></div>
 
                 <!-- MÓDULOS DE COMUNICACIÓN RESCATADOS -->
@@ -755,7 +746,7 @@
 
                 <div class="d-flex align-items-center gap-2 gap-md-3">
                     
-                    <!-- ⭐ BOTONES DE MONITOR Y CONFIGURACIÓN JUNTOS -->
+                    <!-- ⭐ BOTONES DE MONITOR, CONFIGURACIÓN Y CAMBIO RÁPIDO DE CONTRASEÑA -->
                     <div class="btn-group shadow-sm">
                         <a href="{{ url_for('reportes.monitor_config') }}" class="btn btn-outline-secondary btn-sm fw-bold d-flex align-items-center gap-1" title="Configurar Textos y Fotos del Monitor">
                             <i class="bi bi-gear-fill"></i>
@@ -765,6 +756,10 @@
                             <i class="bi bi-display-fill"></i>
                             <span class="d-none d-md-inline">Monitor</span>
                         </a>
+                        <!-- Botón discreto de cambio rápido de contraseña -->
+                        <button type="button" class="btn btn-outline-warning btn-sm fw-bold d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#modalCambioPasswordRapido" title="Seguridad y Cambio de Credenciales">
+                            <i class="bi bi-key-fill"></i>
+                        </button>
                     </div>
 
                     <div class="text-muted d-none d-md-block">
@@ -774,6 +769,68 @@
                 </div>
 
             </div>
+
+            <!-- Modal de Cambio Rápido de Contraseña -->
+            <div class="modal fade" id="modalCambioPasswordRapido" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content bg-dark text-white border-secondary">
+                        <div class="modal-header border-secondary">
+                            <h5 class="modal-title"><i class="bi bi-shield-lock me-2 text-info"></i>Seguridad y Cambio de Credenciales</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <form action="{{ url_for('cambiar_password_rapido') }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            <div class="modal-body text-start">
+                                <div class="mb-3">
+                                    <label class="form-label">¿Qué credencial deseas modificar?</label>
+                                    <select name="tipo_password" id="tipoPasswordSelect" class="form-select bg-secondary text-white border-0" required onchange="toggleTurnoSelect()">
+                                        <option value="sistema">Contraseña de Acceso General al Sistema (PC)</option>
+                                        <option value="superadmin">Contraseña de Bóveda (Superadmin)</option>
+                                        <option value="turno">Contraseña de Turno de Caja</option>
+                                    </select>
+                                </div>
+
+                                <!-- Selector de Turno (Aparece solo si se elige 'turno') -->
+                                <div class="mb-3 d-none" id="divTurnoSelect">
+                                    <label class="form-label">Selecciona el Turno</label>
+                                    <select name="nombre_turno" class="form-select bg-secondary text-white border-0">
+                                        <option value="Mañana">Mañana</option>
+                                        <option value="Tarde">Tarde</option>
+                                        <option value="Noche">Noche</option>
+                                    </select>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Contraseña Actual (Obligatoria)</label>
+                                    <input type="password" name="password_antigua" class="form-control bg-secondary text-white border-0" placeholder="Ingresa la contraseña actual" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Nueva Contraseña (mínimo 6 caracteres)</label>
+                                    <input type="password" name="nueva_password" class="form-control bg-secondary text-white border-0" placeholder="Ingresa la nueva contraseña" required minlength="6">
+                                </div>
+                            </div>
+                            <div class="modal-footer border-secondary">
+                                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="submit" class="btn btn-info btn-sm fw-bold">Actualizar Credencial</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Script dinámico para mostrar u ocultar el selector de turnos -->
+            <script>
+                function toggleTurnoSelect() {
+                    const selectTipo = document.getElementById('tipoPasswordSelect');
+                    const divTurno = document.getElementById('divTurnoSelect');
+                    if (selectTipo.value === 'turno') {
+                        divTurno.classList.remove('d-none');
+                    } else {
+                        divTurno.classList.add('d-none');
+                    }
+                }
+            </script>
 
             <!-- Área de trabajo -->
             <div class="content-area">

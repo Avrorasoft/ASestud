@@ -38,14 +38,16 @@ def login_boveda():
     if request.method == 'POST':
         password = request.form.get('password', '').strip()
         
-        config = ConfiguracionSuperadmin.query.filter_by(clave='superadmin_password').first()
-        clave_boveda = config.valor if config and config.valor else 'admin2026'
+        # Centralización profesional: Prioriza la variable de entorno y usa respaldo de BD
+        clave_boveda = os.getenv('BOVEDA_PASSWORD_MASTER')
+        if not clave_boveda:
+            config = ConfiguracionSuperadmin.query.filter_by(clave='superadmin_password').first()
+            clave_boveda = config.valor if config and config.valor else 'admin2026'
 
         if password == clave_boveda:
             session['faltas_boveda_abierta'] = True
             flash('🔓 Acceso concedido: Bóveda de Asistencia desbloqueada.', 'success')
             
-            # Capturamos el 'next' pero filtramos las rutas POST (editar/eliminar/desbloquear) para evitar el error 405
             siguiente = request.args.get('next') or url_for('faltas.index')
             if any(ruta in siguiente for ruta in ['/editar/', '/eliminar/', '/desbloquear']):
                 siguiente = url_for('faltas.index')
@@ -123,7 +125,7 @@ def index():
     )
 
 # ==============================================================================
-# EDITAR / JUSTIFICAR ASISTENCIA Y SUBIR ARCHIVO (PROTEGIDO)
+# EDITAR / JUSTIFICAR ASISTENCIA Y SUBIR ARCHIVO A C:\ASestud\uploads (PROTEGIDO)
 # ==============================================================================
 @faltas_bp.route('/editar/<int:id>', methods=['POST'])
 @boveda_requerida
@@ -139,7 +141,10 @@ def editar(id):
         file = request.files['documento']
         if file and file.filename != '':
             filename = secure_filename(f"justificativo_{asistencia.id}_{file.filename}")
-            upload_folder = os.path.join(current_app.config.get('UPLOAD_FOLDER', 'static/uploads'), 'justificaciones')
+            
+            # Usar la ruta absoluta centralizada en C:\ASestud\uploads
+            base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+            upload_folder = os.path.join(base_upload, 'justificaciones')
             os.makedirs(upload_folder, exist_ok=True)
             
             filepath = os.path.join(upload_folder, filename)

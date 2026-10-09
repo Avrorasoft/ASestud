@@ -86,7 +86,7 @@ with app.app_context():
     anio_actual = 2026
 
     print("=" * 70)
-    print("GENERANDO BASE DE DATOS DE PRUEBA + ARCHIVO .avr")
+    print("GENERANDO BASE DE DATOS DE PRUEBA + ARCHIVO .avr (C:\\ASestud)")
     print("=" * 70)
     print(f"Pension: {PENSION} Bs | 93% al dia hasta julio | 7% con mora")
     print(f"Notas: E1, P1, P2, P3, EF, NF (1er y 2do trimestre)")
@@ -403,30 +403,22 @@ with app.app_context():
     print(f"  OK: {Egresado.query.count()} egresados")
 
     # =========================================================================
-    # CREAR ARCHIVO .avr (ZIP con BD + archivos del proyecto)
+    # CREAR ARCHIVO .avr (ZIP con BD + archivos del proyecto) - RUTA C:\ASestud
     # =========================================================================
     print()
     print("=" * 70)
-    print("CREANDO ARCHIVO .avr DE RESPALDO...")
+    print("CREANDO ARCHIVO .avr DE RESPALDO EN C:\\ASestud\\uploads...")
     print("=" * 70)
 
-    root_path = current_app.root_path
+    root_path = r"C:\ASestud"
+    base_upload = r"C:\ASestud\uploads"
     nombre_avr = f"BD_Prueba_200est_30prof_500egr_{datetime.now().strftime('%Y%m%d_%H%M%S')}.avr"
 
     # Cerrar la conexion SQLite antes de copiar el archivo
     db.session.commit()
     db.engine.dispose()
 
-    db_uri = current_app.config.get('SQLALCHEMY_DATABASE_URI', '')
-    db_path = db_uri.replace('sqlite:///', '')
-    if not os.path.isabs(db_path):
-        db_path = os.path.join(root_path, db_path)
-
-    carpetas_datos = [
-        'static/uploads', 'static/recibos', 'static/boletines',
-        'static/recibos_personal', 'templates', 'routes',
-        'models.py', 'app.py', 'config.py', 'utils_pdf.py'
-    ]
+    db_path = os.path.join(root_path, 'colegio_vaca_diez.db')
 
     memory_buffer = io.BytesIO()
     with zipfile.ZipFile(memory_buffer, 'w', zipfile.ZIP_DEFLATED) as zipf:
@@ -435,14 +427,22 @@ with app.app_context():
             zipf.write(db_path, "colegio_vaca_diez.db")
             print(f"  [OK] BD agregada: {os.path.getsize(db_path) / 1024:.1f} KB")
 
-        # Archivos del proyecto
+        # Archivos del proyecto usando la ruta absoluta centralizada en C:\ASestud
+        carpetas_datos = [
+            base_upload,
+            os.path.join(root_path, 'templates'),
+            os.path.join(root_path, 'routes'),
+            os.path.join(root_path, 'models.py'),
+            os.path.join(root_path, 'app.py'),
+            os.path.join(root_path, 'config.py')
+        ]
+
         for item in carpetas_datos:
-            ruta_abs = os.path.join(root_path, item)
-            if os.path.isfile(ruta_abs):
-                zipf.write(ruta_abs, item)
-            elif os.path.isdir(ruta_abs):
+            if os.path.isfile(item):
+                zipf.write(item, os.path.relpath(item, root_path))
+            elif os.path.isdir(item):
                 count = 0
-                for raiz, dirs, archivos in os.walk(ruta_abs):
+                for raiz, dirs, archivos in os.walk(item):
                     dirs[:] = [d for d in dirs if d not in ['__pycache__', '.pytest_cache']]
                     for archivo in archivos:
                         if not archivo.endswith(('.pyc', '.db')):
@@ -450,10 +450,10 @@ with app.app_context():
                             arcname = os.path.relpath(arch_abs, root_path)
                             zipf.write(arch_abs, arcname)
                             count += 1
-                print(f"  [OK] {item}: {count} archivos")
+                print(f"  [OK] {os.path.basename(item)}: {count} archivos")
 
-    # Guardar en static/backups/
-    backups_dir = os.path.join(root_path, 'static', 'backups')
+    # Guardar en C:\ASestud\uploads\backups/
+    backups_dir = os.path.join(base_upload, 'backups')
     os.makedirs(backups_dir, exist_ok=True)
     backup_path = os.path.join(backups_dir, nombre_avr)
 
@@ -465,10 +465,10 @@ with app.app_context():
 
     print()
     print("=" * 70)
-    print("ARCHIVO .avr CREADO EXITOSAMENTE")
+    print("ARCHIVO .avr CREADO EXITOSAMENTE EN EL DISCO C")
     print("=" * 70)
     print(f"  Nombre: {nombre_avr}")
-    print(f"  Ubicacion: static/backups/{nombre_avr}")
+    print(f"  Ubicacion: {backup_path}")
     print(f"  Tamano: {tamano_mb:.2f} MB")
     print()
     print("RESUMEN DE LA BASE DE DATOS:")
@@ -482,10 +482,4 @@ with app.app_context():
     print(f"  Gastos: {Gasto.query.count()} (9 categorias x 7 meses)")
     print(f"  Egresados: 500")
     print(f"  Pension: {PENSION} Bs")
-    print("=" * 70)
-    print()
-    print("Para restaurar desde la Boveda:")
-    print(f"  1. Ir a la Boveda del Superadmin")
-    print(f"  2. Seleccionar 'Restaurar Sistema'")
-    print(f"  3. Subir el archivo: static/backups/{nombre_avr}")
     print("=" * 70)

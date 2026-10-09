@@ -88,19 +88,16 @@ def libro_notas():
     calificaciones_dict = {}
 
     if curso_seleccionado:
-        # 1. Traemos TODOS los estudiantes activos del curso de forma independiente
         estudiantes = Estudiante.query.filter_by(
             curso=curso_seleccionado, estado='Activo'
         ).order_by(Estudiante.apellidos, Estudiante.nombres).all()
 
-        # 2. Traemos las materias correspondientes al curso
         materias = Materia.query.filter_by(curso_id=curso_seleccionado).order_by(Materia.nombre).all()
         if not materias:
             materias = Materia.query.order_by(Materia.nombre).all()
 
         estudiante_ids = [e.id for e in estudiantes]
         if estudiante_ids:
-            # 3. Consultamos las notas de los alumnos que SÍ tienen registros, sin excluir a los demás
             query_cal = Calificacion.query.filter(
                 Calificacion.estudiante_id.in_(estudiante_ids)
             ).options(joinedload(Calificacion.materia))
@@ -110,7 +107,6 @@ def libro_notas():
 
             calificaciones = query_cal.all()
 
-            # 4. Agrupamos en un diccionario por estudiante y materia de forma aislada
             for cal in calificaciones:
                 if cal.estudiante_id not in calificaciones_dict:
                     calificaciones_dict[cal.estudiante_id] = {}
@@ -140,7 +136,6 @@ def cargar_notas(materia_id):
         curso=curso, estado='Activo'
     ).order_by(Estudiante.apellidos, Estudiante.nombres).all()
 
-    # Obtenemos los criterios dinámicos para esta materia
     from routes.profesores_portal import obtener_criterios_materia
     criterios, origen, es_nidito, nivel = obtener_criterios_materia(materia_id)
 
@@ -152,8 +147,6 @@ def cargar_notas(materia_id):
                     nombre_campo = f"criterio_{est.id}_{crit.id}"
                     nota_str = request.form.get(nombre_campo, '').strip()
 
-                    # Si el usuario dejó el campo vacío, permitimos que se quede vacío o limpiamos si ya no aplica,
-                    # pero NUNCA tocamos ni borramos los demás registros de sus compañeros.
                     if not nota_str:
                         continue
 
@@ -205,7 +198,6 @@ def cargar_notas(materia_id):
 
             db.session.flush()
 
-            # Recalculamos los promedios y totales de los estudiantes
             for est in estudiantes:
                 actualizar_promedio_materia(est.id, materia.id)
 
@@ -222,7 +214,6 @@ def cargar_notas(materia_id):
             print(f"Error al guardar notas por criterios: {e}")
             flash(f'❌ Error al guardar las calificaciones: {str(e)}', 'danger')
 
-    # Diccionario adaptado para emparejar exactamente con el ID del criterio en la vista
     promedios = {}
     notas_dict = {}
     for est in estudiantes:
@@ -231,7 +222,6 @@ def cargar_notas(materia_id):
             Calificacion.materia_id == materia.id
         ).all()
         
-        # Mapeamos usando el nombre del criterio para que la interfaz lo recupere perfecto
         notas_dict[est.id] = {c.tipo: (c.nota if c.nota is not None else c.observacion) for c in cals}
         
         notas_validas = [c.nota for c in cals if c.tipo != 'Promedio' and c.nota is not None]
@@ -260,7 +250,6 @@ def registrar_calificacion():
         tipo = request.form.get('tipo', 'Parcial 1')
         nota_str = request.form.get('nota', '').strip()
 
-        # Si mandan el campo vacío, podemos optar por eliminar el registro o ignorarlo
         if not nota_str:
             cal_existente = Calificacion.query.filter_by(
                 estudiante_id=estudiante_id,
@@ -420,7 +409,6 @@ def eliminar_calificacion(id):
 def reporte_estudiante(estudiante_id):
     """Muestra el reporte completo de calificaciones y sus promedios por materia."""
     estudiante = Estudiante.query.get_or_404(estudiante_id)
-    # Ordenamiento correcto por materia, fecha (trimestre) y secuencia logica de evaluacion
     from sqlalchemy import case
     orden_tipo = case(
         (Calificacion.tipo == 'P1', 1),
@@ -536,9 +524,10 @@ def verificar_boletin():
         estudiante_id = estudiante.id
         nombre_estudiante = f"{estudiante.apellidos}, {estudiante.nombres}"
 
-    # Buscar el archivo PDF exacto con la estructura con la que se genera: boletin_id_año_ci.pdf
+    # Buscar el archivo PDF en la ruta absoluta unificada en C:\ASestud\uploads\boletines
     nombre_archivo = f"boletin_{estudiante_id}_{anio}_{ci}.pdf"
-    filepath = os.path.join(os.getcwd(), 'static', 'boletines', nombre_archivo)
+    base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+    filepath = os.path.join(base_upload, 'boletines', nombre_archivo)
 
     if not os.path.exists(filepath):
         return render_template('calificaciones/verificacion_error.html',
@@ -585,7 +574,8 @@ def verificar_manual():
 
             if not error:
                 nombre_archivo = f"boletin_{estudiante_id}_{anio_int}_{rude_int}.pdf"
-                filepath = os.path.join(os.getcwd(), 'static', 'boletines', nombre_archivo)
+                base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+                filepath = os.path.join(base_upload, 'boletines', nombre_archivo)
 
                 if os.path.exists(filepath):
                     resultado = {
@@ -633,7 +623,8 @@ def generar_boletines_curso(curso):
         except:
             tunnel_url = 'http://localhost:5000'
 
-        boletines_dir = os.path.join(os.getcwd(), 'static', 'boletines')
+        base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+        boletines_dir = os.path.join(base_upload, 'boletines')
         os.makedirs(boletines_dir, exist_ok=True)
 
         count = 0
@@ -700,7 +691,6 @@ def normalizar_base_datos():
             for mat in materias:
                 notas_materia = []
                 for tipo in tipos_eval:
-                    # Generar una nota aleatoria independiente y realista entre 45 y 98
                     nota_valor = float(random.randint(45, 98))
                     
                     nueva_cal = Calificacion(
@@ -714,7 +704,6 @@ def normalizar_base_datos():
                     notas_materia.append(nota_valor)
                     contador += 1
 
-                # Calcular y guardar el promedio independiente para esta materia y estudiante
                 if notas_materia:
                     promedio_mat = round(sum(notas_materia) / len(notas_materia), 2)
                     cal_prom = Calificacion(

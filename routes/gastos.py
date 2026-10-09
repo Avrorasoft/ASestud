@@ -64,7 +64,6 @@ def index():
 
     gastos_db = query.order_by(Gasto.fecha.desc()).all()
     
-    # Filtrado y cálculo seguro en Python para evitar errores de columnas faltantes en SQL
     gastos = [g for g in gastos_db]
     total_general = sum(g.monto for g in gastos if getattr(g, 'estado', 'Activo') != 'Anulado')
     resumen_categorias = {}
@@ -103,13 +102,15 @@ def nuevo():
                 archivo = request.files['archivo']
                 if archivo and archivo.filename != '' and archivo_permitido(archivo.filename):
                     filename = secure_filename(f"gasto_{datetime.now().strftime('%Y%m%d%H%M%S')}_{archivo.filename}")
-                    BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-                    upload_folder = os.path.join(BASE_DIR, 'static', 'uploads', 'gastos')
+                    
+                    # ⭐ RUTA ABSOLUTA UNIFICADA EN LA RAÍZ DEL DISCO C:\ASestud\uploads\gastos
+                    base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+                    upload_folder = os.path.join(base_upload, 'gastos')
                     os.makedirs(upload_folder, exist_ok=True)
+                    
                     archivo.save(os.path.join(upload_folder, filename))
-                    archivo_nombre = filename
+                    archivo_nombre = f"gastos/{filename}"
 
-            # Se omite 'estado' en la inserción inicial para prevenir fallos si la tabla física aún no cuenta con la columna
             nuevo_gasto = Gasto(
                 categoria=request.form['categoria'],
                 descripcion=request.form['descripcion'],
@@ -124,7 +125,6 @@ def nuevo():
             db.session.add(nuevo_gasto)
             db.session.commit()
             
-            # Asignación segura del estado si la columna ya se encuentra disponible
             try:
                 if hasattr(nuevo_gasto, 'estado'):
                     nuevo_gasto.estado = 'Activo'
@@ -143,7 +143,6 @@ def nuevo():
 
 @gastos_bp.route('/anular/<int:id>', methods=['POST'])
 def eliminar(id):
-    """Anula el gasto de forma lógica protegido por Bóveda (Cero borrados físicos)."""
     if not verificar_turno_activo():
         flash('⚠️ Debe tener un turno de caja activo para anular gastos.', 'warning')
         return redirect('/caja/')
@@ -157,7 +156,7 @@ def eliminar(id):
 
     try:
         if getattr(gasto, 'estado', 'Activo') == 'Anulado':
-            flash('⚠️️ Este gasto ya se encontraba anulado.', 'warning')
+            flash('⚠ Este gasto ya se encontraba anulado.', 'warning')
             return redirect('/caja/')
 
         try:

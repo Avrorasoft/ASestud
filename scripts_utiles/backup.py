@@ -15,50 +15,52 @@ def crear_backup_datos():
     fecha_str = datetime.now().strftime('%Y%m%d_%H%M%S')
     nombre_zip = f"backup_esencial_colegio_{fecha_str}.zip"
     
-    # Archivos específicos y carpetas irremplazables a respaldar
+    base_dir = r"C:\ASestud"
+    base_upload = r"C:\ASestud\uploads"
+    
+    # Archivos específicos y carpetas irremplazables a respaldar en el disco C
     elementos_esenciales = [
-        'colegio_vaca_diez.db',  # <--- ¡LA BASE DE DATOS CRÍTICA ESTÁ AQUÍ!
-        os.path.join('static', 'uploads'),
-        os.path.join('static', 'recibos'),
-        os.path.join('static', 'boletines'),
-        os.path.join('static', 'recibos_personal'),
-        'backups',
-        '.env'                   # Variables de entorno si las usas
+        os.path.join(base_dir, 'colegio_vaca_diez.db'),  # <--- ¡LA BASE DE DATOS CRÍTICA ESTÁ AQUÍ!
+        os.path.join(base_upload, 'estudiantes'),
+        os.path.join(base_upload, 'chat'),
+        os.path.join(base_upload, 'justificaciones'),
+        os.path.join(base_upload, 'gastos'),
+        os.path.join(base_upload, 'monitor_album'),
+        os.path.join(base_upload, 'boletines'),
+        os.path.join(base_upload, 'recibos'),
+        os.path.join(base_upload, 'recibos_personal'),
+        os.path.join(base_upload, 'backups'),
+        os.path.join(base_dir, '.env')                   # Variables de entorno si las usas
     ]
 
-    # Extensiones de código fuente que podemos omitir si solo quieres datos, 
-    # OJO: Si también quieres respaldar tu código por seguridad, elimina '.py' de aquí.
+    # Extensiones de código fuente que podemos omitir si solo quieres datos
     extensiones_prohibidas = ('.pyc', '.pyo', '.log')
     
     archivos_procesados = 0
 
     with zipfile.ZipFile(nombre_zip, 'w', zipfile.ZIP_DEFLATED) as zipf:
-        for raiz, _, archivos in os.walk('.'):
+        for raiz, _, archivos in os.walk(base_dir):
             # Evitar entrar en carpetas de entorno virtual o caché para ahorrar espacio
             if '__pycache__' in raiz or 'venv' in raiz or '.git' in raiz:
                 continue
                 
             for archivo in archivos:
                 ruta_completa = os.path.join(raiz, archivo)
-                ruta_normalizada = ruta_completa.replace('./', '').replace('.\\', '')
                 
                 # 1. Ignorar temporales y caché
                 if archivo.endswith(extensiones_prohibidas):
                     continue
                     
-                # 2. Verificar si es la base de datos en la raíz o pertenece a las carpetas válidas
+                # 2. Verificar si pertenece a los elementos esenciales
                 es_valido = False
-                if ruta_normalizada == 'colegio_vaca_diez.db' or ruta_normalizada == '.env':
-                    es_valido = True
-                else:
-                    for elemento in elementos_esenciales:
-                        if ruta_normalizada.startswith(elemento):
-                            es_valido = True
-                            break
+                for elemento in elementos_esenciales:
+                    if os.path.abspath(ruta_completa).startswith(os.path.abspath(elemento)) or os.path.abspath(ruta_completa) == os.path.abspath(elemento):
+                        es_valido = True
+                        break
                         
                 # 3. Empaquetar si pasa la validación
                 if es_valido:
-                    arcname = os.path.relpath(ruta_completa, '.')
+                    arcname = os.path.relpath(ruta_completa, base_dir)
                     zipf.write(ruta_completa, arcname)
                     archivos_procesados += 1
                     

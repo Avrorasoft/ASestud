@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="card shadow mb-4">
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0">
+                <i class="bi bi-shield-lock-fill text-warning me-2"></i> Control y Asignación de Descuentos Individuales (Bóveda)
+            </h4>
+            <span class="badge bg-warning text-dark">Modo Superadministrador</span>
+        </div>
+
+        <div class="card-body">
+            <!-- BARRA DE FILTROS -->
+            <form method="GET" action="{{ url_for('estudiantes.gestionar_descuentos_individuales') }}" class="row g-3 mb-4 bg-light p-3 rounded border">
+                <div class="col-md-5">
+                    <label class="form-label fw-bold">Buscar Estudiante (Nombre, Apellido o C.I.)</label>
+                    <input type="text" name="q" class="form-control" value="{{ q }}" placeholder="Ej: Perez o 1234567">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label fw-bold">Filtrar por Curso</label>
+                    <select name="curso" class="form-select">
+                        <option value="todos">-- Todos los Cursos --</option>
+                        {% for c in cursos %}
+                            <option value="{{ c }}" {% if curso_seleccionado == c %}selected{% endif %}>{{ c }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100 fw-bold">
+                        <i class="bi bi-search me-1"></i> Filtrar Listado
+                    </button>
+                </div>
+            </form>
+
+            <!-- TABLA DE ESTUDIANTES Y SUS DESCUENTOS -->
+            <div class="table-responsive">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="table-secondary text-center">
+                        <tr>
+                            <th>C.I.</th>
+                            <th>Apellidos y Nombres</th>
+                            <th>Curso</th>
+                            <th>Pensión Base</th>
+                            <th>Descuento Autorizado Vigente</th>
+                            <th class="text-center">Acciones de Bóveda</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for est in estudiantes %}
+                        <tr>
+                            <td class="fw-bold text-center">{{ est.ci }}</td>
+                            <td>{{ est.apellidos }}, {{ est.nombres }}</td>
+                            <td>{{ est.curso }}</td>
+                            <td>Bs. {{ "%.2f"|format(est.pension or 0) }}</td>
+                            <td>
+                                <!-- Aquí se mostrará si tiene beca o rebaja activa -->
+                                <span class="badge bg-success">Sin descuento registrado</span>
+                            </td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-outline-warning fw-bold" data-bs-toggle="modal" data-bs-target="#modalDescuento{{ est.id }}">
+                                    <i class="bi bi-tag-fill"></i> Configurar Descuento
+                                </button>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">No se encontraron estudiantes con los filtros especificados.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -37,7 +37,8 @@ def asegurar_turno_activo():
 @archivos_bp.route('/')
 def index():
     """Lista los archivos y documentos usando lista.html"""
-    upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'archivos')
+    base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+    upload_folder = os.path.join(base_upload, 'archivos')
     os.makedirs(upload_folder, exist_ok=True)
     
     archivos_lista = []
@@ -74,7 +75,8 @@ def subir_archivo():
             timestamp = datetime.now().strftime('%Y%m%d_%H%M%S_')
             filename_final = timestamp + filename
 
-            upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'archivos')
+            base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+            upload_folder = os.path.join(base_upload, 'archivos')
             os.makedirs(upload_folder, exist_ok=True)
             
             file.save(os.path.join(upload_folder, filename_final))
@@ -115,7 +117,8 @@ def detalle_archivo(filename):
 
 @archivos_bp.route('/descargar/<path:filename>')
 def descargar_archivo(filename):
-    upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'archivos')
+    base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+    upload_folder = os.path.join(base_upload, 'archivos')
     return send_from_directory(upload_folder, filename, as_attachment=True)
 
 
@@ -126,7 +129,8 @@ def descargar_archivo(filename):
 @archivos_bp.route('/eliminar/<path:filename>', methods=['POST'])
 def eliminar_archivo(filename):
     try:
-        upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'archivos')
+        base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+        upload_folder = os.path.join(base_upload, 'archivos')
         file_path = os.path.join(upload_folder, filename)
         if os.path.exists(file_path):
             os.remove(file_path)

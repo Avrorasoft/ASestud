@@ -16,6 +16,60 @@ Descripción: Vista de cárdex individual para profesores y administrativo,
             display: none !important;
         }
     }
+/* ========================================================================== */
+/* ESTILOS PROFESIONALES DE IMPRESIÓN PARA EL HISTORIAL FINANCIERO           */
+/* ========================================================================== */
+@media print {
+    /* 1. Ocultar la estructura general del sistema y la interfaz no deseada */
+    body * {
+        visibility: hidden !important;
+    }
+
+    /* 2. Mostrar únicamente el contenedor exclusivo del historial de pagos */
+    #seccion-historial-pagos, #seccion-historial-pagos * {
+        visibility: visible !important;
+    }
+
+    /* 3. Reubicar la sección en la esquina superior izquierda de la hoja impresa */
+    #seccion-historial-pagos {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 10px !important;
+        background: white !important;
+    }
+
+    /* 4. Ocultar de forma permanente cualquier botón de acción, modal o controles */
+    .no-print, 
+    .btn, 
+    .modal, 
+    th.no-print, 
+    td.no-print {
+        display: none !important;
+    }
+
+    /* 5. Optimización formal de la tabla para formato impreso */
+    .table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+        color: #000 !important;
+    }
+
+    .table th, .table td {
+        border: 1px solid #333 !important;
+        padding: 6px 8px !important;
+        font-size: 11pt !important;
+    }
+
+    .table thead th {
+        background-color: #f2f2f2 !important;
+        color: #000 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
 </style>
 
 <div class="container mt-4">
@@ -148,7 +202,9 @@ Descripción: Vista de cárdex individual para profesores y administrativo,
                 </div>
 
                 <div class="col-md-4 text-center">
-                    <img src="{{ url_for('static', filename=persona.foto_path or 'default.png') }}"
+                    {% set clean_filename = persona.foto_path.replace('uploads/', '').replace('\\', '/') if persona.foto_path else 'default.png' %}
+                    <img src="{{ url_for('servir_archivo_subido', filename=clean_filename) }}"
+                         id="fotoPerfil"
                          class="img-thumbnail"
                          style="max-width: 180px;">
 
@@ -383,145 +439,139 @@ Descripción: Vista de cárdex individual para profesores y administrativo,
     {% endif %}
 
     <!-- =============================================================== -->
-    <!-- PAGOS -->
-    <!-- =============================================================== -->
-
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-warning text-dark">
-            Pagos registrados
-        </div>
-
-        <div class="card-body">
-
-            <div class="mb-3 no-print">
-                <a href="/personal/pagar/{{ tipo }}/{{ persona.id }}"
-                   class="btn btn-success">
-                    Pagar
-                </a>
-
-                <a href="/personal/registrar_adelanto/{{ tipo }}/{{ persona.id }}"
-                   class="btn btn-warning">
-                    Registrar Adelanto
-                </a>
-
-                <a href="/personal/recibo/{{ tipo }}/{{ persona.id }}"
-                   class="btn btn-outline-secondary">
-                    Ver Recibo
-                </a>
-            </div>
-
-            {% if pagos %}
-                <div class="table-responsive">
-                    <table class="table table-hover table-bordered align-middle">
-                        <thead class="table-light">
-                            <tr>
-                                <th>#</th>
-                                <th>Mes</th>
-                                <th>Año</th>
-                                <th>Monto Base</th>
-                                <th>Adelanto</th>
-                                <th>Neto Pagado</th>
-                                <th>Fecha</th>
-                                <th class="text-center no-print">Acciones</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            {% for pago in pagos %}
-                            <tr class="{% if pago.estado == 'Anulado' %}table-danger opacity-75{% elif pago.tipo == 'Adelanto' %}table-warning{% endif %}">
-                                <td>{{ loop.index }}</td>
-                                <td>
-                                    {% if pago.tipo == 'Adelanto' %}
-                                        <span class="badge bg-danger mb-1"><i class="fas fa-hand-holding-usd me-1"></i> Adelanto</span><br>
-                                    {% else %}
-                                        <span class="badge bg-primary mb-1"><i class="fas fa-money-check-alt me-1"></i> Sueldo</span><br>
-                                    {% endif %}
-                                    <span class="fw-bold text-dark">{{ pago.mes }}</span>
-                                </td>
-                                <td>{{ pago.anio }}</td>
-                                <td>
-                                    {% if pago.tipo == 'Adelanto' %}
-                                        <span class="text-muted">-</span>
-                                    {% else %}
-                                        Bs. {{ '%.2f'|format(pago.monto_base or 0) }}
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if pago.tipo == 'Adelanto' %}
-                                        <span class="text-danger fw-bold">Bs. {{ '%.2f'|format(pago.monto_neto_pagado or 0) }}</span>
-                                    {% else %}
-                                        Bs. {{ '%.2f'|format(pago.monto_adelanto or 0) }}
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if pago.tipo == 'Adelanto' %}
-                                        <span class="badge bg-secondary">Entrega de anticipo</span>
-                                    {% else %}
-                                        Bs. {{ '%.2f'|format(pago.monto_neto_pagado or 0) }}
-                                    {% endif %}
-                                    {% if pago.estado == 'Anulado' %}
-                                        <div class="mt-1">
-                                            <span class="badge bg-danger fs-6 fw-bold px-2 py-1 shadow-sm">ANULADA</span>
-                                        </div>
-                                    {% endif %}
-                                </td>
-                                <td>
-                                    {% if pago.fecha_pago %}
-                                        {{ pago.fecha_pago.strftime('%d/%m/%Y') }}
-                                    {% else %}
-                                        -
-                                    {% endif %}
-                                </td>
-                                <td class="text-center no-print">
-                                    {% if pago.estado != 'Anulado' %}
-                                        <!-- Botón único para anular protegido con Bóveda (Sin edición) -->
-                                        <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalAnularPago{{ pago.id }}" title="Anular transacción">
-                                            <i class="fas fa-ban me-1"></i> Anular
-                                        </button>
-
-                                        <!-- Modal de confirmación con contraseña de Bóveda -->
-                                        <div class="modal fade text-dark" id="modalAnularPago{{ pago.id }}" tabindex="-1" aria-hidden="true">
-                                            <div class="modal-dialog">
-                                                <div class="modal-content bg-dark text-light border-warning">
-                                                    <div class="modal-header border-secondary">
-                                                        <h5 class="modal-title text-warning fw-bold">
-                                                            <i class="fas fa-lock me-2"></i> Autorización de Bóveda Requerida
-                                                        </h5>
-                                                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-                                                    </div>
-                                                    <form action="{{ url_for('personal.eliminar_pago_personal', pago_id=pago.id) }}" method="POST">
-                                                        <div class="modal-body text-start">
-                                                            <p>¿Está seguro de anular este registro financiero de <strong>Bs. {{ '%.2f'|format(pago.monto_neto_pagado or 0) }}</strong> correspondiente a <strong>{{ pago.mes }} / {{ pago.anio }}</strong>?</p>
-                                                            <div class="mb-3">
-                                                                <label for="boveda_password_{{ pago.id }}" class="form-label fw-bold text-warning">Contraseña de la Bóveda <span class="text-danger">*</span></label>
-                                                                <input type="password" class="form-control bg-dark text-light border-warning" id="boveda_password_{{ pago.id }}" name="boveda_password" placeholder="Ingrese la contraseña de seguridad" required>
-                                                            </div>
-                                                        </div>
-                                                        <div class="modal-footer border-secondary">
-                                                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                                            <button type="submit" class="btn btn-danger fw-bold">Confirmar Anulación</button>
-                                                        </div>
-                                                    </form>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    {% else %}
-                                        <span class="badge bg-secondary">Cerrado</span>
-                                    {% endif %}
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <div class="alert alert-secondary mb-0">
-                    No hay pagos registrados para esta persona.
-                </div>
-            {% endif %}
-
-        </div>
+<!-- PAGOS (CONTENEDOR PROFESIONAL AISLADO PARA IMPRESIÓN) -->
+<!-- =============================================================== -->
+<div id="seccion-historial-pagos" class="card shadow-sm mb-4">
+    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+        <span>Historial de Pagos Registrados - {{ persona.nombres }} {{ persona.apellidos }}</span>
+        <!-- Botón superior profesional que dispara la impresión exclusiva de la tabla -->
+        <button onclick="window.print()" class="btn btn-sm btn-dark no-print">
+            <i class="fas fa-print me-1"></i> Imprimir Historial Completo
+        </button>
     </div>
 
+    <div class="card-body">
+
+        <div class="mb-3 no-print">
+            <a href="/personal/pagar/{{ tipo }}/{{ persona.id }}" class="btn btn-success">Pagar</a>
+            <a href="/personal/registrar_adelanto/{{ tipo }}/{{ persona.id }}" class="btn btn-warning">Registrar Adelanto</a>
+            <a href="/personal/recibo/{{ tipo }}/{{ persona.id }}" class="btn btn-outline-secondary">Ver Recibo</a>
+        </div>
+
+        {% if pagos %}
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Mes</th>
+                            <th>Año</th>
+                            <th>Monto Base</th>
+                            <th>Adelanto</th>
+                            <th>Neto Pagado</th>
+                            <th>Fecha</th>
+                            <th class="text-center no-print">Acciones</th>
+                        </tr>
+                    </thead>
+
+                    <tbody>
+                        {% for pago in pagos %}
+                        <tr class="{% if pago.estado == 'Anulado' %}table-danger opacity-75{% elif pago.tipo == 'Adelanto' %}table-warning{% endif %}">
+                            <td>{{ loop.index }}</td>
+                            <td>
+                                {% if pago.tipo == 'Adelanto' %}
+                                    <span class="badge bg-danger mb-1"><i class="fas fa-hand-holding-usd me-1"></i> Adelanto</span><br>
+                                {% else %}
+                                    <span class="badge bg-primary mb-1"><i class="fas fa-money-check-alt me-1"></i> Sueldo</span><br>
+                                {% endif %}
+                                <span class="fw-bold text-dark">{{ pago.mes }}</span>
+                            </td>
+                            <td>{{ pago.anio }}</td>
+                            <td>
+                                {% if pago.tipo == 'Adelanto' %}
+                                    <span class="text-muted">-</span>
+                                {% else %}
+                                    Bs. {{ '%.2f'|format(pago.monto_base or 0) }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if pago.tipo == 'Adelanto' %}
+                                    <span class="text-danger fw-bold">Bs. {{ '%.2f'|format(pago.monto_neto_pagado or 0) }}</span>
+                                {% else %}
+                                    Bs. {{ '%.2f'|format(pago.monto_adelanto or 0) }}
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if pago.tipo == 'Adelanto' %}
+                                    <span class="badge bg-secondary">Entrega de anticipo</span>
+                                {% else %}
+                                    Bs. {{ '%.2f'|format(pago.monto_neto_pagado or 0) }}
+                                {% endif %}
+                                {% if pago.estado == 'Anulado' %}
+                                    <div class="mt-1">
+                                        <span class="badge bg-danger fs-6 fw-bold px-2 py-1 shadow-sm">ANULADA</span>
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if pago.fecha_pago %}
+                                    {{ pago.fecha_pago.strftime('%d/%m/%Y') }}
+                                {% else %}
+                                    -
+                                {% endif %}
+                            </td>
+                            <td class="text-center no-print">
+                                <!-- Botón individual legible para cada mes -->
+                                <a href="{{ url_for('personal.imprimir_recibo_pago', pago_id=pago.id) }}" target="_blank" class="btn btn-sm btn-outline-dark me-1 mb-1" title="Imprimir Comprobante de este mes">
+                                    <i class="fas fa-print me-1"></i> Imprimir
+                                </a>
+
+                                {% if pago.estado != 'Anulado' %}
+                                    <button type="button" class="btn btn-sm btn-outline-danger mb-1" data-bs-toggle="modal" data-bs-target="#modalAnularPago{{ pago.id }}" title="Anular transacción">
+                                        <i class="fas fa-ban me-1"></i> Anular
+                                    </button>
+
+                                    <!-- Modal de anulación -->
+                                    <div class="modal fade text-dark" id="modalAnularPago{{ pago.id }}" tabindex="-1" aria-hidden="true">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content bg-dark text-light border-warning">
+                                                <div class="modal-header border-secondary">
+                                                    <h5 class="modal-title text-warning fw-bold">
+                                                        <i class="fas fa-lock me-2"></i> Autorización de Bóveda Requerida
+                                                    </h5>
+                                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                                                </div>
+                                                <form action="{{ url_for('personal.eliminar_pago_personal', pago_id=pago.id) }}" method="POST">
+                                                    <div class="modal-body text-start">
+                                                        <p>¿Está seguro de anular este registro financiero de <strong>Bs. {{ '%.2f'|format(pago.monto_neto_pagado or 0) }}</strong> correspondiente a <strong>{{ pago.mes }} / {{ pago.anio }}</strong>?</p>
+                                                        <div class="mb-3">
+                                                            <label for="boveda_password_{{ pago.id }}" class="form-label fw-bold text-warning">Contraseña de la Bóveda <span class="text-danger">*</span></label>
+                                                            <input type="password" class="form-control bg-dark text-light border-warning" id="boveda_password_{{ pago.id }}" name="boveda_password" placeholder="Ingrese la contraseña de seguridad" required>
+                                                        </div>
+                                                    </div>
+                                                    <div class="modal-footer border-secondary">
+                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                                        <button type="submit" class="btn btn-danger fw-bold">Confirmar Anulación</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <span class="badge bg-secondary">Cerrado</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-secondary mb-0">
+                No hay pagos registrados para esta persona.
+            </div>
+        {% endif %}
+
+    </div>
 </div>
 {% endblock %}

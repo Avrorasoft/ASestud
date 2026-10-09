@@ -4,33 +4,34 @@ Generador de informes económicos confidenciales.
 """
 
 from datetime import datetime, timedelta, date
-from models import db, Pago, Gasto, InformeEconomico
+from typing import Dict, List, Any, Optional
+from models import db, Pago, Gasto, InformeEconomico, ConfiguracionSuperadmin
 import json
 
 
-def calcular_totales_periodo(fecha_inicio, fecha_fin):
+def calcular_totales_periodo(fecha_inicio: date, fecha_fin: date) -> Dict[str, Any]:
     """
     Calcula ingresos y gastos de un período específico.
     Retorna diccionario con totales por método de pago.
     """
     # Ingresos (Pagos de estudiantes)
-    pagos = Pago.query.filter(
+    pagos: List[Pago] = Pago.query.filter(
         Pago.fecha_pago >= datetime.combine(fecha_inicio, datetime.min.time()),
         Pago.fecha_pago <= datetime.combine(fecha_fin, datetime.max.time()),
         Pago.estado == 'Pagado'
     ).all()
     
-    ingresos_efectivo = sum(p.monto_pagado for p in pagos if p.metodo_pago == 'Efectivo')
-    ingresos_bancario = sum(p.monto_pagado for p in pagos if p.metodo_pago == 'Bancario')
+    ingresos_efectivo: float = sum(float(p.monto_pagado or 0.0) for p in pagos if p.metodo_pago == 'Efectivo')
+    ingresos_bancario: float = sum(float(p.monto_pagado or 0.0) for p in pagos if p.metodo_pago == 'Bancario')
     
     # Gastos
-    gastos = Gasto.query.filter(
+    gastos: List[Gasto] = Gasto.query.filter(
         Gasto.fecha >= fecha_inicio,
         Gasto.fecha <= fecha_fin
     ).all()
     
-    gastos_efectivo = sum(g.monto for g in gastos if g.metodo_pago == 'Efectivo')
-    gastos_bancario = sum(g.monto for g in gastos if g.metodo_pago == 'Bancario')
+    gastos_efectivo: float = sum(float(g.monto or 0.0) for g in gastos if g.metodo_pago == 'Efectivo')
+    gastos_bancario: float = sum(float(g.monto or 0.0) for g in gastos if g.metodo_pago == 'Bancario')
     
     return {
         'ingresos_efectivo': ingresos_efectivo,
@@ -66,7 +67,7 @@ def calcular_totales_periodo(fecha_inicio, fecha_fin):
     }
 
 
-def generar_informe_diario(fecha=None):
+def generar_informe_diario(fecha: Optional[date] = None) -> InformeEconomico:
     """
     Genera informe económico diario.
     Si no se especifica fecha, usa el día actual.
@@ -75,7 +76,7 @@ def generar_informe_diario(fecha=None):
         fecha = date.today()
     
     # Verificar si ya existe informe para este día
-    informe_existente = InformeEconomico.query.filter_by(
+    informe_existente: Optional[InformeEconomico] = InformeEconomico.query.filter_by(
         tipo_informe='Diario',
         fecha_inicio=fecha,
         fecha_fin=fecha
@@ -108,17 +109,17 @@ def generar_informe_diario(fecha=None):
     return informe
 
 
-def generar_informe_semanal(fecha_fin=None):
+def generar_informe_semanal(fecha_fin: Optional[date] = None) -> InformeEconomico:
     """
     Genera informe económico semanal (últimos 7 días).
     """
     if fecha_fin is None:
         fecha_fin = date.today()
     
-    fecha_inicio = fecha_fin - timedelta(days=6)
+    fecha_inicio: date = fecha_fin - timedelta(days=6)
     
     # Verificar si ya existe
-    informe_existente = InformeEconomico.query.filter_by(
+    informe_existente: Optional[InformeEconomico] = InformeEconomico.query.filter_by(
         tipo_informe='Semanal',
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin
@@ -151,7 +152,7 @@ def generar_informe_semanal(fecha_fin=None):
     return informe
 
 
-def generar_informe_mensual(anio=None, mes=None):
+def generar_informe_mensual(anio: Optional[int] = None, mes: Optional[int] = None) -> InformeEconomico:
     """
     Genera informe económico mensual.
     """
@@ -170,7 +171,7 @@ def generar_informe_mensual(anio=None, mes=None):
         fecha_fin = date(anio, mes + 1, 1) - timedelta(days=1)
     
     # Verificar si ya existe
-    informe_existente = InformeEconomico.query.filter_by(
+    informe_existente: Optional[InformeEconomico] = InformeEconomico.query.filter_by(
         tipo_informe='Mensual',
         fecha_inicio=fecha_inicio,
         fecha_fin=fecha_fin
@@ -203,7 +204,7 @@ def generar_informe_mensual(anio=None, mes=None):
     return informe
 
 
-def inicializar_configuracion_superadmin():
+def inicializar_configuracion_superadmin() -> bool:
     """
     Inicializa la configuración del superadmin si no existe.
     """

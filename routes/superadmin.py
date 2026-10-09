@@ -23,6 +23,8 @@ import threading
 import secrets
 import stat
 import subprocess
+from typing import Optional
+import atexit
 
 from datetime import datetime, date, timedelta, timezone
 from functools import wraps
@@ -47,6 +49,74 @@ superadmin_bp = Blueprint('superadmin', __name__,
                           template_folder='templates/superadmin')
 
 _scheduler_informes_iniciado = False
+
+# =========================================================================
+# GESTOR DE TÚNELES DE RED (NGROK / CLOUDFLARE - TARJETA 9)
+# =========================================================================
+_TUNNEL_PROCESS: Optional[subprocess.Popen] = None
+
+def detener_tuneles_activos():
+    """Elimina y cierra cualquier proceso hijo de ngrok o cloudflared al salir."""
+    global _TUNNEL_PROCESS
+    if _TUNNEL_PROCESS and _TUNNEL_PROCESS.poll() is None:
+        try:
+            _TUNNEL_PROCESS.terminate()
+            _TUNNEL_PROCESS.wait(timeout=3)
+        except Exception:
+            try:
+                _TUNNEL_PROCESS.kill()
+            except Exception:
+                pass
+    _TUNNEL_PROCESS = None
+    
+    # Limpieza forzosa en Windows de ejecutables huérfanos
+    try:
+        os.system("taskkill /f /im ngrok.exe >nul 2>&1")
+        os.system("taskkill /f /im cloudflared.exe >nul 2>&1")
+    except Exception:
+        pass
+
+# Registrar el cierre automático cuando la app Flask se apaga
+atexit.register(detener_tuneles_activos)
+
+
+def iniciar_tunel_servicio(tipo: str, puerto: int = 5000, token_cloudflare: Optional[str] = None) -> dict:
+    """Inicia de forma exclusiva Ngrok o Cloudflare evitando duplicidad de hilos."""
+    global _TUNNEL_PROCESS
+    
+    detener_tuneles_activos()
+    
+    tipo = tipo.lower().strip()
+    comando = []
+    
+    if tipo == 'ngrok':
+        comando = ["ngrok", "http", str(puerto)]
+    elif tipo == 'cloudflare':
+        if token_cloudflare:
+            comando = ["cloudflared", "tunnel", "run", "--token", token_cloudflare]
+        else:
+            comando = ["cloudflared", "tunnel", "--url", f"http://localhost:{puerto}"]
+    else:
+        return {"success": False, "error": "Tipo de túnel no reconocido."}
+
+    try:
+        startupinfo = None
+        if os.name == 'nt':
+            startupinfo = subprocess.STARTUPINFO()
+            startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+            startupinfo.wShowWindow = subprocess.SW_HIDE
+
+        _TUNNEL_PROCESS = subprocess.Popen(
+            comando,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            startupinfo=startupinfo
+        )
+        
+        return {"success": True, "message": f"Túnel {tipo.capitalize()} iniciado correctamente."}
+    except Exception as e:
+        return {"success": False, "error": f"No se pudo iniciar {tipo}: {str(e)}"}
+
 
 # =========================================================================
 # CONTRASEÑAS MAESTRAS (desde BD, no hardcoded)
@@ -175,7 +245,7 @@ def auth():
         session['es_superadmin'] = True
         session['admin'] = True
         session['superadmin'] = True
-        session['_boveda_login_time'] = datetime.now().isoformat()
+        session['session_login_time'] = datetime.now().isoformat()
         session['_boveda_ip'] = ip
         flash('🔒 Bóveda de Sistema desbloqueada correctamente.', 'success')
         return redirect(url_for('superadmin.boveda'))
@@ -270,6 +340,8 @@ def cambiar_password_pwa():
         password_actual=password_actual)
 
 
+import sqlite3
+
 # ==============================================================================
 # GENERAR RESPALDO DE BASE DE DATOS (.db)
 # ==============================================================================
@@ -298,7 +370,9 @@ def generar_db():
             flash('❌ No se encontró el archivo físico de la base de datos.', 'danger')
             return redirect(url_for('superadmin.boveda'))
 
-        backups_dir = os.path.join(current_app.root_path, 'static', 'backups')
+        # Directorio centralizado en el disco C
+        base_upload = current_app.config.get('UPLOAD_FOLDER', 'C:/ASestud/uploads')
+        backups_dir = os.path.join(base_upload, 'backups')
         os.makedirs(backups_dir, exist_ok=True)
         backup_path = os.path.join(backups_dir, nombre_db)
 
@@ -313,7 +387,7 @@ def generar_db():
         tamano_mb = os.path.getsize(backup_path) / (1024 * 1024)
         print(f"[DB BACKUP] Respaldo generado con éxito: {backup_path} ({tamano_mb:.2f} MB)")
 
-        flash(f'✅ Respaldo de base de datos generado y guardado en static/backups/{nombre_db} ({tamano_mb:.2f} MB). Descarga iniciada.', 'success')
+        flash(f'✅ Respaldo de base de datos generado y guardado en C:\\ASestud\\uploads\\backups\\{nombre_db} ({tamano_mb:.2f} MB). Descarga iniciada.', 'success')
 
         return send_file(
             backup_path,
@@ -326,7 +400,6 @@ def generar_db():
         current_app.logger.error(f"Error al generar respaldo .db: {e}")
         flash(f'❌ Error crítico al generar el respaldo de la base de datos: {str(e)}', 'danger')
         return redirect(url_for('superadmin.boveda'))
-
 
 # ==============================================================================
 # RESTAURAR BASE DE DATOS (.db)
@@ -809,7 +882,7 @@ def _registrar_scheduler_informes(state):
     iniciar_scheduler_informes(state.app)
 
 # =========================================================================
-# GESTIÓN AVANZADA DE TÚNEL CLOUDFLARE (TARJETA 9)
+# GESTIÓN AVANZADA DE TÚNELES DE RED Y ENDPOINTS DE LA TARJETA 9
 # =========================================================================
 
 @superadmin_bp.route('/cloudflare/guardar-avanzado', methods=['POST'])
@@ -839,7 +912,47 @@ def guardar_config_cloudflare_avanzada():
         db.session.rollback()
         flash(f'❌ Error al guardar la configuración de red: {str(e)}', 'danger')
         
-    return redirect(url_for('superadmin.boveda'))
+    return redirect(request.referrer or url_for('dashboard.index'))
+
+
+@superadmin_bp.route('/tunel/iniciar-ngrok', methods=['POST'])
+def iniciar_ngrok_route():
+    if not check_superadmin():
+        return redirect(url_for('dashboard.index'))
+        
+    resultado = iniciar_tunel_servicio('ngrok', 5000)
+    if resultado['success']:
+        flash(f"✅ {resultado['message']}", "success")
+    else:
+        flash(f"❌ {resultado['error']}", "danger")
+    return redirect(request.referrer or url_for('dashboard.index'))
+
+
+@superadmin_bp.route('/tunel/iniciar-cloudflare', methods=['POST'])
+def iniciar_cloudflare_route():
+    if not check_superadmin():
+        return redirect(url_for('dashboard.index'))
+        
+    config_token = ConfiguracionSuperadmin.query.filter_by(clave='cloudflare_tunnel_token').first()
+    token_guardado = config_token.valor if config_token else None
+
+    resultado = iniciar_tunel_servicio('cloudflare', 5000, token_cloudflare=token_guardado)
+    if resultado['success']:
+        flash(f"✅ {resultado['message']}", "success")
+    else:
+        flash(f"❌ {resultado['error']}", "danger")
+    return redirect(request.referrer or url_for('dashboard.index'))
+
+
+@superadmin_bp.route('/tunel/apagar', methods=['POST'])
+def apagar_tuneles_route():
+    if not check_superadmin():
+        return redirect(url_for('dashboard.index'))
+        
+    detener_tuneles_activos()
+    flash("🛑 Todos los túneles de red activos han sido detenidos.", "warning")
+    return redirect(request.referrer or url_for('dashboard.index'))
+
 
 # =========================================================================
 # PLANTILLAS HTML INFORMES
@@ -1458,7 +1571,7 @@ def configuracion_institucion():
                         db.session.add(nuevo)
                     actualizados += 1
 
-            # 2. Procesar Logo con nombre dinámico antibloqueo PWA
+            # 2. Procesar Logo utilizando la ruta blindada en APPDATA
             archivo_logo = request.files.get('logo_institucion')
             if archivo_logo and archivo_logo.filename:
                 extension = archivo_logo.filename.rsplit('.', 1)[-1].lower() if '.' in archivo_logo.filename else 'png'
@@ -1469,8 +1582,8 @@ def configuracion_institucion():
                     flash('❌ Formato de imagen inválido.', 'danger')
                     return redirect(url_for('superadmin.configuracion_institucion'))
                 
-                BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-                upload_dir = os.path.join(BASE_DIR, 'static', 'uploads')
+                # USAR LA RUTA SEGURA DE APPDATA EN LUGAR DE PROGRAM FILES
+                upload_dir = current_app.config['UPLOAD_FOLDER']
                 os.makedirs(upload_dir, exist_ok=True)
                 
                 # Generar nombre único basado en el tiempo actual
@@ -1523,9 +1636,9 @@ def configuracion_institucion():
 
 @superadmin_bp.route('/ver_logo_institucion')
 def ver_logo_institucion():
-    """Túnel directo para servir el logo, con caché optimizada para evitar pestañeos."""
+    """Túnel directo para servir el logo desde C:/ASestud/uploads, optimizado con caché."""
     import os
-    from flask import send_file
+    from flask import send_file, current_app
     from models import ConfiguracionSuperadmin
     
     try:
@@ -1533,14 +1646,15 @@ def ver_logo_institucion():
         cfg = ConfiguracionSuperadmin.query.filter_by(clave='institucion_logo').first()
         nombre = cfg.valor if cfg and cfg.valor else 'logo_institucion.png'
         
-        # Buscar en el disco duro
-        BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
-        ruta = os.path.join(BASE_DIR, 'static', 'uploads', nombre)
+        # BUSCAR DIRECTAMENTE EN LA RUTA ABSOLUTA CENTRALIZADA USANDO RAW STRING
+        base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+        ruta = os.path.join(base_upload, nombre)
         
         if not os.path.exists(ruta):
+            # Respaldo si no existe en el disco C: buscar en static local o default
+            BASE_DIR = os.path.abspath(os.path.dirname(os.path.dirname(__file__)))
             ruta = os.path.join(BASE_DIR, 'static', 'default.png')
             
-        # Permitimos que el navegador guarde la imagen en RAM por 24 horas (86400 segundos)
         respuesta = send_file(ruta)
         respuesta.headers['Cache-Control'] = 'public, max-age=86400'
         return respuesta

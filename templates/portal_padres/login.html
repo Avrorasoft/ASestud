@@ -67,11 +67,6 @@
             font-size: 0.8rem;
             margin-top: 20px;
         }
-        .badge-or {
-            background: #64748b;
-            padding: 5px 15px;
-            font-size: 0.9rem;
-        }
         .telefono-section {
             background: #fef3c7;
             border: 2px solid #f59e0b;
@@ -124,19 +119,15 @@
                         <i class="bi bi-person-badge text-primary"></i> CI del Tutor
                     </label>
                     <input type="text" name="ci" id="ciInput" class="form-control"
-                           placeholder="Ingrese su Carnet de Identidad" autocomplete="off">
-                </div>
-
-                <div class="text-center my-3">
-                    <span class="badge badge-or">O</span>
+                           placeholder="Ingrese su Carnet de Identidad" autocomplete="off" required>
                 </div>
 
                 <div class="mb-3">
                     <label class="form-label fw-bold">
-                        <i class="bi bi-person text-primary"></i> RUDE del Estudiante
+                        <i class="bi bi-lock text-primary"></i> Contraseña
                     </label>
-                    <input type="text" name="rude" id="rudeInput" class="form-control"
-                           placeholder="Ingrese el RUDE de su hijo/a" autocomplete="off">
+                    <input type="password" name="password" id="passwordInput" class="form-control"
+                           placeholder="Ingrese su contraseña" value="1234" required>
                 </div>
 
                 {% if pedir_telefono %}
@@ -164,10 +155,7 @@
             </form>
 
             <div class="footer-text">
-                <i class="bi bi-shield-check"></i> Acceso privado e individual<br>
-                <a href="{{ url_for('login_sistema') }}" class="text-decoration-none" style="color: #38bdf8;">
-                    <i class="bi bi-arrow-left"></i> Volver al sistema principal
-                </a>
+                <i class="bi bi-shield-check"></i> Acceso privado e individual
             </div>
         </div>
     </div>
@@ -176,27 +164,20 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const ciGuardado = localStorage.getItem('padre_ci');
-            const rudeGuardado = localStorage.getItem('padre_rude');
             
             if (ciGuardado) {
                 document.getElementById('ciInput').value = ciGuardado;
-            }
-            if (rudeGuardado) {
-                document.getElementById('rudeInput').value = rudeGuardado;
             }
         });
         
         document.getElementById('loginForm').addEventListener('submit', function(e) {
             const recordar = document.getElementById('recordarDatos').checked;
             const ci = document.getElementById('ciInput').value.trim();
-            const rude = document.getElementById('rudeInput').value.trim();
             
             if (recordar) {
                 if (ci) localStorage.setItem('padre_ci', ci);
-                if (rude) localStorage.setItem('padre_rude', rude);
             } else {
                 localStorage.removeItem('padre_ci');
-                localStorage.removeItem('padre_rude');
             }
         });
     </script>

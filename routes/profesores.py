@@ -17,11 +17,12 @@ from datetime import datetime
 
 from flask import (
     Blueprint, render_template, request, redirect, url_for,
-    flash, current_app, send_file, session
+    flash, current_app, send_file, session, jsonify
 )
 from sqlalchemy.orm import joinedload
 from sqlalchemy import or_
 from werkzeug.utils import secure_filename
+from PIL import Image
 
 from models import (
     db, Profesor, PagoPersonal, Materia,
@@ -121,7 +122,7 @@ def listar_administrativos():
 
 
 # ==============================================================================
-# NUEVO PROFESOR (CON COLUMNAS EXACTAS DE LA BASE DE DATOS)
+# NUEVO PROFESOR (CON GESTIÓN DE FOTO BASADA EN CI)
 # ==============================================================================
 
 @profesores_bp.route('/nuevo', methods=['GET', 'POST'])
@@ -141,12 +142,16 @@ def nuevo_profesor():
 
             if not ci or not nombres or not apellidos:
                 flash('⚠️ C.I., Nombres y Apellidos son obligatorios.', 'warning')
-                return render_template('profesores/nuevo.html')
+                return render_template('profesores/nuevo.html',
+                                       niveles_disponibles=NIVELES if 'NIVELES' in globals() else ['Primaria', 'Secundaria'],
+                                       turnos_disponibles=TURNOS if 'TURNOS' in globals() else ['Mañana', 'Tarde', 'Noche'])
 
             existente = Profesor.query.filter_by(ci=ci).first()
             if existente:
                 flash(f'⚠️ Ya existe un docente registrado con el C.I. {ci}.', 'danger')
-                return render_template('profesores/nuevo.html')
+                return render_template('profesores/nuevo.html',
+                                       niveles_disponibles=NIVELES if 'NIVELES' in globals() else ['Primaria', 'Secundaria'],
+                                       turnos_disponibles=TURNOS if 'TURNOS' in globals() else ['Mañana', 'Tarde', 'Noche'])
 
             try:
                 salario_base = float(sueldo_str) if sueldo_str else 0.0
@@ -171,6 +176,29 @@ def nuevo_profesor():
             db.session.add(nuevo)
             db.session.commit()
 
+            # Procesamiento de foto con Pillow y nombre basado estrictamente en el CI
+            if 'foto' in request.files:
+                file = request.files['foto']
+                if file and file.filename != '' and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    extension = filename.rsplit('.', 1)[1].lower()
+                    nuevo_nombre = f"{ci}.{extension}"
+
+                    base_upload = current_app.config.get('UPLOAD_FOLDER', 'C:/ASestud/uploads')
+                    upload_folder = os.path.join(base_upload, 'personal')
+                    os.makedirs(upload_folder, exist_ok=True)
+                    filepath = os.path.join(upload_folder, nuevo_nombre)
+
+                    with Image.open(file.stream) as img:
+                        if img.mode in ("RGBA", "P") and extension in ("jpg", "jpeg"):
+                            img = img.convert("RGB")
+                        max_size = (800, 800)
+                        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                        img.save(filepath, optimize=True, quality=80)
+
+                    nuevo.foto_path = f"uploads/personal/{nuevo_nombre}"
+                    db.session.commit()
+
             flash(f'✅ Docente {nuevo.apellidos}, {nuevo.nombres} registrado exitosamente.', 'success')
             return redirect(url_for('profesores.ver_profesor', id=nuevo.id))
 
@@ -183,6 +211,54 @@ def nuevo_profesor():
         niveles_disponibles=NIVELES if 'NIVELES' in globals() else ['Primaria', 'Secundaria'],
         turnos_disponibles=TURNOS if 'TURNOS' in globals() else ['Mañana', 'Tarde', 'Noche']
     )
+
+
+# ==============================================================================
+# SUBIDA DE FOTO DEL PROFESOR (AJAX / ASINCRÓNICA)
+# ==============================================================================
+
+@profesores_bp.route('/subir_foto/<int:id>', methods=['POST'])
+def subir_foto_profesor(id):
+    prof = Profesor.query.get_or_404(id)
+
+    if 'foto' not in request.files:
+        return jsonify({'success': False, 'message': 'No se seleccionó ningún archivo'}), 400
+
+    file = request.files['foto']
+    if file.filename == '':
+        return jsonify({'success': False, 'message': 'Nombre de archivo vacío'}), 400
+
+    if file and allowed_file(file.filename):
+        try:
+            filename = secure_filename(file.filename)
+            extension = filename.rsplit('.', 1)[1].lower()
+            nuevo_nombre = f"{prof.ci}.{extension}"
+
+            base_upload = current_app.config.get('UPLOAD_FOLDER', 'C:/ASestud/uploads')
+            upload_folder = os.path.join(base_upload, 'personal')
+            os.makedirs(upload_folder, exist_ok=True)
+
+            filepath = os.path.join(upload_folder, nuevo_nombre)
+
+            with Image.open(file.stream) as img:
+                if img.mode in ("RGBA", "P") and extension in ("jpg", "jpeg"):
+                    img = img.convert("RGB")
+                max_size = (800, 800)
+                img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                img.save(filepath, optimize=True, quality=80)
+
+            prof.foto_path = f"uploads/personal/{nuevo_nombre}"
+            db.session.add(prof)
+            db.session.commit()
+
+            url_imagen = url_for('servir_archivo_subido', filename=f"personal/{nuevo_nombre}")
+            return jsonify({'success': True, 'nueva_url': url_imagen})
+
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({'success': False, 'message': str(e)}), 500
+    
+    return jsonify({'success': False, 'message': 'Formato no permitido'}), 400
 
 
 # ==============================================================================
@@ -207,7 +283,6 @@ def ver_profesor(id):
     print("-------------------------------------------\n")
 
     # Filtrar en memoria para asegurar que no se pierdan datos en la vista
-    # Filtro flexible para asegurar que capture cualquier variante del tipo de adelanto o sueldo
     pagos = [p for p in pagos_totales if p.tipo and str(p.tipo).strip().lower() in ['profesor', 'sueldo', 'adelanto', 'anticipo']]
 
     anio_actual = datetime.now().year
@@ -244,7 +319,7 @@ def ver_profesor(id):
 
 
 # ==============================================================================
-# EDITAR EXPEDIENTE DE PROFESOR
+# EDITAR EXPEDIENTE DE PROFESOR (CON ACTUALIZACIÓN DE FOTO BASADA EN CI)
 # ==============================================================================
 
 @profesores_bp.route('/editar/<int:id>', methods=['GET', 'POST'])
@@ -268,6 +343,29 @@ def editar_profesor(id):
                 profesor.salario_base = float(sueldo_str) if sueldo_str else 0.0
             except ValueError:
                 pass
+
+            # Procesamiento de foto con Pillow al editar utilizando el CI
+            if 'foto' in request.files:
+                file = request.files['foto']
+                if file and file.filename != '' and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    extension = filename.rsplit('.', 1)[1].lower()
+                    nuevo_nombre = f"{profesor.ci}.{extension}"
+                    
+                    base_upload = current_app.config.get('UPLOAD_FOLDER', 'C:/ASestud/uploads')
+                    upload_folder = os.path.join(base_upload, 'personal')
+                    os.makedirs(upload_folder, exist_ok=True)
+                    filepath = os.path.join(upload_folder, nuevo_nombre)
+
+                    with Image.open(file.stream) as img:
+                        if img.mode in ("RGBA", "P") and extension in ("jpg", "jpeg"):
+                            img = img.convert("RGB")
+                        max_size = (800, 800)
+                        img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                        img.save(filepath, optimize=True, quality=80)
+                    
+                    if hasattr(profesor, 'foto_path'):
+                        profesor.foto_path = f"uploads/personal/{nuevo_nombre}"
 
             db.session.commit()
             flash('✅ Expediente del docente actualizado correctamente.', 'success')
@@ -421,9 +519,11 @@ def eliminar_profesor(id):
 
     return redirect(url_for('profesores.index'))
 
+
 # ==============================================================================
 # GESTIÓN Y DESGLOSE IMPRIMIBLE DE ADELANTOS POR DOCENTE
 # ==============================================================================
+
 @profesores_bp.route('/<int:id>/adelantos', methods=['GET'])
 def historial_adelantos(id):
     profesor = Profesor.query.get_or_404(id)

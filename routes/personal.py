@@ -622,7 +622,7 @@ def nueva_materia():
 
     if not nombre or not curso_id:
         flash('❌ Debe escribir el nombre de la materia y el curso.', 'danger')
-        return redirect(request.referrer or url_for('personal.lista_profesores'))
+        return redirect(url_for('personal.lista_profesores'))
 
     profesor_id_valor = None
 
@@ -636,7 +636,7 @@ def nueva_materia():
         profesor = Profesor.query.get(profesor_id_valor)
         if not profesor:
             flash('❌ Profesor no encontrado.', 'danger')
-            return redirect(request.referrer or url_for('personal.lista_profesores'))
+            return redirect(url_for('personal.lista_profesores'))
 
     try:
         materia = Materia(
@@ -654,7 +654,7 @@ def nueva_materia():
         db.session.rollback()
         flash(f'❌ Error al crear materia: {str(e)}', 'danger')
 
-    return redirect(request.referrer or url_for('personal.lista_profesores'))
+    return redirect(url_for('personal.lista_profesores'))
 
 
 # ==============================================================================
@@ -931,7 +931,6 @@ def cardex_personal(tipo, id):
         clave = (p.mes, p.anio)
         if p.tipo == tipo_db:
             if clave not in periodos_dict:
-                # Si ya se pagó el sueldo, el monto_adelanto registrado en ese pago es la verdad financiera del mes
                 periodos_dict[clave] = {
                     'id': p.id,
                     'tipo': tipo_db,
@@ -944,7 +943,6 @@ def cardex_personal(tipo, id):
                     'estado': p.estado
                 }
         elif p.tipo == 'Adelanto':
-            # Solo mostramos el adelanto como fila independiente si el sueldo de ese mes AÚN NO ha sido pagado
             if clave not in periodos_dict:
                 adelantos_sueltos.append({
                     'id': p.id,
@@ -1024,7 +1022,7 @@ def gestionar_materia_profesor(id):
 
 
 # ==============================================================================
-# SUBIR FOTO DEL PERSONAL
+# SUBIDA DE FOTO DEL PERSONAL (EXCLUSIVAMENTE EN UPLOADS/PERSONAL)
 # ==============================================================================
 
 @personal_bp.route('/subir_foto/<tipo>/<int:id>', methods=['POST'])
@@ -1044,16 +1042,35 @@ def subir_foto_personal(tipo, id):
         flash('No se seleccionó archivo', 'danger')
         return redirect(url_for('personal.cardex_personal', tipo=tipo, id=id))
 
+    if not persona.ci:
+        flash('❌ El personal debe tener un Carnet de Identidad (CI) registrado para guardar la foto.', 'danger')
+        return redirect(url_for('personal.cardex_personal', tipo=tipo, id=id))
+
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         extension = filename.rsplit('.', 1)[1].lower()
-        nuevo_nombre = f"{tipo}_{persona.id}.{extension}"
-        upload_folder = os.path.join(current_app.root_path, 'static', 'uploads', 'personal')
+        
+        # Generar un sufijo único basado en el tiempo actual (timestamp) para evitar la caché
+        timestamp_actual = int(datetime.now().timestamp())
+        nuevo_nombre = f"{persona.ci}_{timestamp_actual}.{extension}"
+        
+        # Ruta física absoluta en C:\ASestud\uploads\personal
+        base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+        upload_folder = os.path.join(base_upload, 'personal')
         os.makedirs(upload_folder, exist_ok=True)
+
+        # Limpiar fotos anteriores del mismo CI para no acumular basura en el disco
+        try:
+            for archivo in os.listdir(upload_folder):
+                if archivo.startswith(f"{persona.ci}_"):
+                    os.remove(os.path.join(upload_folder, archivo))
+        except Exception:
+            pass
 
         filepath = os.path.join(upload_folder, nuevo_nombre)
         file.save(filepath)
 
+        # Ruta limpia almacenada en la base de datos con el nombre único fresco
         persona.foto_path = f"uploads/personal/{nuevo_nombre}"
         db.session.commit()
 
@@ -1143,7 +1160,6 @@ def registrar_adelanto(tipo, id):
         anio_adelanto = int(request.form.get('anio', datetime.now().year))
         motivo_adelanto = request.form.get('motivo', 'Adelanto de Sueldo').strip() or 'Adelanto de Sueldo'
 
-        # CANDADO CONTABLE: Bloquear adelantos si el sueldo de ese mes ya fue pagado
         pago_ya_realizado = PagoPersonal.query.filter_by(
             tipo=tipo_db,
             persona_id=id,
@@ -1429,7 +1445,6 @@ def generar_recibo_personal_pdf(pago, persona, tipo_db):
     elements.append(trabajador_table)
     elements.append(Spacer(1, 0.1 * inch))
 
-    # ⭐ FILTRADO ESTRICTO: Solo adelantos del mes y año exactos que se están pagando
     adelantos_persona = PagoPersonal.query.filter(
         PagoPersonal.persona_id == pago.persona_id,
         PagoPersonal.tipo == 'Adelanto',
@@ -1729,16 +1744,59 @@ def generar_recibo_adelanto_pdf(pago, persona, tipo_db):
     pdf_bytes = buffer.getvalue()
     buffer.close()
     return pdf_bytes
+# ==============================================================================
+# IMPRIMIR RECIBO INDIVIDUAL POR ID DE PAGO
+# ==============================================================================
+
+@personal_bp.route('/imprimir_recibo_pago/<int:pago_id>')
+def imprimir_recibo_pago(pago_id):
+    pago = PagoPersonal.query.get_or_404(pago_id)
+    
+    if pago.tipo == 'Profesor':
+        persona = Profesor.query.get(pago.persona_id)
+        tipo_db = 'Profesor'
+        tipo_url = 'profesor'
+    elif pago.tipo == 'Administrativo':
+        persona = PersonalAdministrativo.query.get(pago.persona_id)
+        tipo_db = 'Administrativo'
+        tipo_url = 'admin'
+    else:
+        persona = Profesor.query.get(pago.persona_id)
+        if persona:
+            tipo_db = 'Profesor'
+            tipo_url = 'profesor'
+        else:
+            persona = PersonalAdministrativo.query.get_or_404(pago.persona_id)
+            tipo_db = 'Administrativo'
+            tipo_url = 'admin'
+
+    try:
+        if pago.tipo == 'Adelanto':
+            bytes_pdf = generar_recibo_adelanto_pdf(pago=pago, persona=persona, tipo_db=tipo_db)
+            sufijo = "adelanto"
+        else:
+            bytes_pdf = generar_recibo_personal_pdf(pago=pago, persona=persona, tipo_db=tipo_db)
+            sufijo = "pago"
+
+        recibos_dir = os.path.join(os.getcwd(), 'static', 'recibos_personal')
+        os.makedirs(recibos_dir, exist_ok=True)
+        recibo_filename = f"recibo_{sufijo}_{pago.persona_id}_{pago.id}_{int(datetime.now().timestamp())}.pdf"
+        recibo_filepath = os.path.join(recibos_dir, recibo_filename)
+        
+        with open(recibo_filepath, 'wb') as f:
+            f.write(bytes_pdf)
+
+        return redirect(url_for('personal.ver_recibo_pdf', filename=recibo_filename))
+    except Exception as e:
+        print(f"Error al generar recibo: {e}")
+        flash('Hubo un error al generar el recibo.', 'danger')
+        return redirect(url_for('personal.cardex_personal', tipo=tipo_url, id=pago.persona_id))
 
 # ==============================================================================
 # FUNCIÓN AUXILIAR DE VALIDACIÓN DE BÓVEDA (FLEXIBLE)
 # ==============================================================================
 
 def validar_boveda(password_ingresada):
-    """
-    Valida la contraseña de la bóveda comprobando contra sesión,
-    configuraciones de la app o claves maestras del sistema.
-    """
     if not password_ingresada:
         return False
 
@@ -1777,7 +1835,6 @@ def eliminar_pago_personal(pago_id):
             flash('⚠️ Este registro ya se encontraba anulado.', 'warning')
             return redirect(url_for('personal.cardex_personal', tipo=tipo_persona, id=persona_id))
 
-        # Si el registro anulado era un Adelanto, descontarlo del acumulado de la persona
         if pago.tipo == 'Adelanto':
             persona = Profesor.query.get(persona_id) if tipo_persona == 'profesor' else PersonalAdministrativo.query.get(persona_id)
             if persona:
@@ -1786,7 +1843,6 @@ def eliminar_pago_personal(pago_id):
                 persona.adelanto = max(0.0, adelanto_actual - monto_anulado)
                 persona.salario_neto = (persona.salario_base or 0.0) - persona.adelanto
 
-        # Cambiar el estado a Anulado sin borrar físicamente el registro de la base de datos
         pago.estado = 'Anulado'
         pago.motivo = f"[ANULADA] {pago.motivo or ''}".strip()
         
@@ -1800,8 +1856,9 @@ def eliminar_pago_personal(pago_id):
 
     return redirect(url_for('personal.cardex_personal', tipo=tipo_persona, id=persona_id))
 
+
 # ==============================================================================
-# API PARA OBTENER ADELANTOS DE UN PERIODO (UTILIZADO EN PANTALLA DE PAGO)
+# API PARA OBTENER ADELANTOS DE UN PERIODO
 # ==============================================================================
 
 @personal_bp.route('/api/adelantos_periodo/<tipo>/<int:id>')

@@ -4,15 +4,17 @@
 # Proyecto: Sistema de Gestión Escolar
 # Desarrollado por: Avrora Soft - Vibola LLC
 # Descripción: Blueprint para gestión de Pagos, Caja y Recibos con validación
-#              estricta de turno activo y anulación segura por Bóveda.
+#              estricta de turno activo, aplicación correcta de descuentos (menor o igual a la deuda) 
+#              y anulación segura por Bóveda.
 # ==============================================================================
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, send_file, session
-from models import db, Pago, Estudiante, Padre
+from models import db, Pago, Estudiante, Padre, ConfiguracionSuperadmin
 from datetime import datetime
 import io
 import os
 from sqlalchemy import func, or_, and_
+
 pagos_bp = Blueprint('pagos', __name__, template_folder='templates/pagos')
 
 
@@ -34,6 +36,28 @@ def validar_boveda(password_ingresada):
     if str(password_ingresada).strip() in claves_maestras:
         return True
     return False
+
+def obtener_meses_activos():
+    """Obtiene dinámicamente los meses oficiales de cobro configurados en la Bóveda."""
+    try:
+        # Buscamos en la tabla de configuración de superadmin/institución
+        cfg = ConfiguracionSuperadmin.query.filter_by(clave='meses_activos').first()
+        if cfg and cfg.valor:
+            # Mapeo de números a nombres de meses
+            mapa_meses = {
+                '1': 'Enero', '2': 'Febrero', '3': 'Marzo', '4': 'Abril',
+                '5': 'Mayo', '6': 'Junio', '7': 'Julio', '8': 'Agosto',
+                '9': 'Septiembre', '10': 'Octubre', '11': 'Noviembre', '12': 'Diciembre'
+            }
+            numeros = [n.strip() for n in str(cfg.valor).split(',') if n.strip()]
+            meses_nombres = [mapa_meses.get(num) for num in numeros if num in mapa_meses]
+            if meses_nombres:
+                return meses_nombres
+    except Exception:
+        pass
+    
+    # Valor predeterminado por ley en Bolivia (Febrero a Noviembre)
+    return ['Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre']
 
 
 # =========================================================================
@@ -60,7 +84,7 @@ def index():
 
 
 # =========================================================================
-# REGISTRAR PAGO
+# REGISTRAR PAGO (ACTUALIZADO PARA SELECCIÓN MÚLTIPLE POR CHECKBOXES)
 # =========================================================================
 @pagos_bp.route('/registrar', methods=['GET', 'POST'])
 def registrar():
@@ -69,56 +93,121 @@ def registrar():
         return redirect(url_for('pagos.index'))
 
     turno_actual = session.get('turno_activo')
-    responsable_turno = turno_actual if turno_actual else None
+    responsable_turno = turno_actual if turno_actual else 'Caja Central'
 
     if request.method == 'POST':
         try:
-            estudiante_id = request.form['estudiante_id']
-            mes = request.form['mes']
-            anio = int(request.form['anio'])
-            monto_total = float(request.form['monto_total'])
-            descuento = float(request.form.get('descuento', 0))
-            monto_pagado = float(request.form['monto_pagado'])
+            estudiante_id = request.form.get('estudiante_id')
+            anio = int(request.form.get('anio', datetime.now().year))
             
+            # Recibir los meses seleccionados mediante checkboxes
+            meses_seleccionados = request.form.getlist('meses_seleccionados')
+            if not meses_seleccionados:
+                mes_unico = request.form.get('mes', '').strip()
+                if mes_unico:
+                    meses_seleccionados = [mes_unico]
+                else:
+                    flash('❌ Debe seleccionar al menos un mes para realizar el cobro de pensión.', 'danger')
+                    return redirect(url_for('pagos.registrar'))
+
+            monto_abono_str = request.form.get('monto_abono', '0').strip()
+            descuento_str = request.form.get('descuento', '0').strip()
+            metodo_pago = request.form.get('metodo_pago', 'Efectivo').strip()
+            if metodo_pago not in ['Efectivo', 'Bancario']:
+                metodo_pago = 'Efectivo'
+
+            try:
+                monto_abono_total = float(monto_abono_str)
+                descuento_total = float(descuento_str) if descuento_str else 0.0
+            except ValueError:
+                flash('❌ Ingrese montos válidos.', 'danger')
+                return redirect(url_for('pagos.registrar'))
+
             estudiante_obj = Estudiante.query.get(estudiante_id)
-            
             if not estudiante_obj:
                 flash('⚠️ El estudiante seleccionado no existe en la base de datos.', 'danger')
                 return redirect(url_for('pagos.registrar'))
 
-            ci_est = estudiante_obj.ci if hasattr(estudiante_obj, 'ci') and estudiante_obj.ci else 'S/N'
-            rude_est = estudiante_obj.rude if hasattr(estudiante_obj, 'rude') and estudiante_obj.rude else 'S/N'
+            ci_est = estudiante_obj.ci if estudiante_obj.ci else 'S/N'
+            rude_est = estudiante_obj.rude if estudiante_obj.rude else 'S/N'
+            monto_mensual = float(estudiante_obj.pension or 350.0)
 
-            pago_existente = Pago.query.filter_by(
-                estudiante_id=estudiante_id, mes=mes, anio=anio
-            ).first()
-            
-            if pago_existente and getattr(pago_existente, 'estado', 'Pagado') != 'Anulado':
-                flash('⚠️ Ya existe un registro activo para este mes y año.', 'warning')
-                return redirect(url_for('pagos.registrar'))
-            
-            nuevo_pago = Pago(
-                estudiante_id=estudiante_id,
-                ci_estudiante=ci_est,
-                rude_estudiante=rude_est,
-                mes=mes,
-                anio=anio,
-                monto_total=monto_total,
-                descuento=descuento,
-                monto_pagado=monto_pagado,
-                fecha_pago=datetime.now(),
-                estado='Pagado' if monto_pagado >= (monto_total - descuento) else 'Parcial',
-                turno_responsable=responsable_turno
-            )
-            db.session.add(nuevo_pago)
+            # Calcular la deuda total de los meses seleccionados
+            deuda_total_seleccionada = 0.0
+            saldos_por_mes = {}
+
+            for mes_nombre in meses_seleccionados:
+                pagos_previos = Pago.query.filter_by(
+                    estudiante_id=estudiante_id, anio=anio, mes=mes_nombre, tipo_concepto='Pensión'
+                ).all()
+                
+                abonado_previo = sum(float(p.monto_pagado or 0.0) for p in pagos_previos if getattr(p, 'estado', 'Pagado') != 'Anulado')
+                desc_previo = sum(float(p.descuento or 0.0) for p in pagos_previos if getattr(p, 'estado', 'Pagado') != 'Anulado')
+                
+                costo_neto_mes = max(0.0, monto_mensual - desc_previo)
+                saldo_mes = max(0.0, costo_neto_mes - abonado_previo)
+                
+                saldos_por_mes[mes_nombre] = {
+                    'pagos_previos': pagos_previos,
+                    'saldo': saldo_mes,
+                    'costo': monto_mensual
+                }
+                deuda_total_seleccionada += saldo_mes
+
+            monto_restante = monto_abono_total
+            descuento_restante = descuento_total
+            nuevos_pagos_creados = []
+            fecha_transaccion = datetime.now()
+
+            for mes_nombre in meses_seleccionados:
+                if monto_restante <= 0 and descuento_restante <= 0:
+                    break
+
+                info = saldos_por_mes[mes_nombre]
+                saldo_actual = info['saldo']
+                if saldo_actual <= 0:
+                    continue
+
+                abono_este_mes = min(saldo_actual, monto_restante)
+                monto_restante -= abono_este_mes
+
+                desc_este_mes = min(saldo_actual - abono_este_mes, descuento_restante) if descuento_restante > 0 else 0.0
+                descuento_restante -= desc_este_mes
+
+                nuevo_saldo_mes = max(0.0, saldo_actual - abono_este_mes - desc_este_mes)
+                estado_mes = 'Pagado' if nuevo_saldo_mes <= 0.01 else 'Abono'
+
+                pago_deposito = Pago(
+                    estudiante_id=estudiante_id,
+                    ci_estudiante=ci_est,
+                    rude_estudiante=rude_est,
+                    mes=mes_nombre,
+                    anio=anio,
+                    monto_total=info['costo'],
+                    descuento=desc_este_mes,
+                    monto_pagado=abono_este_mes,
+                    fecha_pago=fecha_transaccion,
+                    estado=estado_mes,
+                    metodo_pago=metodo_pago,
+                    turno_responsable=responsable_turno,
+                    tipo_concepto='Pensión',
+                    detalle_concepto=f'Pensión {mes_nombre}'
+                )
+                db.session.add(pago_deposito)
+                nuevos_pagos_creados.append(pago_deposito)
+
             db.session.commit()
             
-            flash(f'✅ Pago registrado exitosamente (Turno: {responsable_turno}).', 'success')
+            meses_str = ", ".join(meses_seleccionados)
+            flash(f'✅ ¡Cobro Múltiple Exitoso! Meses: {meses_str} | Total: Bs. {monto_abono_total:.2f}', 'success')
+            
+            if nuevos_pagos_creados:
+                return redirect(url_for('pagos.generar_recibo', id=nuevos_pagos_creados[0].id))
             return redirect(url_for('pagos.index'))
             
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ Error al registrar: {str(e)}', 'danger')
+            flash(f'❌ Error al registrar el cobro: {str(e)}', 'danger')
     
     estudiantes = Estudiante.query.filter_by(estado='Activo').order_by(Estudiante.apellidos).all()
     return render_template('pagos/registrar.html', estudiantes=estudiantes, turno_actual=turno_actual)
@@ -182,7 +271,8 @@ def descargar_recibo_pdf(id):
         
         bytes_pdf = generar_recibo_pago_pdf_simple(pago, estudiante, padre)
         
-        recibos_dir = os.path.join(current_app.static_folder, 'recibos')
+        base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
+        recibos_dir = os.path.join(base_upload, 'recibos')
         os.makedirs(recibos_dir, exist_ok=True)
         
         filename = f"recibo_pago_{pago.id}_{datetime.now().strftime('%Y%m%d%H%M%S')}.pdf"
@@ -218,6 +308,9 @@ def historial():
     pagos = query.order_by(Pago.fecha_pago.desc()).all()
     return render_template('pagos/historial.html', pagos=pagos, search=search)
     
+# =========================================================================
+# DEUDORES POR CURSO (DINÁMICO SEGÚN CONFIGURACIÓN DEL SUPERADMIN)
+# =========================================================================
 @pagos_bp.route('/deudores/curso', methods=['GET'])
 def deudores_por_curso():
     curso_seleccionado = request.args.get('curso', '')
@@ -229,25 +322,57 @@ def deudores_por_curso():
     deudores = []
 
     if curso_seleccionado:
-        meses_esperados = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
-        costo_mensual = 350.0 
-        total_esperado_anual = len(meses_esperados) * costo_mensual
+        # Cargar los meses oficialmente habilitados por el Superadmin
+        meses_escolares = obtener_meses_activos()
 
         estudiantes = Estudiante.query.filter_by(curso=curso_seleccionado, estado='Activo').order_by(Estudiante.apellidos).all()
         
         for est in estudiantes:
-            pagos_estudiante = Pago.query.filter_by(estudiante_id=est.id, anio=gestion).all()
+            monto_mensual = float(est.pension or 0.0)
+            if monto_mensual <= 0:
+                monto_mensual = 350.0  # Valor de respaldo institucional
+
+            pagos_estudiante = Pago.query.filter(
+                Pago.estudiante_id == est.id,
+                or_(Pago.anio == gestion, Pago.anio == str(gestion))
+            ).all()
             
-            meses_pagados = [p.mes for p in pagos_estudiante if getattr(p, 'estado', 'Pagado') == 'Pagado']
-            total_pagado = sum([p.monto_pagado for p in pagos_estudiante if getattr(p, 'estado', 'Pagado') == 'Pagado'])
-            
-            if total_pagado < total_esperado_anual:
-                saldo_pendiente = total_esperado_anual - total_pagado
+            pagos_por_mes = {}
+            for p in pagos_estudiante:
+                if getattr(p, 'estado', 'Pagado') == 'Anulado':
+                    continue
+                if p.mes:
+                    mes_norm = str(p.mes).strip().capitalize()
+                    if mes_norm not in pagos_por_mes:
+                        pagos_por_mes[mes_norm] = {"abonado": 0.0, "descuento": 0.0}
+                    pagos_por_mes[mes_norm]["abonado"] += float(p.monto_pagado or 0.0)
+                    pagos_por_mes[mes_norm]["descuento"] += float(p.descuento or 0.0)
+
+            total_pagado_estudiante = 0.0
+            meses_pagados_count = 0
+            saldo_pendiente_total = 0.0
+
+            for mes in meses_escolares:
+                info = pagos_por_mes.get(mes, {"abonado": 0.0, "descuento": 0.0})
+                total_abonado = info["abonado"]
+                descuento_mes = info["descuento"]
+                
+                costo_efectivo = max(0.0, monto_mensual - descuento_mes)
+                saldo_pendiente = max(0.0, costo_efectivo - total_abonado)
+                
+                total_pagado_estudiante += total_abonado
+
+                if saldo_pendiente <= 0.5:
+                    meses_pagados_count += 1
+                else:
+                    saldo_pendiente_total += saldo_pendiente
+
+            if saldo_pendiente_total > 0.5:
                 deudores.append({
                     'estudiante': est,
-                    'meses_pagados': len(meses_pagados),
-                    'total_pagado': total_pagado,
-                    'saldo_pendiente': saldo_pendiente
+                    'meses_pagados': meses_pagados_count,
+                    'total_pagado': total_pagado_estudiante,
+                    'saldo_pendiente': saldo_pendiente_total
                 })
 
     return render_template('pagos/deudores_curso.html',
@@ -376,8 +501,8 @@ def generar_recibo_pago_pdf_simple(pago, estudiante, padre):
 @pagos_bp.route('/reporte-deudores', methods=['GET'])
 def reporte_deudores():
     from collections import defaultdict
-    meses_escolares = ["Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre"]
-    anio_actual = 2026
+    meses_escolares = obtener_meses_activos()
+    anio_actual = datetime.now().year
 
     estudiantes = Estudiante.query.filter(
         Estudiante.estado.in_(["Activo", "Inscrito"]) | Estudiante.estado.is_(None)
@@ -390,7 +515,7 @@ def reporte_deudores():
     for est in estudiantes:
         pension_base = float(est.pension or 0.0)
         if pension_base <= 0:
-            continue
+            pension_base = 350.0
 
         pagos_est = Pago.query.filter_by(estudiante_id=est.id, anio=anio_actual).all()
         pagos_por_mes = defaultdict(lambda: {"monto_pagado": 0.0, "monto_total": pension_base})
