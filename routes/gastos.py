@@ -91,6 +91,11 @@ def nuevo():
         flash('⚠️ Debe tener un turno de caja activo para registrar nuevos gastos.', 'warning')
         return redirect('/caja/')
 
+    # El turno se obtiene obligatoriamente de la sesión de caja activa
+    turno_sesion = session.get('turno_activo')
+    if not turno_sesion or str(turno_sesion).strip().lower() in ['none', '', 'false']:
+        turno_sesion = 'Mañana'
+
     if request.method == 'POST':
         try:
             metodo_pago = request.form.get('metodo_pago', 'Efectivo').strip()
@@ -103,7 +108,6 @@ def nuevo():
                 if archivo and archivo.filename != '' and archivo_permitido(archivo.filename):
                     filename = secure_filename(f"gasto_{datetime.now().strftime('%Y%m%d%H%M%S')}_{archivo.filename}")
                     
-                    # ⭐ RUTA ABSOLUTA UNIFICADA EN LA RAÍZ DEL DISCO C:\ASestud\uploads\gastos
                     base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
                     upload_folder = os.path.join(base_upload, 'gastos')
                     os.makedirs(upload_folder, exist_ok=True)
@@ -119,7 +123,8 @@ def nuevo():
                 proveedor=request.form.get('proveedor', ''),
                 responsable=request.form.get('responsable', ''),
                 metodo_pago=metodo_pago,
-                archivo=archivo_nombre
+                archivo=archivo_nombre,
+                turno=turno_sesion
             )
 
             db.session.add(nuevo_gasto)
@@ -132,14 +137,19 @@ def nuevo():
             except Exception:
                 pass
 
-            flash('✅ Gasto registrado exitosamente con su comprobante.', 'success')
+            flash(f'✅ Gasto registrado y sellado automáticamente en el Turno {turno_sesion}.', 'success')
             return redirect('/caja/')
 
         except Exception as e:
             db.session.rollback()
             flash(f'❌ Error al registrar: {str(e)}', 'danger')
 
-    return render_template('gastos/form.html', gasto=None, categorias=CATEGORIAS)
+    return render_template(
+        'gastos/form.html',
+        gasto=None,
+        categorias=CATEGORIAS,
+        turno_actual=turno_sesion
+    )
 
 @gastos_bp.route('/anular/<int:id>', methods=['POST'])
 def eliminar(id):

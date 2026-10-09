@@ -13,9 +13,14 @@
             <div class="card shadow-lg border-0 rounded-4" style="background-color: #1e293b; color: #f8fafc;">
                 
                 <div class="card-header py-3 px-4 rounded-top-4 d-flex justify-content-between align-items-center" style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);">
-                    <h4 class="mb-0 text-white fw-bold">
-                        <i class="bi bi-receipt-cutoff me-2"></i> {{ 'Editar Gasto / Pago' if gasto else 'Nuevo Pago / Gasto Institucional' }}
-                    </h4>
+                    <div>
+                        <h4 class="mb-0 text-white fw-bold">
+                            <i class="bi bi-receipt-cutoff me-2"></i> {{ 'Editar Gasto / Pago' if gasto else 'Nuevo Pago / Gasto Institucional' }}
+                        </h4>
+                        <small class="text-white-50">
+                            <i class="bi bi-clock-history"></i> Turno activo en sesión: <strong>{{ gasto.turno if gasto and gasto.turno else turno_actual }}</strong>
+                        </small>
+                    </div>
                     <a href="/caja/" class="btn btn-outline-light btn-sm rounded-pill px-3">
                         <i class="bi bi-arrow-left me-1"></i> Volver a Caja
                     </a>

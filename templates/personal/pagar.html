@@ -1,7 +1,13 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="container-fluid">
-    <h3 class="mb-4"><i class="bi bi-cash-coin"></i> Pagar Sueldo: {{ persona.apellidos }}, {{ persona.nombres }}</h3>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h3 class="mb-0"><i class="bi bi-cash-coin"></i> Pagar Sueldo: {{ persona.apellidos }}, {{ persona.nombres }}</h3>
+        <span class="badge bg-primary fs-6">
+            <i class="bi bi-shield-lock me-1"></i> Turno de Caja Activo: <strong>{{ turno_actual }}</strong>
+        </span>
+    </div>
+
     <div class="row">
         <div class="col-md-4">
             <div class="card">
@@ -55,13 +61,13 @@
                                 <select name="mes" id="select_mes" class="form-select" required onchange="actualizarAdelantosPeriodo()">
                                     {% set meses = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'] %}
                                     {% for m in meses %}
-                                        <option value="{{ m }}" {% if m == mes_actual %}selected{% endif %}>{{ m }}</option>
+                                        <option value="{{ m }}" {% if m == mes_seleccionado %}selected{% endif %}>{{ m }}</option>
                                     {% endfor %}
                                 </select>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <label class="form-label fw-bold">Año</label>
-                                <input type="number" name="anio" id="input_anio" class="form-control" value="{{ anio_actual }}" required onchange="actualizarAdelantosPeriodo()">
+                                <input type="number" name="anio" id="input_anio" class="form-control" value="{{ anio_seleccionado }}" required onchange="actualizarAdelantosPeriodo()">
                             </div>
                         </div>
 
@@ -120,9 +126,10 @@ function actualizarAdelantosPeriodo() {
                 if (data.detalle.length > 0) {
                     alertaVacio.style.display = 'none';
                     data.detalle.forEach(function(item) {
+                        var turnoTag = item.turno ? ` <span class="badge bg-secondary">${item.turno}</span>` : '';
                         var fila = `<tr>
                             <td>${item.fecha}</td>
-                            <td><span class="badge bg-light text-dark border">${item.motivo}</span></td>
+                            <td><span class="badge bg-light text-dark border">${item.motivo}</span>${turnoTag}</td>
                             <td class="text-end text-danger fw-bold">Bs. ${item.monto.toFixed(2)}</td>
                         </tr>`;
                         tbody.innerHTML += fila;

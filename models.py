@@ -421,9 +421,12 @@ class PagoPersonal(db.Model):
     fecha_pago = db.Column(db.Date, nullable=False)
     metodo_pago = db.Column(db.String(20), default='Efectivo')
     estado = db.Column(db.String(20), default='Pagado')
+    
+    # ⭐ CAMPO TURNO AGREGADO PARA CONTROL Y AUDITORÍA
+    turno = db.Column(db.String(20), nullable=True, default='Mañana')
 
     def __repr__(self):
-        return f"<PagoPersonal - CI:{self.ci_persona} {self.nombre_persona}>"
+        return f"<PagoPersonal - CI:{self.ci_persona} {self.nombre_persona} Turno:{self.turno}>"
 
 
 # ==============================================================================
@@ -484,6 +487,10 @@ class Falta(db.Model):
         return f"<Falta {self.tipo_sujeto} CI:{self.ci_sujeto}>"
 
 
+# ==============================================================================
+# GASTO OPERATIVO
+# ==============================================================================
+
 class Gasto(db.Model):
     __tablename__ = 'gastos'
 
@@ -500,8 +507,11 @@ class Gasto(db.Model):
     
     estado = db.Column(db.String(20), nullable=True, default='Activo')
 
+    # ⭐ CAMPO TURNO AGREGADO PARA CONTROL Y AUDITORÍA
+    turno = db.Column(db.String(20), nullable=True, default='Mañana')
+
     def __repr__(self):
-        return f"<Gasto {self.categoria}>"
+        return f"<Gasto {self.categoria} Turno:{self.turno}>"
 
 
 # ==============================================================================
@@ -838,8 +848,20 @@ def set_sqlite_pragma(dbapi_connection, connection_record):
     try:
         cursor.execute("PRAGMA table_info(gastos);")
         columnas = [col[1] for col in cursor.fetchall()]
-        if columnas and 'estado' not in columnas:
-            cursor.execute("ALTER TABLE gastos ADD COLUMN estado TEXT DEFAULT 'Activo';")
+        if columnas:
+            if 'estado' not in columnas:
+                cursor.execute("ALTER TABLE gastos ADD COLUMN estado TEXT DEFAULT 'Activo';")
+            if 'turno' not in columnas:
+                cursor.execute("ALTER TABLE gastos ADD COLUMN turno VARCHAR(20) DEFAULT 'Mañana';")
+            dbapi_connection.commit()
+    except Exception:
+        pass
+
+    try:
+        cursor.execute("PRAGMA table_info(pago_personal);")
+        columnas_pago = [col[1] for col in cursor.fetchall()]
+        if columnas_pago and 'turno' not in columnas_pago:
+            cursor.execute("ALTER TABLE pago_personal ADD COLUMN turno VARCHAR(20) DEFAULT 'Mañana';")
             dbapi_connection.commit()
     except Exception:
         pass

@@ -1,4 +1,4 @@
-<!-- Ruta: D:\colegio_vaca_diez\templates\reportes\economico.html -->
+<!-- Ruta: C:\ASestud\templates\reportes\economico.html -->
 {% extends "base.html" %}
 {% block title %}{{ titulo }}{% endblock %}
 
@@ -84,7 +84,7 @@
             <table class="table table-bordered table-striped mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th>Fecha / ID</th>
+                        <th>ID / Turno Real</th>
                         <th>Descripción</th>
                         <th>Categoría</th>
                         <th>Monto</th>
@@ -93,13 +93,13 @@
                 <tbody>
                     {% for g in gastos %}
                     <tr>
-                        <td>{{ g.id }}</td>
+                        <td>#{{ g.id }} <br><small class="text-muted">{{ g.turno if g.turno else 'Sin Turno' }}</small></td>
                         <td>{{ g.descripcion }}</td>
                         <td>{{ g.categoria or 'General' }}</td>
                         <td class="text-danger fw-bold">Bs. {{ '%.2f'|format(g.monto) }}</td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="4" class="text-center text-muted py-3">No hay gastos operativos registrados.</td></tr>
+                    <tr><td colspan="4" class="text-center text-muted py-3">No hay gastos operativos registrados en este turno.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -115,7 +115,7 @@
             <table class="table table-bordered table-striped mb-0">
                 <thead class="table-light">
                     <tr>
-                        <th>ID Personal</th>
+                        <th>Turno Real / Beneficiario</th>
                         <th>Concepto / Detalle</th>
                         <th>Fecha</th>
                         <th>Monto</th>
@@ -124,13 +124,20 @@
                 <tbody>
                     {% for pp in pagos_personal %}
                     <tr>
-                        <td>{{ pp.personal_id }} ({{ pp.nombre_persona }})</td>
+                        <td>
+                            {% set turno_real = pp.turno if pp.turno else ('Tarde' if pp.fecha_pago and pp.fecha_pago.hour >= 13 else 'Mañana') %}
+                            <span class="badge bg-{{ 'warning text-dark' if turno_real == 'Tarde' else 'info text-dark' }} mb-1">
+                                {{ turno_real }}
+                            </span><br>
+                            <strong>{{ pp.nombre_persona }}</strong><br>
+                            <small class="text-muted">ID: {{ pp.personal_id }} | CI: {{ pp.ci or 'N/A' }} | Cargo: {{ pp.cargo or 'Personal' }}</small>
+                        </td>
                         <td>{{ pp.motivo or 'Pago / Adelanto de Sueldo' }}</td>
-                        <td>{{ pp.fecha_pago.strftime('%d/%m/%Y') if pp.fecha_pago else '' }}</td>
+                        <td>{{ pp.fecha_pago.strftime('%d/%m/%Y %H:%M') if pp.fecha_pago else '' }}</td>
                         <td class="text-danger fw-bold">Bs. {{ '%.2f'|format(pp.monto_neto_pagado) }}</td>
                     </tr>
                     {% else %}
-                    <tr><td colspan="4" class="text-center text-muted py-3">No hay pagos al personal registrados.</td></tr>
+                    <tr><td colspan="4" class="text-center text-muted py-3">No hay pagos al personal registrados en este turno.</td></tr>
                     {% endfor %}
                 </tbody>
             </table>
@@ -140,7 +147,6 @@
 
 <style>
 @media print {
-    /* Ocultar la barra de navegación, botones y enlaces al imprimir */
     nav, footer, .btn, a {
         display: none !important;
     }

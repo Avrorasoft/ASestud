@@ -670,6 +670,11 @@ def pagar_personal(tipo, id):
         persona = PersonalAdministrativo.query.get_or_404(id)
         tipo_db = 'Administrativo'
 
+    # Turno obligatorio e inalterable desde la sesión
+    turno_sesion = session.get('turno_activo')
+    if not turno_sesion or str(turno_sesion).strip().lower() in ['none', '', 'false']:
+        turno_sesion = 'Mañana'
+
     if request.method == 'POST':
         mes = request.form.get('mes')
         anio = int(request.form.get('anio', datetime.now().year))
@@ -699,6 +704,7 @@ def pagar_personal(tipo, id):
         nuevo_pago = PagoPersonal(
             tipo=tipo_db,
             persona_id=id,
+            ci_persona=getattr(persona, 'ci', None),
             nombre_persona=f"{persona.apellidos}, {persona.nombres}",
             mes=mes,
             anio=anio,
@@ -707,7 +713,8 @@ def pagar_personal(tipo, id):
             monto_neto_pagado=monto_neto,
             fecha_pago=datetime.now().date(),
             motivo=f"Sueldo - {mes} {anio}",
-            estado='Pagado'
+            estado='Pagado',
+            turno=turno_sesion
         )
 
         db.session.add(nuevo_pago)
@@ -735,7 +742,7 @@ def pagar_personal(tipo, id):
             with open(recibo_filepath, 'wb') as f:
                 f.write(bytes_pdf)
 
-            flash('✅ Pago registrado y recibo generado exitosamente.', 'success')
+            flash(f'✅ Pago registrado y sellado en el Turno {turno_sesion}. Recibo generado exitosamente.', 'success')
 
             return redirect(
                 url_for(
@@ -790,7 +797,8 @@ def pagar_personal(tipo, id):
         adelantos_detalle=adelantos_detalle,
         mes_seleccionado=mes,
         anio_seleccionado=anio_actual_calc,
-        anio_actual=datetime.now().year
+        anio_actual=datetime.now().year,
+        turno_actual=turno_sesion
     )
 
 # ==============================================================================
@@ -807,6 +815,7 @@ def registrar_pago():
     persona_id_str = request.form.get('persona_id', '').strip()
     mes = request.form.get('mes', '').strip()
     anio = int(request.form.get('anio', datetime.now().year))
+    turno_guardar = turno_activo if turno_activo in ['Mañana', 'Tarde'] else 'Mañana'
 
     try:
         monto_base = float(request.form.get('monto_base', 0) or 0)
@@ -824,17 +833,20 @@ def registrar_pago():
 
     nombre = ""
     tipo_db = ""
+    ci_personal = None
 
     if tipo_persona == 'P':
         p = Profesor.query.get(real_id)
         if p:
             nombre = f"{p.apellidos}, {p.nombres}"
             tipo_db = "Profesor"
+            ci_personal = p.ci
     else:
         a = PersonalAdministrativo.query.get(real_id)
         if a:
             nombre = f"{a.apellidos}, {a.nombres}"
             tipo_db = "Administrativo"
+            ci_personal = a.ci
 
     if not nombre:
         flash('Persona no encontrada en la base de datos', 'danger')
@@ -856,6 +868,7 @@ def registrar_pago():
     nuevo_pago = PagoPersonal(
         tipo=tipo_db,
         persona_id=real_id,
+        ci_persona=ci_personal,
         nombre_persona=nombre,
         mes=mes,
         anio=anio,
@@ -864,7 +877,8 @@ def registrar_pago():
         monto_neto_pagado=monto_neto_pagado,
         fecha_pago=datetime.now().date(),
         motivo=f"Sueldo - {mes} {anio}",
-        estado='Pagado'
+        estado='Pagado',
+        turno=turno_guardar
     )
 
     db.session.add(nuevo_pago)
@@ -881,7 +895,7 @@ def registrar_pago():
 
     db.session.commit()
 
-    flash('✅ Pago registrado exitosamente', 'success')
+    flash(f'✅ Pago registrado y sellado en el Turno {turno_guardar}.', 'success')
     return redirect(url_for('personal.pagos_personal'))
 
 
@@ -913,7 +927,7 @@ def cardex_personal(tipo, id):
     ).order_by(PagoPersonal.fecha_pago.desc(), PagoPersonal.id.desc()).all()
 
     class PagoConsolidado:
-        def __init__(self, id, tipo, mes, anio, monto_base, monto_adelanto, monto_neto_pagado, fecha_pago, estado):
+        def __init__(self, id, tipo, mes, anio, monto_base, monto_adelanto, monto_neto_pagado, fecha_pago, estado, turno):
             self.id = id
             self.tipo = tipo
             self.mes = mes
@@ -923,6 +937,7 @@ def cardex_personal(tipo, id):
             self.monto_neto_pagado = monto_neto_pagado
             self.fecha_pago = fecha_pago
             self.estado = estado
+            self.turno = turno
 
     periodos_dict = {}
     adelantos_sueltos = []
@@ -940,7 +955,8 @@ def cardex_personal(tipo, id):
                     'monto_adelanto': float(p.monto_adelanto or 0.0),
                     'monto_neto_pagado': float(p.monto_neto_pagado or 0.0),
                     'fecha_pago': p.fecha_pago,
-                    'estado': p.estado
+                    'estado': p.estado,
+                    'turno': getattr(p, 'turno', 'Mañana') or 'Mañana'
                 }
         elif p.tipo == 'Adelanto':
             if clave not in periodos_dict:
@@ -953,7 +969,8 @@ def cardex_personal(tipo, id):
                     'monto_adelanto': float(p.monto_neto_pagado or 0.0),
                     'monto_neto_pagado': float(p.monto_neto_pagado or 0.0),
                     'fecha_pago': p.fecha_pago,
-                    'estado': p.estado
+                    'estado': p.estado,
+                    'turno': getattr(p, 'turno', 'Mañana') or 'Mañana'
                 })
 
     pagos_lista = list(periodos_dict.values()) + adelantos_sueltos
@@ -967,7 +984,8 @@ def cardex_personal(tipo, id):
             monto_adelanto=item['monto_adelanto'],
             monto_neto_pagado=item['monto_neto_pagado'],
             fecha_pago=item['fecha_pago'],
-            estado=item['estado']
+            estado=item['estado'],
+            turno=item['turno']
         )
         for item in pagos_lista
     ]
@@ -1134,6 +1152,8 @@ def registrar_adelanto(tipo, id):
         flash('❌ ACCESO DENEGADO: Debe iniciar un turno de caja para registrar y entregar adelantos de dinero.', 'danger')
         return redirect(url_for('auth.login_turno'))
 
+    turno_guardar = turno_activo if turno_activo in ['Mañana', 'Tarde'] else 'Mañana'
+
     if tipo == 'profesor':
         persona = Profesor.query.get_or_404(id)
         tipo_db = 'Profesor'
@@ -1184,7 +1204,8 @@ def registrar_adelanto(tipo, id):
             monto_neto_pagado=monto,
             fecha_pago=datetime.now().date(),
             motivo=motivo_adelanto,
-            estado='Pagado'
+            estado='Pagado',
+            turno=turno_guardar
         )
         db.session.add(nuevo_adelanto)
 
@@ -1206,7 +1227,7 @@ def registrar_adelanto(tipo, id):
             with open(recibo_filepath, 'wb') as f:
                 f.write(bytes_pdf)
 
-            flash('Adelanto registrado con recibo oficial. Se descontará en el próximo pago.', 'success')
+            flash(f'Adelanto registrado con recibo oficial en el Turno {turno_guardar}. Se descontará en el próximo pago.', 'success')
             return redirect(url_for('personal.ver_recibo_oficial_personal', tipo=tipo, id=id, recibo=recibo_filename))
         except Exception as e:
             print(f"Error al generar recibo de adelanto: {e}")
@@ -1217,7 +1238,8 @@ def registrar_adelanto(tipo, id):
         'personal/registrar_adelanto.html',
         persona=persona,
         tipo=tipo,
-        anio_actual=datetime.now().year
+        anio_actual=datetime.now().year,
+        turno_actual=turno_guardar
     )
 
 
@@ -1385,10 +1407,11 @@ def generar_recibo_personal_pdf(pago, persona, tipo_db):
     pago_id = pago.id or 0
     numero_recibo = f"REC-PER-{datetime.now().year}-{pago_id:04d}"
     fecha_str = pago.fecha_pago.strftime('%d/%m/%Y')
+    turno_recibo = getattr(pago, 'turno', 'Mañana') or 'Mañana'
 
     info_data = [[
         Paragraph(f"<b>N° Recibo:</b> {numero_recibo}", normal_style),
-        Paragraph(f"<b>Fecha:</b> {fecha_str}", normal_style)
+        Paragraph(f"<b>Fecha:</b> {fecha_str} | <b>Turno:</b> {turno_recibo}", normal_style)
     ]]
 
     info_table = Table(info_data, colWidths=[3.75 * inch, 3.75 * inch])
@@ -1665,12 +1688,14 @@ def generar_recibo_adelanto_pdf(pago, persona, tipo_db):
 
     cargo = getattr(persona, 'especialidad', None) or getattr(persona, 'cargo', '-') or '-'
     ci = getattr(persona, 'ci', '-') or '-'
+    turno_adelanto = getattr(pago, 'turno', 'Mañana') or 'Mañana'
 
     datos_data = [
         [Paragraph("<b>Nombre:</b>", normal_style),
          Paragraph(f"{persona.apellidos}, {persona.nombres}", normal_style)],
         [Paragraph("<b>C.I.:</b>", normal_style), Paragraph(str(ci), normal_style)],
         [Paragraph("<b>Cargo/Especialidad:</b>", normal_style), Paragraph(str(cargo), normal_style)],
+        [Paragraph("<b>Turno:</b>", normal_style), Paragraph(str(turno_adelanto), normal_style)],
     ]
 
     datos_table = Table(datos_data, colWidths=[2.2 * inch, 5.3 * inch])
@@ -1888,7 +1913,8 @@ def api_adelantos_periodo(tipo, id):
         detalle.append({
             'fecha': a.fecha_pago.strftime('%d/%m/%Y') if a.fecha_pago else '-',
             'motivo': a.motivo or 'Adelanto de Sueldo',
-            'monto': float(a.monto_neto_pagado or 0.0)
+            'monto': float(a.monto_neto_pagado or 0.0),
+            'turno': getattr(a, 'turno', 'Mañana') or 'Mañana'
         })
 
     return jsonify({
