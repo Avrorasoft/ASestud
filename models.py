@@ -41,14 +41,14 @@ def ahora_bolivia():
 
 
 # ==============================================================================
-# NIVELES, TURNOS Y CURSOS (DIVISIÓN ACADÉMICA)
+# NIVELES, TURNOS Y CURSOS (DIVISIÓN ACADÉMICA DINÁMICA)
 # ==============================================================================
 
 NIVELES = ['Nidito', 'Primaria', 'Secundaria']
 TURNOS = ['Mañana', 'Tarde']
 
 CURSOS_POR_NIVEL = {
-    'Nidito': ['Nidito 1', 'Nidito 2'],
+    'Nidito': ['Nidito 1', 'Nidito 2', 'Nidito 3'],
     'Primaria': [
         '1ro Primaria', '2do Primaria', '3ro Primaria',
         '4to Primaria', '5to Primaria', '6to Primaria'
@@ -62,24 +62,34 @@ CURSOS_POR_NIVEL = {
 
 def nivel_de_curso(curso):
     """
-    Devuelve el nivel (Nidito/Primaria/Secundaria) al que pertenece un curso.
+    Devuelve el nivel (Nidito/Primaria/Secundaria) al que pertenece un curso,
+    incluso si contiene paralelos agregados (ej: '3ro Primaria A', 'Nidito 2 B').
     """
     if not curso:
         return ''
 
-    for nivel, cursos in CURSOS_POR_NIVEL.items():
-        if curso in cursos:
-            return nivel
+    c = str(curso).strip().lower()
 
-    c = curso.lower()
-    if 'nidito' in c:
+    # Detección para Nidito / Nivel Inicial
+    if any(k in c for k in ['nidito', 'inicial', 'kinder', 'kínder', 'pre-kinder', 'prekinder']):
         return 'Nidito'
-    if 'primaria' in c:
-        return 'Primaria'
-    if 'secundaria' in c:
+
+    # Detección para Primaria
+    if any(k in c for k in ['primaria', 'prim.']) or ('1ro' in c and 'secundaria' not in c and 'sec' not in c and 'nidito' not in c):
+        if 'secundaria' not in c and 'sec' not in c:
+            return 'Primaria'
+
+    # Detección para Secundaria
+    if any(k in c for k in ['secundaria', 'sec.', 'bachillerato']):
         return 'Secundaria'
 
-    return ''
+    # Búsqueda en listas base predefinidas
+    for nivel, cursos in CURSOS_POR_NIVEL.items():
+        for base in cursos:
+            if base.lower() in c:
+                return nivel
+
+    return 'Primaria'
 
 
 # ==============================================================================

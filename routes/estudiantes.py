@@ -5,7 +5,7 @@ from werkzeug.utils import secure_filename
 from PIL import Image
 import os
 import io
-from sqlalchemy import or_
+from sqlalchemy import or_, and_, func
 from sqlalchemy.orm import joinedload, aliased
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, send_file, session, jsonify
 from models import (
@@ -28,10 +28,30 @@ def allowed_file(filename):
 def asegurar_turno_activo():
     turno = session.get('turno_activo')
     rol = session.get('rol')
-    
     if not turno:
         return False
     return True
+
+
+def obtener_cursos_disponibles():
+    cursos_base = [
+        'Nidito 1', 'Nidito 2', 'Nidito 3',
+        '1ro Primaria', '2do Primaria', '3ro Primaria',
+        '4to Primaria', '5to Primaria', '6to Primaria',
+        '1ro Secundaria', '2do Secundaria', '3ro Secundaria',
+        '4to Secundaria', '5to Secundaria', '6to Secundaria'
+    ]
+    try:
+        cursos_bd = db.session.query(Estudiante.curso).filter(
+            Estudiante.curso.isnot(None),
+            Estudiante.curso != ''
+        ).distinct().all()
+        cursos_bd = [c[0].strip() for c in cursos_bd if c[0] and c[0].strip()]
+    except Exception:
+        cursos_bd = []
+
+    todos = list(dict.fromkeys(cursos_base + cursos_bd))
+    return todos
 
 
 # ==============================================================================
@@ -80,14 +100,6 @@ def calcular_nota_asistencia(estudiante_id):
 # ==============================================================================
 # LISTADO DE ESTUDIANTES POR CURSO, NIVEL, TURNO O BÚSQUEDA LIBRE (POR C.I.)
 # ==============================================================================
-from sqlalchemy import or_, and_, func
-
-CURSOS_POR_NIVEL = {
-    'Nidito': ['nidito', 'pre-kinder', 'kinder', 'inicial'],
-    'Primaria': ['primaria', 'prim.', '1ro de primaria', '2do de primaria', '3ro de primaria', '4to de primaria', '5to de primaria', '6to de primaria'],
-    'Secundaria': ['secundaria', 'sec.', '1ro de secundaria', '2do de secundaria', '3ro de secundaria', '4to de secundaria', '5to de secundaria', '6to de secundaria']
-}
-
 @estudiantes_bp.route('/')
 def index():
     asegurar_turno_activo()
@@ -115,14 +127,27 @@ def index():
         query = query.filter(Estudiante.curso == curso_seleccionado)
 
     if nivel_seleccionado and nivel_seleccionado.lower() != 'todos':
-        cursos_asociados = CURSOS_POR_NIVEL.get(nivel_seleccionado, [])
-        if cursos_asociados:
-            condiciones_nivel = [Estudiante.curso.ilike(f'%{c}%') for c in cursos_asociados]
-            query = query.filter(or_(*condiciones_nivel))
+        if nivel_seleccionado == 'Nidito':
+            query = query.filter(
+                or_(
+                    Estudiante.curso.ilike('%nidito%'),
+                    Estudiante.curso.ilike('%inicial%'),
+                    Estudiante.curso.ilike('%kinder%'),
+                    Estudiante.curso.ilike('%kínder%')
+                )
+            )
+        elif nivel_seleccionado == 'Primaria':
+            query = query.filter(
+                and_(
+                    Estudiante.curso.ilike('%primaria%'),
+                    ~Estudiante.curso.ilike('%secundaria%')
+                )
+            )
+        elif nivel_seleccionado == 'Secundaria':
+            query = query.filter(Estudiante.curso.ilike('%secundaria%'))
 
     if turno_seleccionado and turno_seleccionado.lower() != 'todos':
         turno_limpio = turno_seleccionado.lower().strip()
-        
         if 'mana' in turno_limpio:
             query = query.filter(
                 or_(
@@ -137,12 +162,7 @@ def index():
             )
 
     estudiantes = query.order_by(Estudiante.apellidos).all()
-
-    cursos = db.session.query(Estudiante.curso).filter_by(
-        estado='Activo'
-    ).distinct().order_by(Estudiante.curso).all()
-
-    cursos = [c[0] for c in cursos]
+    cursos = obtener_cursos_disponibles()
 
     return render_template(
         'estudiantes/lista.html',
@@ -159,7 +179,6 @@ def index():
 # ==============================================================================
 @estudiantes_bp.route('/descuentos/individuales', methods=['GET'])
 def gestionar_descuentos_individuales():
-    # Filtros de búsqueda
     q = request.args.get('q', '').strip()
     curso_seleccionado = request.args.get('curso', '').strip()
     
@@ -179,10 +198,7 @@ def gestionar_descuentos_individuales():
         query = query.filter(Estudiante.curso == curso_seleccionado)
 
     estudiantes = query.order_by(Estudiante.apellidos).all()
-
-    # Obtener lista de cursos para el selector de filtros
-    cursos = db.session.query(Estudiante.curso).filter_by(estado='Activo').distinct().order_by(Estudiante.curso).all()
-    cursos = [c[0] for c in cursos if c[0]]
+    cursos = obtener_cursos_disponibles()
 
     return render_template(
         'estudiantes/gestionar_descuentos.html',
@@ -199,27 +215,34 @@ def gestionar_descuentos_individuales():
 @estudiantes_bp.route('/nuevo', methods=['GET', 'POST'])
 def nuevo_estudiante():
     asegurar_turno_activo()
+    cursos_disponibles = obtener_cursos_disponibles()
+
     if request.method == 'POST':
         try:
             ci = request.form.get('ci', '').strip()
             rude = request.form.get('rude', '').strip() or None
+            curso_ingresado = request.form.get('curso', '').strip()
 
             if not ci:
                 flash('❌ El Carnet de Identidad es obligatorio.', 'danger')
-                return render_template('estudiantes/nuevo.html')
+                return render_template('estudiantes/nuevo.html', cursos=cursos_disponibles)
+
+            if not curso_ingresado:
+                flash('❌ Debe especificar o seleccionar el curso/paralelo.', 'danger')
+                return render_template('estudiantes/nuevo.html', cursos=cursos_disponibles)
 
             ci_existente = Estudiante.query.filter_by(ci=ci).first()
             if ci_existente:
                 flash(f'❌ El C.I. {ci} ya está registrado para otro estudiante.', 'danger')
-                return render_template('estudiantes/nuevo.html')
+                return render_template('estudiantes/nuevo.html', cursos=cursos_disponibles)
 
             nuevo_est = Estudiante(
                 ci=ci,
                 rude=rude,
                 nombres=request.form.get('nombres', '').strip(),
                 apellidos=request.form.get('apellidos', '').strip(),
-                curso=request.form.get('curso', '').strip(),
-                turno=request.form.get('turno', 'Mañana'),
+                curso=curso_ingresado,
+                turno=request.form.get('turno', session.get('turno_activo', 'Mañana')),
                 estado=request.form.get('estado', 'Activo'),
                 pension=float(request.form.get('pension', 0) or 0)
             )
@@ -227,14 +250,14 @@ def nuevo_estudiante():
             db.session.add(nuevo_est)
             db.session.commit()
 
-            flash('✅ Estudiante registrado exitosamente.', 'success')
+            flash(f'✅ Estudiante registrado exitosamente en {curso_ingresado}.', 'success')
             return redirect(url_for('estudiantes.index'))
 
         except Exception as e:
             db.session.rollback()
             flash(f'❌ Error al registrar: {str(e)}', 'danger')
 
-    return render_template('estudiantes/nuevo.html')
+    return render_template('estudiantes/nuevo.html', cursos=cursos_disponibles)
 
 
 # ==============================================================================
@@ -439,7 +462,6 @@ def justificar_asistencia(asistencia_id):
 
     try:
         asistencia.estado = 'Justificada'
-        
         if documento_url:
             if observacion:
                 asistencia.observacion = f"{observacion} | ARCHIVO_ADJUNTO:{documento_url}"
@@ -477,7 +499,6 @@ def ver_justificacion(filename):
 def anular_pago(pago_id):
     pago = Pago.query.get_or_404(pago_id)
     estudiante_id = pago.estudiante_id
-    
     password_ingresada = request.form.get('boveda_password', '').strip()
     
     def _validar_boveda(pwd):
@@ -528,7 +549,6 @@ def anular_pago(pago_id):
 @estudiantes_bp.route('/cambiar_turno/<int:id>', methods=['POST'])
 def cambiar_turno(id):
     est = Estudiante.query.get_or_404(id)
-    
     if est.turno == 'Tarde':
         est.turno = 'Mañana'
         flash(f'✅ Turno cambiado a Mañana para {est.nombres} {est.apellidos}', 'success')
@@ -537,7 +557,6 @@ def cambiar_turno(id):
         flash(f'✅ Turno cambiado a Tarde para {est.nombres} {est.apellidos}', 'success')
     
     db.session.commit()
-    
     return redirect(url_for('estudiantes.ver_estudiante', id=id))
 
 
@@ -602,14 +621,12 @@ def ver_recibo_pago(id):
     ).order_by(Pago.fecha_pago.desc()).limit(5).all()
 
     padre = Padre.query.filter_by(estudiante_id=id).first()
-
     return render_template('estudiantes/recibo.html', est=est, padre=padre, pagos=pagos_recientes)
 
 
 @estudiantes_bp.route('/archivar/<int:id>', methods=['POST'])
 def archivar_como_egresado(id):
     est = Estudiante.query.get_or_404(id)
-    
     curso_actual = str(est.curso or '').lower().strip()
     es_sexto = '6to' in curso_actual or 'sexto' in curso_actual
     
@@ -680,7 +697,6 @@ def archivar_como_egresado(id):
             tipo='Evaluación Parcial' if es_parcial else 'Evaluación Final',
             nota=getattr(cal, 'nota', 0.0)
         )
-
         db.session.add(hist)
 
     est.estado = 'Archivado'
@@ -708,7 +724,6 @@ def pagar_estudiante(id):
     padre = Padre.query.filter_by(estudiante_id=id).first()
     anio_actual = datetime.now().year
 
-    # ⭐ CARGA DINÁMICA DESDE LA BÓVEDA / CONFIGURACIÓN DEL SUPERADMIN
     try:
         from routes.pagos import obtener_meses_activos
         meses_todos = obtener_meses_activos()
@@ -719,7 +734,6 @@ def pagar_estudiante(id):
 
     if request.method == 'POST':
         accion_cobro = request.form.get('accion_cobro', 'pension')
-        
         responsable_turno = (session.get('turno_activo') or session.get('turno') or 'Caja Central')
 
         if accion_cobro == 'otro_concepto':
@@ -1182,7 +1196,6 @@ def enviar_recibo_chat(id):
 
 
 def _generar_bytes_boletin(est):
-    from models import Calificacion, Materia
     curso_txt = str(getattr(est, 'curso', '')).lower()
     es_nidito = any(k in curso_txt for k in ['nidito', 'inicial', 'kinder', 'kínder', 'pre-kinder', 'prekinder'])
     
@@ -1231,7 +1244,6 @@ def descargar_boletin(id):
 @estudiantes_bp.route('/ver_boletin/<int:id>')
 @estudiantes_bp.route('/generar_boletin/<int:id>')
 def ver_boletin(id):
-    from models import Padre
     est = Estudiante.query.get_or_404(id)
     padre = Padre.query.filter_by(estudiante_id=id).first()
     
@@ -1246,10 +1258,7 @@ def ver_boletin(id):
 
 @estudiantes_bp.route('/imprimir_calificaciones_detalle/<int:id>')
 def imprimir_calificaciones_detalle(id):
-    from models import Estudiante, Calificacion, Materia
     from utils.reporte_calificaciones_generator import generar_detalle_calificaciones_pdf
-    from datetime import datetime
-    import io
 
     est = Estudiante.query.get_or_404(id)
     calificaciones = Calificacion.query.filter(
@@ -1272,10 +1281,7 @@ def imprimir_calificaciones_detalle(id):
 
 @estudiantes_bp.route('/imprimir_boletin_directo/<int:id>')
 def imprimir_boletin_directo(id):
-    from models import Estudiante, Calificacion, Materia
     from utils.boletin_generator import generar_boletin_pdf
-    from datetime import datetime
-    import io
 
     est = Estudiante.query.get_or_404(id)
     anio_actual = datetime.now().year
@@ -1310,13 +1316,14 @@ def editar_estudiante(id):
         return redirect(url_for('estudiantes.nuevo_estudiante'))
 
     est = Estudiante.query.get_or_404(id)
+    cursos_disponibles = obtener_cursos_disponibles()
 
     if request.method == 'POST':
         nuevo_ci = request.form.get('ci', est.ci).strip()
 
         if not nuevo_ci:
             flash('❌ El Carnet de Identidad es obligatorio.', 'danger')
-            return render_template('estudiantes/editar.html', est=est)
+            return render_template('estudiantes/editar.html', est=est, cursos=cursos_disponibles)
 
         if nuevo_ci != est.ci:
             ci_existente = Estudiante.query.filter(
@@ -1325,18 +1332,21 @@ def editar_estudiante(id):
             ).first()
             if ci_existente:
                 flash(f'❌ El C.I. {nuevo_ci} ya está registrado para otro estudiante.', 'danger')
-                return render_template('estudiantes/editar.html', est=est)
+                return render_template('estudiantes/editar.html', est=est, cursos=cursos_disponibles)
+
+        curso_ingresado = request.form.get('curso', est.curso).strip()
+        if not curso_ingresado:
+            flash('❌ El curso/paralelo no puede estar vacío.', 'danger')
+            return render_template('estudiantes/editar.html', est=est, cursos=cursos_disponibles)
 
         est.ci = nuevo_ci
         est.rude = request.form.get('rude', est.rude)
         est.apellidos = request.form.get('apellidos', '').strip()
         est.nombres = request.form.get('nombres', '').strip()
-        est.curso = request.form.get('curso', est.curso)
-
+        est.curso = curso_ingresado
         est.turno = request.form.get('turno', est.turno or 'Mañana')
 
         pension_str = request.form.get('pension', '0')
-
         try:
             est.pension = float(pension_str) if pension_str else 0.0
         except ValueError:
@@ -1348,7 +1358,6 @@ def editar_estudiante(id):
         est.estado = request.form.get('estado', est.estado)
 
         fecha_str = request.form.get('fecha_nacimiento', '')
-
         if fecha_str:
             try:
                 est.fecha_nacimiento = datetime.strptime(fecha_str, '%Y-%m-%d').date()
@@ -1356,11 +1365,10 @@ def editar_estudiante(id):
                 pass
 
         db.session.commit()
-
-        flash('✅ Datos del estudiante actualizados correctamente', 'success')
+        flash(f'✅ Datos del estudiante actualizados correctamente (Curso: {curso_ingresado}).', 'success')
         return redirect(url_for('estudiantes.ver_estudiante', id=id))
 
-    return render_template('estudiantes/editar.html', est=est)
+    return render_template('estudiantes/editar.html', est=est, cursos=cursos_disponibles)
 
 
 @estudiantes_bp.route('/eliminar_cardex/<int:id>', methods=['POST'])
@@ -1386,7 +1394,6 @@ def eliminar_cardex_estudiante(id):
         return redirect(url_for('estudiantes.ver_estudiante', id=id))
 
     try:
-        from models import Padre, Pago, Calificacion, Asistencia
         Padre.query.filter_by(estudiante_id=id).delete()
         Pago.query.filter_by(estudiante_id=id).delete()
         Calificacion.query.filter_by(estudiante_id=id).delete()
@@ -1479,10 +1486,9 @@ def enviar_boletin_chat(id):
         pdf_url = f"/static/boletines/{boletin_filename}"
 
         contenido = (
-            f"COLEGIO DR. ANTONIO VACA DÍEZ\nNOTIFICACIÓN DE BOLETÍN\n\n"
-            f"Estimado/a Sr./Sra. {padre.nombres}:\n"
-            f"El Boletín de Calificaciones de {est.nombres} {est.apellidos} "
-            f"(C.I. {est.ci}) del curso {est.curso} ya está disponible.\n\n"
+            f"COLEGIO DR. ANTONIO VACA DÍEZ\nCOMPROBANTE OFICIAL DE PAGO\n\n"
+            f"Estudiante: {est.nombres} {est.apellidos}\nC.I.: {est.ci}\nCurso: {est.curso}\n"
+            f"Meses pagados: {meses_pagados}\nMonto total: Bs. {monto_total:.2f}\n\n"
             f"---ARCHIVO_ADJUNTO---\n{pdf_url}"
         )
 
@@ -1584,13 +1590,16 @@ def crear_curso():
     nivel = request.form.get('nivel', '').strip()
     paralelo = request.form.get('paralelo', '').strip()
 
-    if not grado or not nivel or not paralelo:
-        flash('⚠️ Debe completar todos los campos para crear el curso/paralelo.', 'warning')
+    if not grado or not nivel:
+        flash('⚠️ Debe completar al menos el grado y nivel.', 'warning')
         return redirect(url_for('estudiantes.index'))
 
-    nombre_curso_completo = f"{grado} {nivel} {paralelo}".strip()
+    if paralelo:
+        nombre_curso_completo = f"{grado} {nivel} {paralelo}".strip()
+    else:
+        nombre_curso_completo = f"{grado} {nivel}".strip()
 
-    flash(f'✅ Curso/Paralelo "{nombre_curso_completo}" habilitado correctamente.', 'success')
+    flash(f'✅ Curso/Paralelo "{nombre_curso_completo}" configurado correctamente para asignación.', 'success')
     return redirect(url_for('estudiantes.index'))
 
 
@@ -2002,19 +2011,16 @@ def imprimir_materia_individual(id, materia_nombre):
 def migrar_egresado(estudiante_id):
     try:
         est = Estudiante.query.get_or_404(estudiante_id)
-        
         historial_notas = {
             "3ro": [],
             "4to": [],
             "5to": [],
             "6to": []
         }
-        
         import json
         est.estado = 'Egresado'
         est.curso = 'Egresado'
         est.historial_notas = json.dumps(historial_notas, ensure_ascii=False)
-        
         db.session.commit()
         flash(f"¡Estudiante {est.nombres} {est.apellidos} migrado exitosamente a Egresados!", "success")
     except Exception as e:
@@ -2028,10 +2034,10 @@ def migrar_egresado(estudiante_id):
 def migracion_masiva():
     try:
         estudiantes = Estudiante.query.filter(Estudiante.estado != 'Egresado', Estudiante.estado != 'Retirado').all()
-        
         secuencia_cursos = {
             'NIDITO 1': 'NIDITO 2',
-            'NIDITO 2': 'PRE-KINDER',
+            'NIDITO 2': 'NIDITO 3',
+            'NIDITO 3': 'PRE-KINDER',
             'PRE-KINDER': 'KINDER',
             'KINDER': '1RO PRIMARIA',
             '1RO PRIMARIA': '2DO PRIMARIA',
@@ -2064,9 +2070,7 @@ def migracion_masiva():
         
         for est in estudiantes:
             curso_actual = (est.curso or '').strip().upper()
-            
             es_aprobado = getattr(est, 'aprobado', True)
-            
             if not es_aprobado:
                 continue
             

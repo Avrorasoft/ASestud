@@ -84,43 +84,46 @@ Nuevo Estudiante - Colegio Dr. Antonio Vaca Díez
                                required>
                     </div>
 
+                    <!-- CURSO Y PARALELO LIBRE / SUGERENCIAS DINÁMICAS -->
                     <div class="col-md-6 mb-3">
                         <label class="form-label">
-                            Curso *
+                            Curso y Paralelo *
                         </label>
 
-                        <select name="curso"
-                                class="form-select"
-                                required>
+                        <input list="lista_cursos"
+                               name="curso"
+                               id="curso"
+                               class="form-control"
+                               placeholder="Seleccione o escriba un paralelo ej: 3ro Primaria A"
+                               autocomplete="off"
+                               required>
 
-                            <option value="">
-                                Seleccione un curso...
-                            </option>
+                        <datalist id="lista_cursos">
+                            <!-- NIDITO CON NIVELES 1, 2 Y 3 -->
+                            <option value="Nidito 1">Nidito 1</option>
+                            <option value="Nidito 2">Nidito 2</option>
+                            <option value="Nidito 3">Nidito 3</option>
 
-                            <optgroup label="Nidito">
-                                <option value="Nidito 1">Nidito 1</option>
-                                <option value="Nidito 2">Nidito 2</option>
-                            </optgroup>
+                            <!-- PRIMARIA -->
+                            <option value="1ro Primaria">1ro Primaria</option>
+                            <option value="2do Primaria">2do Primaria</option>
+                            <option value="3ro Primaria">3ro Primaria</option>
+                            <option value="4to Primaria">4to Primaria</option>
+                            <option value="5to Primaria">5to Primaria</option>
+                            <option value="6to Primaria">6to Primaria</option>
 
-                            <optgroup label="Primaria">
-                                <option value="1ro Primaria">1ro Primaria</option>
-                                <option value="2do Primaria">2do Primaria</option>
-                                <option value="3ro Primaria">3ro Primaria</option>
-                                <option value="4to Primaria">4to Primaria</option>
-                                <option value="5to Primaria">5to Primaria</option>
-                                <option value="6to Primaria">6to Primaria</option>
-                            </optgroup>
+                            <!-- SECUNDARIA -->
+                            <option value="1ro Secundaria">1ro Secundaria</option>
+                            <option value="2do Secundaria">2do Secundaria</option>
+                            <option value="3ro Secundaria">3ro Secundaria</option>
+                            <option value="4to Secundaria">4to Secundaria</option>
+                            <option value="5to Secundaria">5to Secundaria</option>
+                            <option value="6to Secundaria">6to Secundaria</option>
+                        </datalist>
 
-                            <optgroup label="Secundaria">
-                                <option value="1ro Secundaria">1ro Secundaria</option>
-                                <option value="2do Secundaria">2do Secundaria</option>
-                                <option value="3ro Secundaria">3ro Secundaria</option>
-                                <option value="4to Secundaria">4to Secundaria</option>
-                                <option value="5to Secundaria">5to Secundaria</option>
-                                <option value="6to Secundaria">6to Secundaria</option>
-                            </optgroup>
-
-                        </select>
+                        <small class="text-muted">
+                            Puede elegir de la lista o escribir un curso y paralelo nuevo (ej. 3ro B, Nidito 3 A).
+                        </small>
                     </div>
 
                     <!-- TURNO OBLIGATORIO -->
