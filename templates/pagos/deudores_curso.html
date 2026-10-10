@@ -66,7 +66,11 @@
                                     <td class="text-center text-muted fw-bold">{{ loop.index }}</td>
                                     <td><strong>{{ item.estudiante.apellidos }}, {{ item.estudiante.nombres }}</strong></td>
                                     <td>{{ item.estudiante.rude or 'S/R' }} / {{ item.estudiante.ci or 'S/C' }}</td>
-                                    <td class="text-center"><span class="badge bg-secondary">{{ item.meses_pagados }} / 10</span></td>
+                                    <td class="text-center">
+                                        <span class="badge bg-secondary">
+                                            {{ item.meses_pagados }} / {{ item.total_meses }}
+                                        </span>
+                                    </td>
                                     <td class="text-end">Bs. {{ "%.2f"|format(item.total_pagado) }}</td>
                                     <td class="text-end"><span class="text-danger fw-bold fs-6">Bs. {{ "%.2f"|format(item.saldo_pendiente) }}</span></td>
                                     <td class="text-center">

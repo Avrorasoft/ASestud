@@ -96,73 +96,57 @@ def calcular_nota_asistencia(estudiante_id):
 
     return round(max(0.0, nota), 2), total_faltas
 
-
 # ==============================================================================
-# LISTADO DE ESTUDIANTES POR CURSO, NIVEL, TURNO O BÚSQUEDA LIBRE (POR C.I.)
+# LISTA GENERAL DE CÁRDEX CON VISTAS SEPARADAS Y RESTAURACIÓN
 # ==============================================================================
 @estudiantes_bp.route('/')
 def index():
-    asegurar_turno_activo()
+    vista = request.args.get('vista', 'activos').strip().lower()
     curso_seleccionado = request.args.get('curso', '')
-    nivel_seleccionado = request.args.get('nivel', '').strip()
-    turno_seleccionado = request.args.get('turno', '').strip()
+    nivel_seleccionado = request.args.get('nivel', '')
+    turno_seleccionado = request.args.get('turno', '')
     q = request.args.get('q', '').strip()
 
-    query = db.session.query(Estudiante).outerjoin(
-        Padre, Estudiante.id == Padre.estudiante_id
-    ).filter(Estudiante.estado == 'Activo')
+    # Contadores independientes para las pestañas
+    total_activos = Estudiante.query.filter_by(estado='Activo').count()
+    total_inactivos = Estudiante.query.filter(Estudiante.estado.in_(['Inactivo', 'Retirado'])).count()
+    total_archivados = Estudiante.query.filter(Estudiante.estado.in_(['Archivado', 'Egresado'])).count()
 
+    # 1. Separación estricta de estados
+    if vista == 'inactivos':
+        query = Estudiante.query.filter(Estudiante.estado.in_(['Inactivo', 'Retirado']))
+    elif vista == 'archivados':
+        query = Estudiante.query.filter(Estudiante.estado.in_(['Archivado', 'Egresado']))
+    else:
+        # Padrón Activo (Todos los activos, jamás inactivos ni archivados)
+        vista = 'activos'
+        query = Estudiante.query.filter_by(estado='Activo')
+
+    # 2. Filtros secundarios (Curso, Nivel, Turno)
+    if curso_seleccionado and curso_seleccionado != 'todos':
+        query = query.filter_by(curso=curso_seleccionado)
+    if nivel_seleccionado:
+        query = query.filter(Estudiante.curso.contains(nivel_seleccionado))
+    if turno_seleccionado:
+        query = query.filter_by(turno=turno_seleccionado)
+
+    # 3. Búsqueda por texto (C.I., nombres, apellidos o RUDE)
     if q:
+        termino = f"%{q}%"
         query = query.filter(
             or_(
-                Estudiante.nombres.ilike(f'%{q}%'),
-                Estudiante.apellidos.ilike(f'%{q}%'),
-                Estudiante.ci.ilike(f'%{q}%'),
-                Estudiante.rude.ilike(f'%{q}%'),
-                Padre.ci.ilike(f'%{q}%')
+                Estudiante.ci.ilike(termino),
+                Estudiante.nombres.ilike(termino),
+                Estudiante.apellidos.ilike(termino),
+                Estudiante.rude.ilike(termino)
             )
         )
 
-    if curso_seleccionado and curso_seleccionado.lower() != 'todos':
-        query = query.filter(Estudiante.curso == curso_seleccionado)
+    estudiantes = query.order_by(Estudiante.apellidos.asc()).all()
 
-    if nivel_seleccionado and nivel_seleccionado.lower() != 'todos':
-        if nivel_seleccionado == 'Nidito':
-            query = query.filter(
-                or_(
-                    Estudiante.curso.ilike('%nidito%'),
-                    Estudiante.curso.ilike('%inicial%'),
-                    Estudiante.curso.ilike('%kinder%'),
-                    Estudiante.curso.ilike('%kínder%')
-                )
-            )
-        elif nivel_seleccionado == 'Primaria':
-            query = query.filter(
-                and_(
-                    Estudiante.curso.ilike('%primaria%'),
-                    ~Estudiante.curso.ilike('%secundaria%')
-                )
-            )
-        elif nivel_seleccionado == 'Secundaria':
-            query = query.filter(Estudiante.curso.ilike('%secundaria%'))
-
-    if turno_seleccionado and turno_seleccionado.lower() != 'todos':
-        turno_limpio = turno_seleccionado.lower().strip()
-        if 'mana' in turno_limpio:
-            query = query.filter(
-                or_(
-                    func.lower(func.trim(Estudiante.turno)).ilike('%mañana%'),
-                    func.lower(func.trim(Estudiante.turno)).ilike('%manana%'),
-                    func.lower(func.trim(Estudiante.turno)).ilike('%maÃ±ana%')
-                )
-            )
-        else:
-            query = query.filter(
-                func.lower(func.trim(Estudiante.turno)).ilike(f'%{turno_limpio}%')
-            )
-
-    estudiantes = query.order_by(Estudiante.apellidos).all()
-    cursos = obtener_cursos_disponibles()
+    # Obtener lista de cursos únicos
+    cursos_db = db.session.query(Estudiante.curso).distinct().all()
+    cursos = sorted([c[0] for c in cursos_db if c[0]])
 
     return render_template(
         'estudiantes/lista.html',
@@ -171,8 +155,26 @@ def index():
         curso_seleccionado=curso_seleccionado,
         nivel_seleccionado=nivel_seleccionado,
         turno_seleccionado=turno_seleccionado,
-        q=q
+        q=q,
+        vista_actual=vista,
+        total_activos=total_activos,
+        total_inactivos=total_inactivos,
+        total_archivados=total_archivados
     )
+
+
+@estudiantes_bp.route('/reactivar/<int:id>', methods=['POST'])
+def reactivar_estudiante(id):
+    """Restaura un estudiante inactivo o archivado al padrón activo."""
+    estudiante = Estudiante.query.get_or_404(id)
+    estudiante.estado = 'Activo'
+    db.session.commit()
+    flash(f'✅ Estudiante {estudiante.apellidos}, {estudiante.nombres} reactivado con éxito en el padrón activo.', 'success')
+
+    vista_origen = request.form.get('vista_origen', 'activos')
+    curso_origen = request.form.get('curso_origen', '')
+    q_origen = request.form.get('q_origen', '')
+    return redirect(url_for('estudiantes.index', vista=vista_origen, curso=curso_origen, q=q_origen))
 
 # ==============================================================================
 # GESTIÓN Y CONTROL DE DESCUENTOS INDIVIDUALES (BÓVEDA)
@@ -707,11 +709,14 @@ def archivar_como_egresado(id):
 
 
 # ==============================================================================
-# REGISTRAR PAGO DE PENSIÓN (SOPORTA MÚLTIPLES MESES Y OTROS CONCEPTOS)
+# REGISTRAR PAGO DE PENSIÓN (MES EN CURSO Y ADELANTOS DISPONIBLES SIN MORA)
 # ==============================================================================
 
 @estudiantes_bp.route('/pagar/<int:id>', methods=['GET', 'POST'])
 def pagar_estudiante(id):
+    from datetime import date
+    from models import ConfiguracionSuperadmin
+    
     turno_en_caja = session.get('turno_activo') or session.get('turno_id') or session.get('caja_activa')
     rol_usuario = str(session.get('rol', '')).lower().strip()
     es_admin = rol_usuario in ['admin', 'superadmin', 'administrador']
@@ -723,14 +728,45 @@ def pagar_estudiante(id):
     est = Estudiante.query.get_or_404(id)
     padre = Padre.query.filter_by(estudiante_id=id).first()
     anio_actual = datetime.now().year
+    mes_actual_num = datetime.now().month
 
+    # 1. Recuperar la fecha de corte operativo
+    corte_operativo = None
     try:
-        from routes.pagos import obtener_meses_activos
-        meses_todos = obtener_meses_activos()
+        cfg_corte = ConfiguracionSuperadmin.query.filter_by(clave='fecha_corte_operativo').first()
+        if cfg_corte and cfg_corte.valor and str(cfg_corte.valor).strip():
+            val_corte = str(cfg_corte.valor).strip()
+            for fmt in ('%Y-%m-%d', '%Y-%m', '%d/%m/%Y'):
+                try:
+                    corte_operativo = datetime.strptime(val_corte, fmt).date()
+                    break
+                except ValueError:
+                    pass
     except Exception:
-        meses_todos = ['Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre']
+        pass
 
-    monto_mensual = float(est.pension) if est.pension else 0.0
+    # Mapa de meses
+    mapa_meses = {
+        1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+        5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+        9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+    }
+    mapa_inv = {v.lower(): k for k, v in mapa_meses.items()}
+
+    # Ciclo escolar oficial: Febrero a Noviembre (10 meses, excluye Diciembre)
+    meses_ciclo_oficial = ['Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre']
+
+    # Filtrar desde el mes de corte en adelante
+    if corte_operativo:
+        mes_inicio_corte = corte_operativo.month
+        meses_disponibles = [
+            m for m in meses_ciclo_oficial 
+            if mapa_inv.get(m.lower(), 0) >= mes_inicio_corte
+        ]
+    else:
+        meses_disponibles = meses_ciclo_oficial
+
+    monto_mensual = float(est.pension) if est.pension and float(est.pension) > 0 else 430.0
 
     if request.method == 'POST':
         accion_cobro = request.form.get('accion_cobro', 'pension')
@@ -806,8 +842,8 @@ def pagar_estudiante(id):
                 estudiante_id=id, anio=anio_actual, mes=mes_nombre, tipo_concepto='Pensión'
             ).all()
             
-            abonado_previo = sum(float(p.monto_pagado or 0.0) for p in pagos_previos)
-            desc_previo = sum(float(p.descuento or 0.0) for p in pagos_previos)
+            abonado_previo = sum(float(p.monto_pagado or 0.0) for p in pagos_previos if getattr(p, 'estado', 'Pagado') != 'Anulado')
+            desc_previo = sum(float(p.descuento or 0.0) for p in pagos_previos if getattr(p, 'estado', 'Pagado') != 'Anulado')
             
             costo_neto_mes = max(0.0, monto_mensual - desc_previo)
             saldo_mes = max(0.0, costo_neto_mes - abonado_previo)
@@ -865,7 +901,7 @@ def pagar_estudiante(id):
             db.session.commit()
             
             meses_str = ", ".join(meses_seleccionados)
-            flash(f'✅ ¡Cobro Múltiple Exitoso! Meses: {meses_str} | Total Neto: Bs. {monto_abono_total:.2f} (Descuento aplicado: Bs. {descuento_total:.2f})', 'success')
+            flash(f'✅ ¡Cobro Exitoso! Meses: {meses_str} | Total: Bs. {monto_abono_total:.2f}', 'success')
             
             if nuevos_pagos_creados:
                 return redirect(url_for('estudiantes.imprimir_recibo_individual', pago_id=nuevos_pagos_creados[0].id))
@@ -873,11 +909,13 @@ def pagar_estudiante(id):
 
         except Exception as e:
             db.session.rollback()
-            flash(f'❌ Error al procesar el pago múltiple: {str(e)}', 'danger')
+            flash(f'❌ Error al procesar el pago: {str(e)}', 'danger')
             return redirect(url_for('estudiantes.pagar_estudiante', id=id))
 
+    # Construir listado de meses diferenciando mes vencido de meses en curso/adelanto
     estado_meses = []
-    for mes in meses_todos:
+    for mes in meses_disponibles:
+        num_m = mapa_inv.get(mes.lower(), 1)
         pagos_mes = Pago.query.filter_by(
             estudiante_id=id,
             anio=anio_actual,
@@ -885,24 +923,38 @@ def pagar_estudiante(id):
             tipo_concepto='Pensión'
         ).all()
 
-        total_abonado = sum(float(p.monto_pagado or 0.0) for p in pagos_mes)
-        descuento_mes = sum(float(p.descuento or 0.0) for p in pagos_mes)
+        total_abonado = sum(float(p.monto_pagado or 0.0) for p in pagos_mes if getattr(p, 'estado', 'Pagado') != 'Anulado')
+        descuento_mes = sum(float(p.descuento or 0.0) for p in pagos_mes if getattr(p, 'estado', 'Pagado') != 'Anulado')
         costo_efectivo = max(0.0, monto_mensual - descuento_mes)
         saldo_pendiente = max(0.0, costo_efectivo - total_abonado)
+
+        # Regla:
+        # - Si num_m < mes_actual_num: Es un mes pasado ya cerrado (ej. Agosto, Septiembre) -> Si debe, es Mora/Pendiente.
+        # - Si num_m == mes_actual_num: Es el mes en curso (Octubre) -> No ha concluido -> Habilitado para pago regular/sin mora.
+        # - Si num_m > mes_actual_num: Es un mes futuro (Noviembre) -> Disponible para adelanto.
+        es_adelanto = (num_m > mes_actual_num)
+        es_en_curso = (num_m == mes_actual_num)
+        no_es_mora = (es_adelanto or es_en_curso)
 
         if saldo_pendiente <= 0.0 and total_abonado > 0.0:
             estado = 'Cancelado'
         elif total_abonado > 0.0:
             estado = 'Abono Parcial'
+        elif es_adelanto:
+            estado = 'Disponible para adelanto'
+        elif es_en_curso:
+            estado = 'En Curso (Disponible)'
         else:
-            estado = 'Pendiente'
+            estado = 'Pendiente (Vencido)'
 
         estado_meses.append({
             'mes': mes,
             'costo': monto_mensual,
             'abonado': total_abonado,
             'saldo': saldo_pendiente,
-            'estado': estado
+            'estado': estado,
+            'es_futuro': no_es_mora,
+            'es_en_curso': es_en_curso
         })
 
     return render_template(
@@ -912,7 +964,6 @@ def pagar_estudiante(id):
         estado_meses=estado_meses,
         anio_actual=anio_actual
     )
-
 
 # ==============================================================================
 # GENERAR RECIBO OFICIAL DE PAGO (PDF)

@@ -639,19 +639,6 @@
                     Asistencia
                 </a>
 
-                <!-- Reportes de Caja -->
-                <div class="nav-item dropdown px-3 my-1">
-                    <a class="nav-link dropdown-toggle p-0" href="javascript:void(0);" data-bs-toggle="dropdown">
-                        <i class="bi bi-file-earmark-bar-graph"></i> Reportes de Caja
-                    </a>
-                    <ul class="dropdown-menu">
-                        <li><a class="dropdown-item" href="{{ url_for('reportes.economico_manana') }}">Cierre Mañana</a></li>
-                        <li><a class="dropdown-item" href="{{ url_for('reportes.economico_tarde') }}">Cierre Tarde</a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="{{ url_for('reportes.economico_general') }}">Reporte General</a></li>
-                    </ul>
-                </div>
-
                 <!-- Control de Turno -->
                 {% if session.get('turno_activo') %}
                 <div class="nav-link text-warning fw-bold px-3">

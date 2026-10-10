@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Cierre General Diario - {{ general.fecha.strftime('%d/%m/%Y') }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+        <a href="{{ url_for('caja.index') }}" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver a Caja
+        </a>
+        <button onclick="window.print()" class="btn btn-primary">
+            <i class="bi bi-printer-fill me-1"></i> Imprimir Reporte General
+        </button>
+    </div>
+
+    <div class="card shadow border-dark p-4">
+        <div class="text-center border-bottom pb-3 mb-3">
+            <h3 class="fw-bold mb-0">COLEGIO DR. ANTONIO VACA DÍEZ</h3>
+            <p class="text-muted mb-1">Tesorería y Administración Central</p>
+            <h4 class="fw-bold text-dark mt-2">REPORTE CONSOLIDADO DE CIERRE GENERAL (24 HORAS)</h4>
+            <span class="badge bg-primary fs-6">Fecha Única: {{ general.fecha.strftime('%d/%m/%Y') }}</span>
+        </div>
+
+        <!-- CUADRO CONSOLIDADO DEL DÍA -->
+        <div class="row g-3 mb-4 text-center">
+            <div class="col-md-4">
+                <div class="p-3 bg-success bg-opacity-10 border border-success rounded">
+                    <span class="text-success fw-bold d-block">TOTAL EFECTIVO EN CAJA</span>
+                    <h3 class="fw-bold text-success mb-0">Bs. {{ "%.2f"|format(general.total_efectivo_caja) }}</h3>
+                    <small class="text-muted">Total dinero físico recaudado hoy</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 bg-info bg-opacity-10 border border-info rounded">
+                    <span class="text-info fw-bold d-block">TOTAL BANCARIO / QR</span>
+                    <h3 class="fw-bold text-primary mb-0">Bs. {{ "%.2f"|format(general.total_banco) }}</h3>
+                    <small class="text-muted">Total transferencias a cuentas</small>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 bg-dark bg-opacity-10 border border-dark rounded">
+                    <span class="text-dark fw-bold d-block">GRAN TOTAL DEL DÍA</span>
+                    <h3 class="fw-bold text-dark mb-0">Bs. {{ "%.2f"|format(general.total_recaudado) }}</h3>
+                    <small class="text-muted">Efectivo + Banco</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- COMPARATIVA TURNO MAÑANA VS TURNO TARDE -->
+        <h5 class="fw-bold border-bottom pb-2">Desglose por Turnos del Día</h5>
+        <div class="table-responsive mb-4">
+            <table class="table table-bordered text-center align-middle">
+                <thead class="table-light">
+                    <tr>
+                        <th>Turno</th>
+                        <th>Efectivo en Caja (Bs.)</th>
+                        <th>Bancario / QR (Bs.)</th>
+                        <th>Total Recaudado (Bs.)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="fw-bold text-start"><i class="bi bi-sun me-1 text-warning"></i> Turno Mañana</td>
+                        <td class="text-success fw-bold">Bs. {{ "%.2f"|format(manana.total_efectivo_caja) }}</td>
+                        <td class="text-primary fw-bold">Bs. {{ "%.2f"|format(manana.total_banco) }}</td>
+                        <td class="fw-bold">Bs. {{ "%.2f"|format(manana.total_recaudado) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold text-start"><i class="bi bi-moon-stars me-1 text-primary"></i> Turno Tarde</td>
+                        <td class="text-success fw-bold">Bs. {{ "%.2f"|format(tarde.total_efectivo_caja) }}</td>
+                        <td class="text-primary fw-bold">Bs. {{ "%.2f"|format(tarde.total_banco) }}</td>
+                        <td class="fw-bold">Bs. {{ "%.2f"|format(tarde.total_recaudado) }}</td>
+                    </tr>
+                    <tr class="table-secondary fw-bold">
+                        <td class="text-start">TOTAL GENERAL DIARIO</td>
+                        <td class="text-success">Bs. {{ "%.2f"|format(general.total_efectivo_caja) }}</td>
+                        <td class="text-primary">Bs. {{ "%.2f"|format(general.total_banco) }}</td>
+                        <td>Bs. {{ "%.2f"|format(general.total_recaudado) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="row text-center mt-5 pt-4">
+            <div class="col-4">
+                <div style="border-top: 1px solid #000; width: 70%; margin: auto;"></div>
+                <small>Responsable Turno Mañana</small>
+            </div>
+            <div class="col-4">
+                <div style="border-top: 1px solid #000; width: 70%; margin: auto;"></div>
+                <small>Responsable Turno Tarde</small>
+            </div>
+            <div class="col-4">
+                <div style="border-top: 1px solid #000; width: 70%; margin: auto;"></div>
+                <small>Dirección / Administración</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+@media print {
+    .no-print, header, nav, footer, .sidebar { display: none !important; }
+    body { background: #fff !important; }
+}
+</style>
+{% endblock %}

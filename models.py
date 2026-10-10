@@ -523,7 +523,20 @@ class Gasto(db.Model):
     def __repr__(self):
         return f"<Gasto {self.categoria} Turno:{self.turno}>"
 
+class IngresoCaja(db.Model):
+    __tablename__ = 'ingresos_caja'
 
+    id = db.Column(db.Integer, primary_key=True)
+    fecha = db.Column(db.DateTime, default=datetime.now, nullable=False)
+    categoria = db.Column(db.String(100), nullable=False)
+    descripcion = db.Column(db.Text, nullable=False)
+    monto = db.Column(db.Float, nullable=False, default=0.0)
+    metodo_pago = db.Column(db.String(50), default='Efectivo')
+    recibido_de = db.Column(db.String(150), nullable=True)
+    ci_depositante = db.Column(db.String(50), nullable=True)
+    turno_responsable = db.Column(db.String(100), nullable=True)
+    estado = db.Column(db.String(20), default='Activo')
+    
 # ==============================================================================
 # MENSAJE / CHAT
 # ==============================================================================

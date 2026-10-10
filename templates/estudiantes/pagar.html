@@ -20,11 +20,11 @@
                 </div>
                 <div class="col-md-2">
                     <strong>C.I.:</strong><br>
-                    {{ est.ci }}
+                    {{ est.ci or 'S/N' }}
                 </div>
                 <div class="col-md-2">
                     <strong>Curso:</strong><br>
-                    {{ est.curso }}
+                    {{ est.curso or 'Sin curso' }}
                 </div>
                 <div class="col-md-2">
                     <strong>Pensión Oficial:</strong><br>
@@ -32,7 +32,7 @@
                 </div>
                 <div class="col-md-3">
                     <strong>Tutor:</strong><br>
-                    {{ padre.nombres ~ ' ' ~ padre.apellidos if padre else 'No registrado' }}
+                    {{ padre.nombres ~ ' ' ~ (padre.apellidos or '') if padre else 'No registrado' }}
                 </div>
             </div>
 
@@ -53,7 +53,7 @@
             <div class="tab-content" id="pills-tabContent">
                 <!-- PANEL 1: PENSIONES Y AMORTIZACIONES -->
                 <div class="tab-pane fade show active" id="tab-pensiones" role="tabpanel">
-                    <h5 class="fw-bold mb-3 text-secondary"><i class="bi bi-table me-2"></i>Estado de Cuenta del Año Lectivo (Resumen)</h5>
+                    <h5 class="fw-bold mb-3 text-secondary"><i class="bi bi-table me-2"></i>Estado de Cuenta del Ciclo Habilitado (Resumen)</h5>
                     <div class="table-responsive mb-4">
                         <table class="table table-bordered table-sm table-hover align-middle">
                             <thead class="table-dark text-center">
@@ -61,7 +61,7 @@
                                     <th>Mes</th>
                                     <th>Costo</th>
                                     <th>Abonado</th>
-                                    <th>Deuda</th>
+                                    <th>Saldo</th>
                                     <th>Estado</th>
                                     <th>Acción</th>
                                 </tr>
@@ -73,12 +73,18 @@
                                         <td class="fw-bold">{{ em.mes }}</td>
                                         <td>Bs. {{ "%.2f"|format(em.costo) }}</td>
                                         <td class="text-success fw-bold">Bs. {{ "%.2f"|format(em.abonado) }}</td>
-                                        <td class="text-danger fw-bold">Bs. {{ "%.2f"|format(em.saldo) }}</td>
+                                        <td class="fw-bold {{ 'text-info' if em.es_futuro else 'text-danger' }}">
+                                            Bs. {{ "%.2f"|format(em.saldo) }}
+                                        </td>
                                         <td>
                                             {% if em.estado == 'Cancelado' %}
                                                 <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Cancelado</span>
                                             {% elif em.estado == 'Abono Parcial' %}
                                                 <span class="badge bg-warning text-dark"><i class="bi bi-clock-history me-1"></i>Parcial</span>
+                                            {% elif em.es_en_curso %}
+                                                <span class="badge bg-info text-dark"><i class="bi bi-calendar-check me-1"></i>En Curso (Habilitado)</span>
+                                            {% elif em.es_futuro %}
+                                                <span class="badge bg-info text-dark"><i class="bi bi-calendar-event me-1"></i>Disponible para adelanto</span>
                                             {% else %}
                                                 <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Pendiente</span>
                                             {% endif %}
@@ -86,7 +92,7 @@
                                         <td>
                                             {% if em.saldo > 0 %}
                                                 <button type="button" class="btn btn-outline-primary btn-sm" onclick="marcarMes('{{ em.mes }}')">
-                                                    <i class="bi bi-hand-index-thumb"></i> Cobrar
+                                                    <i class="bi bi-hand-index-thumb"></i> {{ 'Cobrar' if not em.es_futuro else 'Pagar' }}
                                                 </button>
                                             {% else %}
                                                 <i class="bi bi-check2-all text-success fs-5"></i>
@@ -94,6 +100,10 @@
                                         </td>
                                     </tr>
                                     {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="6" class="text-center text-muted py-3">No hay meses activos configurados.</td>
+                                    </tr>
                                 {% endif %}
                             </tbody>
                         </table>
@@ -106,6 +116,7 @@
                         </div>
                         <div class="card-body bg-light">
                             <form method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="accion_cobro" value="pension">
                                 
                                 <h6 class="fw-bold text-primary mb-3">Paso 1: Seleccione los meses que el estudiante desea cancelar</h6>
@@ -114,26 +125,33 @@
                                 <div class="row g-3 mb-4">
                                     {% if estado_meses %}
                                         {% for em in estado_meses %}
-                                            <div class="col-xl-2 col-lg-3 col-md-4 col-sm-6">
+                                            <div class="col-xl-3 col-lg-3 col-md-4 col-sm-6">
                                                 {% if em.saldo <= 0 %}
                                                     <!-- TARJETA PAGADA (BLOQUEADA) -->
                                                     <div class="card h-100 border-success bg-white" style="opacity: 0.65;">
-                                                        <div class="card-body text-center p-2 d-flex flex-column justify-content-center">
+                                                        <div class="card-body text-center p-3 d-flex flex-column justify-content-center">
                                                             <i class="bi bi-check-circle-fill text-success fs-2 mb-1"></i>
-                                                            <span class="fw-bold text-success">{{ em.mes }}</span>
+                                                            <span class="fw-bold text-success fs-5">{{ em.mes }}</span>
                                                             <span class="badge bg-success mt-2">Pagado / Al Día</span>
                                                         </div>
                                                     </div>
                                                 {% else %}
-                                                    <!-- TARJETA PENDIENTE (INTERACTIVA) -->
-                                                    <label class="card h-100 text-center shadow-sm tarjeta-mes cursor-pointer border-{{ 'warning' if em.estado == 'Abono Parcial' else 'danger' }}" style="cursor: pointer; transition: all 0.2s ease;">
-                                                        <div class="card-body p-2 position-relative">
-                                                            <input class="form-check-input mes-checkbox position-absolute" type="checkbox" name="meses_seleccionados" value="{{ em.mes }}" data-saldo="{{ em.saldo }}" style="transform: scale(2.0); top: 15px; right: 20px; cursor: pointer;" onchange="calcularSeleccion()">
+                                                    <!-- TARJETA INTERACTIVA (EN CURSO, ADELANTO O MORA) -->
+                                                    <label class="card h-100 text-center shadow-sm tarjeta-mes cursor-pointer border-{{ 'info' if em.es_futuro else ('warning' if em.estado == 'Abono Parcial' else 'danger') }}" style="cursor: pointer; transition: all 0.2s ease;">
+                                                        <div class="card-body p-3 position-relative">
+                                                            <input class="form-check-input mes-checkbox position-absolute" type="checkbox" name="meses_seleccionados" value="{{ em.mes }}" data-saldo="{{ em.saldo }}" style="transform: scale(1.8); top: 15px; right: 18px; cursor: pointer;" onchange="calcularSeleccion()">
                                                             
-                                                            <div class="mt-3">
+                                                            <div class="mt-2 text-start ps-1">
                                                                 <span class="fw-bold fs-5 text-dark">{{ em.mes }}</span><br>
-                                                                <span class="badge bg-{{ 'warning text-dark' if em.estado == 'Abono Parcial' else 'danger' }} mt-2 px-3 py-2 fs-6 border border-white">
-                                                                    Deuda: Bs. {{ '%.2f'|format(em.saldo) }}
+                                                                
+                                                                {% if em.es_en_curso %}
+                                                                    <small class="badge bg-info-subtle text-info border border-info mb-1">Mes en curso (Habilitado)</small><br>
+                                                                {% elif em.es_futuro %}
+                                                                    <small class="badge bg-info-subtle text-info border border-info mb-1">Disponible para adelanto</small><br>
+                                                                {% endif %}
+
+                                                                <span class="badge bg-{{ 'info text-dark' if em.es_futuro else ('warning text-dark' if em.estado == 'Abono Parcial' else 'danger') }} mt-1 px-3 py-2 fs-6">
+                                                                    Monto: Bs. {{ '%.2f'|format(em.saldo) }}
                                                                 </span>
                                                             </div>
                                                         </div>
@@ -150,7 +168,7 @@
                                 <h6 class="fw-bold text-primary mb-3">Paso 2: Verifique los montos y confirme la transacción</h6>
                                 <div class="row align-items-end">
                                     <div class="col-md-3 mb-3">
-                                        <label class="form-label fw-bold text-secondary">Total Deuda Seleccionada</label>
+                                        <label class="form-label fw-bold text-secondary">Total Deuda / Selección</label>
                                         <div class="input-group input-group-lg">
                                             <span class="input-group-text bg-white text-danger fw-bold">Bs.</span>
                                             <input type="text" id="lbl_deuda_seleccionada" class="form-control fw-bold text-danger bg-white" readonly value="0.00">
@@ -161,7 +179,6 @@
                                         <label class="form-label fw-bold text-success">Monto Real a Entregar Hoy *</label>
                                         <div class="input-group input-group-lg">
                                             <span class="input-group-text bg-success text-white fw-bold">Bs.</span>
-                                            <!-- CORREGIDO: min="0" para permitir 0 en becas o descuentos totales -->
                                             <input type="number" step="0.01" min="0" name="monto_abono" id="input_abono" class="form-control border-success fw-bold text-success fs-4" placeholder="0.00" required oninput="validarMontoTotal()">
                                         </div>
                                         <small class="text-muted fw-bold ms-1"><i class="bi bi-info-circle"></i> Permite 0 para becas o abonos parciales.</small>
@@ -181,7 +198,7 @@
                                     </div>
 
                                     <div class="col-md-2 mb-3 d-grid">
-                                        <button type="submit" class="btn btn-primary btn-lg shadow" id="btn_confirmar" disabled>
+                                        <button type="submit" class="btn btn-primary btn-lg shadow fw-bold" id="btn_confirmar" disabled>
                                             <i class="bi bi-receipt me-1"></i> Confirmar
                                         </button>
                                     </div>
@@ -199,6 +216,7 @@
                         </div>
                         <div class="card-body">
                             <form method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <input type="hidden" name="accion_cobro" value="otro_concepto">
                                 <div class="row">
                                     <div class="col-md-4 mb-3">
@@ -255,7 +273,6 @@
 </div>
 
 <script>
-// Lógica para iluminar tarjetas y calcular montos automáticamente
 function calcularSeleccion() {
     let checkboxes = document.querySelectorAll('.mes-checkbox');
     let totalDeuda = 0;
@@ -265,11 +282,13 @@ function calcularSeleccion() {
         if (cb.checked) {
             totalDeuda += parseFloat(cb.getAttribute('data-saldo'));
             tarjeta.classList.add('bg-warning', 'bg-opacity-25', 'border-primary', 'border-2');
-            tarjeta.classList.remove('border-danger', 'border-warning');
+            tarjeta.classList.remove('border-danger', 'border-warning', 'border-info');
         } else {
             tarjeta.classList.remove('bg-warning', 'bg-opacity-25', 'border-primary', 'border-2');
             let badgeTexto = tarjeta.querySelector('.badge').innerText;
-            if (badgeTexto.includes('Parcial')) {
+            if (badgeTexto.includes('adelanto') || badgeTexto.includes('curso') || badgeTexto.includes('Vencer')) {
+                tarjeta.classList.add('border-info');
+            } else if (badgeTexto.includes('Parcial')) {
                 tarjeta.classList.add('border-warning');
             } else {
                 tarjeta.classList.add('border-danger');
@@ -296,7 +315,6 @@ function calcularSeleccion() {
     }
 }
 
-// Recalcular automáticamente si se modifica el descuento de forma manual
 function aplicarDescuento() {
     let totalDeuda = parseFloat(document.getElementById('lbl_deuda_seleccionada').value) || 0;
     let inputDescuento = document.getElementById('input_descuento');
@@ -312,11 +330,8 @@ function aplicarDescuento() {
     inputAbono.value = montoReal.toFixed(2);
 }
 
-function validarMontoTotal() {
-    // Validación opcional si se ingresa un monto manual en efectivo
-}
+function validarMontoTotal() {}
 
-// Función conectada al botón "Cobrar" de la tabla superior
 function marcarMes(mesBuscado) {
     let checkboxes = document.querySelectorAll('.mes-checkbox');
     checkboxes.forEach(function(cb) {

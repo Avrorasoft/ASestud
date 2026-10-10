@@ -91,35 +91,73 @@
         </table>
     </div>
 
-    <!-- ENCABEZADO SUPERIOR CON BOTONES DE ACCIÓN (Oculto al imprimir) -->
-    <div class="row mb-3 align-items-center no-print flex-shrink-0">
-        <div class="col-md-6">
-            <h2 class="fw-bold text-white mb-1">
+    <!-- ENCABEZADO SUPERIOR (Oculto al imprimir) -->
+    <div class="row mb-2 align-items-center no-print flex-shrink-0">
+        <div class="col-md-7">
+            <h2 class="fw-bold text-white mb-0">
                 <i class="bi bi-wallet2 text-info me-2"></i> Resumen de Caja y Tesorería
             </h2>
-            <p class="text-light opacity-75 mb-0">Balance financiero de ingresos y egresos institucionales.</p>
+            <p class="text-light opacity-75 mb-0 small">Balance contable de ingresos escolares, recaudación directa y control de egresos.</p>
         </div>
-        <div class="col-md-6 text-md-end mt-2 mt-md-0 d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
+        <div class="col-md-5 text-md-end mt-2 mt-md-0 d-flex justify-content-md-end align-items-center gap-2 flex-wrap">
             <!-- Estado del Turno -->
             {% if session.get('turno_activo') %}
-                <span class="badge bg-success px-3 py-2 shadow-sm text-white">
+                <span class="badge bg-success px-3 py-2 shadow-sm text-white fs-6">
                     <i class="bi bi-unlock-fill me-1"></i> Turno: {{ session.get('turno_activo') }}
                 </span>
             {% else %}
-                <span class="badge bg-danger px-3 py-2 shadow-sm text-white">
+                <span class="badge bg-danger px-3 py-2 shadow-sm text-white fs-6">
                     <i class="bi bi-lock-fill me-1"></i> Sin Turno Activo
                 </span>
             {% endif %}
 
-            <!-- BOTÓN IMPRIMIR REPORTE CONSOLIDADO -->
-            <button onclick="window.print();" class="btn btn-outline-light px-3 py-2 rounded-pill fw-semibold shadow-sm">
-                <i class="bi bi-printer-fill me-1"></i> Imprimir Reporte Total
-            </button>
-
             <!-- BOTÓN PAGO NUEVO (EGRESO / GASTO) -->
-            <a href="/gastos/nuevo" class="btn btn-success px-4 py-2 rounded-pill fw-bold shadow text-white" style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); border: none;">
-                <i class="bi bi-plus-circle-fill me-1"></i> Pago Nuevo
+            <a href="/gastos/nuevo" class="btn btn-danger px-3 py-2 rounded-pill fw-bold shadow text-white" style="background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%); border: none;">
+                <i class="bi bi-dash-circle-fill me-1"></i> Registrar Egreso
             </a>
+        </div>
+    </div>
+
+    <!-- ========================================================================= -->
+    <!-- ⭐ NAVEGADOR HORIZONTAL DESTACADO: INFORMES Y OPERACIONES DE CAJA (24H)   -->
+    <!-- ========================================================================= -->
+    <div class="card border-0 shadow-lg rounded-4 p-2 mb-3 no-print flex-shrink-0" style="background: linear-gradient(90deg, #1e293b 0%, #0f172a 100%); border: 1px solid #334155 !important;">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 px-2">
+            
+            <div class="d-flex align-items-center">
+                <div class="p-2 rounded-circle bg-primary bg-opacity-25 text-info me-2 d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                    <i class="bi bi-journal-check fs-5"></i>
+                </div>
+                <div>
+                    <span class="fw-bold text-white d-block" style="font-size: 13px; letter-spacing: 0.5px;">INFORMES DE JORNADA (24H)</span>
+                    <span class="text-muted" style="font-size: 11px;">Arqueos contables delimitados a la fecha actual</span>
+                </div>
+            </div>
+            
+            <!-- GRUPO HORIZONTAL DE BOTONES VISTOSOS Y COLORIDOS -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+                
+                <!-- 1. Cierre Turno Mañana (Dorado / Ámbar Vibrante) -->
+                <a href="/caja/cierre/Mañana" class="btn btn-nav-caja btn-manana text-dark fw-bold px-3 py-2 rounded-pill shadow">
+                    <i class="bi bi-sun-fill text-dark me-1 fs-6"></i> Cierre Mañana
+                </a>
+
+                <!-- 2. Cierre Turno Tarde (Azul Zafiro Vibrante) -->
+                <a href="/caja/cierre/Tarde" class="btn btn-nav-caja btn-tarde text-white fw-bold px-3 py-2 rounded-pill shadow">
+                    <i class="bi bi-moon-stars-fill text-warning me-1 fs-6"></i> Cierre Tarde
+                </a>
+
+                <!-- 3. Cierre General Diario (Violeta / Púrpura Consolidado) -->
+                <a href="/caja/cierre_general_diario" class="btn btn-nav-caja btn-general text-white fw-bold px-3 py-2 rounded-pill shadow">
+                    <i class="bi bi-file-earmark-spreadsheet-fill me-1 fs-6"></i> Cierre General (24h)
+                </a>
+
+                <!-- 4. Nuevo Ingreso Directo (Esmeralda / Turquesa Tesorería) -->
+                <a href="/caja/ingreso_directo" class="btn btn-nav-caja btn-ingreso text-white fw-bold px-3 py-2 rounded-pill shadow">
+                    <i class="bi bi-cash-coin me-1 fs-6"></i> + Ingreso Directo
+                </a>
+
+            </div>
         </div>
     </div>
 
@@ -261,7 +299,7 @@
                                             <i class="bi bi-wallet2 display-5 text-secondary opacity-50"></i>
                                         </div>
                                         <p class="mb-0 text-light fw-medium">No se registran egresos o pagos institucionales todavía.</p>
-                                        <small class="text-muted">Utiliza el botón "Pago Nuevo" arriba a la derecha para registrar el primero.</small>
+                                        <small class="text-muted">Utiliza el botón "Registrar Egreso" arriba para asentar salidas de caja.</small>
                                     </td>
                                 </tr>
                             {% endif %}
@@ -275,8 +313,47 @@
 
 </div>
 
-<!-- REGLAS DE IMPRESIÓN PARA OCULTAR LA INTERFAZ OSCURA Y MOSTRAR EL BLOQUE LIMPIO -->
+<!-- ========================================================================= -->
+<!-- ESTILOS EXCLUSIVOS: NAVEGADOR HORIZONTAL DOCK Y COMPORTAMIENTO IMPRESIÓN  -->
+<!-- ========================================================================= -->
 <style>
+    /* Estilos dinámicos para los botones del navegador horizontal */
+    .btn-nav-caja {
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        border: none !important;
+        letter-spacing: 0.3px;
+        font-size: 13px;
+        display: inline-flex;
+        align-items: center;
+    }
+    .btn-nav-caja:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.12);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.35) !important;
+    }
+
+    /* 1. Botón Mañana: Amarillo Oro Cálido */
+    .btn-manana {
+        background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%) !important;
+        color: #1e1b4b !important;
+    }
+
+    /* 2. Botón Tarde: Azul Océano / Índigo */
+    .btn-tarde {
+        background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%) !important;
+    }
+
+    /* 3. Botón General: Púrpura Imperial */
+    .btn-general {
+        background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%) !important;
+    }
+
+    /* 4. Botón Ingreso: Esmeralda Vivo */
+    .btn-ingreso {
+        background: linear-gradient(135deg, #10b981 0%, #047857 100%) !important;
+    }
+
+    /* Reglas para la vista de impresión en papel/PDF */
     @media print {
         body {
             background-color: #ffffff !important;

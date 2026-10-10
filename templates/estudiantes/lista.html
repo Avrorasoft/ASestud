@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-Gestión de Estudiantes - Colegio Dr. Antonio Vaca Díez
+Gestión de Estudiantes - {% if institucion %}{{ institucion.get('institucion_linea1') if institucion.get else (institucion.institucion_linea1 if institucion.institucion_linea1 else 'Sistema de Gestión Escolar') }}{% else %}Sistema de Gestión Escolar{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -27,10 +27,38 @@ Gestión de Estudiantes - Colegio Dr. Antonio Vaca Díez
     </div>
 
     <!-- =============================================================== -->
+    <!-- PESTAÑAS SEPARADAS DE ESTADO: TODOS (ACTIVOS), INACTIVOS, ARCHIVADOS -->
+    <!-- =============================================================== -->
+    <ul class="nav nav-pills mb-3 border-bottom pb-2">
+        <li class="nav-item me-2">
+            <a class="nav-link rounded-pill fw-bold {{ 'active bg-primary' if vista_actual == 'activos' or not vista_actual else 'text-dark bg-light' }}" 
+               href="{{ url_for('estudiantes.index', vista='activos', curso=curso_seleccionado, nivel=nivel_seleccionado, turno=turno_seleccionado) }}">
+                <i class="bi bi-people-fill me-1"></i> Todos los Activos 
+                <span class="badge {{ 'bg-dark text-white' if vista_actual == 'activos' or not vista_actual else 'bg-secondary' }} ms-1">{{ total_activos or 0 }}</span>
+            </a>
+        </li>
+        <li class="nav-item me-2">
+            <a class="nav-link rounded-pill fw-bold {{ 'active bg-warning text-dark' if vista_actual == 'inactivos' else 'text-dark bg-light' }}" 
+               href="{{ url_for('estudiantes.index', vista='inactivos', curso=curso_seleccionado, nivel=nivel_seleccionado, turno=turno_seleccionado) }}">
+                <i class="bi bi-person-x-fill me-1"></i> Inactivos 
+                <span class="badge {{ 'bg-dark text-white' if vista_actual == 'inactivos' else 'bg-secondary' }} ms-1">{{ total_inactivos or 0 }}</span>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link rounded-pill fw-bold {{ 'active bg-secondary text-white' if vista_actual == 'archivados' else 'text-dark bg-light' }}" 
+               href="{{ url_for('estudiantes.index', vista='archivados', curso=curso_seleccionado, nivel=nivel_seleccionado, turno=turno_seleccionado) }}">
+                <i class="bi bi-archive-fill me-1"></i> Archivados 
+                <span class="badge {{ 'bg-dark text-white' if vista_actual == 'archivados' else 'bg-secondary' }} ms-1">{{ total_archivados or 0 }}</span>
+            </a>
+        </li>
+    </ul>
+
+    <!-- =============================================================== -->
     <!-- FILTROS: CURSO, NIVEL, TURNO Y BÚSQUEDA POR C.I. -->
     <!-- =============================================================== -->
 
     <form method="GET" class="mb-4">
+        <input type="hidden" name="vista" value="{{ vista_actual or 'activos' }}">
 
         <div class="row g-2 mb-2">
 
@@ -104,7 +132,7 @@ Gestión de Estudiantes - Colegio Dr. Antonio Vaca Díez
             </div>
 
             <div class="col-md-3 d-flex gap-2">
-                <a href="{{ url_for('estudiantes.index') }}"
+                <a href="{{ url_for('estudiantes.index', vista=vista_actual or 'activos') }}"
                    class="btn btn-outline-secondary w-100">
                     Limpiar
                 </a>
@@ -150,15 +178,23 @@ Gestión de Estudiantes - Colegio Dr. Antonio Vaca Díez
     <!-- =============================================================== -->
 
     <div class="card shadow-sm">
-        <div class="card-header">
-            Estudiantes
-            {% if q %}
-                - Búsqueda: "{{ q }}"
-            {% elif curso_seleccionado %}
-                de {{ curso_seleccionado }}
-            {% endif %}
-
-            ({{ estudiantes|length }})
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>
+                Estudiantes 
+                {% if vista_actual == 'inactivos' %}
+                    <strong class="text-warning">[Inactivos / Retirados]</strong>
+                {% elif vista_actual == 'archivados' %}
+                    <strong class="text-secondary">[Archivados / Egresados]</strong>
+                {% else %}
+                    <strong class="text-primary">[Padrón Activo]</strong>
+                {% endif %}
+                {% if q %}
+                    - Búsqueda: "{{ q }}"
+                {% elif curso_seleccionado %}
+                    de {{ curso_seleccionado }}
+                {% endif %}
+            </span>
+            <span class="badge bg-dark fs-6">{{ estudiantes|length }} encontrados</span>
         </div>
 
         <div class="card-body">
@@ -194,7 +230,7 @@ Gestión de Estudiantes - Colegio Dr. Antonio Vaca Díez
                                 {% endif %}
                             </td>
 
-                            <!-- ⭐ MINIATURA CORREGIDA USANDO EL ENDPOINT ABSOLUTO -->
+                            <!-- ⭐ MINIATURA USANDO EL ENDPOINT ABSOLUTO -->
                             <td class="text-center">
                                 {% if est.foto_path and est.foto_path != 'default.png' %}
                                     <img src="{{ url_for('servir_archivo_subido', filename=est.foto_path.replace('uploads/', '')) }}?v={{ now().timestamp()|int }}"
@@ -263,25 +299,50 @@ Gestión de Estudiantes - Colegio Dr. Antonio Vaca Díez
                             </td>
 
                             <td>
-                                <div class="d-flex gap-1 flex-wrap">
+                                <div class="d-flex gap-1 flex-wrap align-items-center">
 
-                                    <a href="{{ url_for('estudiantes.ver_estudiante', id=est.id) }}"
-                                       class="btn btn-sm btn-primary"
-                                       title="Cardex">
-                                        <i class="bi bi-eye-fill"></i>
-                                    </a>
+                                    {% if est.estado != 'Activo' %}
+                                        <!-- BOTÓN ACTIVAR / RESTAURAR AL PADRÓN ACTIVO -->
+                                        <form action="{{ url_for('estudiantes.reactivar_estudiante', id=est.id) }}" method="POST" class="d-inline m-0 p-0" onsubmit="return confirm('¿Confirma restaurar el cárdex de este estudiante al padrón activo?');">
+                                            <input type="hidden" name="vista_origen" value="{{ vista_actual or 'activos' }}">
+                                            <input type="hidden" name="curso_origen" value="{{ curso_seleccionado or '' }}">
+                                            <input type="hidden" name="q_origen" value="{{ q or '' }}">
+                                            <button type="submit" class="btn btn-sm btn-success fw-bold shadow-sm" title="Reactivar e ingresar al padrón activo">
+                                                <i class="bi bi-arrow-counterclockwise me-1"></i> Activar
+                                            </button>
+                                        </form>
 
-                                    <a href="{{ url_for('estudiantes.pagar_estudiante', id=est.id) }}"
-                                       class="btn btn-sm btn-success"
-                                       title="Registrar Pago">
-                                        <i class="bi bi-cash-stack"></i>
-                                    </a>
+                                        <a href="{{ url_for('estudiantes.ver_estudiante', id=est.id) }}"
+                                           class="btn btn-sm btn-outline-primary"
+                                           title="Ver Cardex">
+                                            <i class="bi bi-eye-fill"></i>
+                                        </a>
 
-                                    <a href="{{ url_for('estudiantes.editar_estudiante', id=est.id) }}"
-                                       class="btn btn-sm btn-warning"
-                                       title="Editar">
-                                        <i class="bi bi-pencil-fill"></i>
-                                    </a>
+                                        <a href="{{ url_for('estudiantes.editar_estudiante', id=est.id) }}"
+                                           class="btn btn-sm btn-outline-warning"
+                                           title="Editar Ficha">
+                                            <i class="bi bi-pencil-fill"></i>
+                                        </a>
+                                    {% else %}
+                                        <!-- ACCIONES NORMALES CUANDO EL ESTUDIANTE ESTÁ ACTIVO -->
+                                        <a href="{{ url_for('estudiantes.ver_estudiante', id=est.id) }}"
+                                           class="btn btn-sm btn-primary"
+                                           title="Cardex">
+                                            <i class="bi bi-eye-fill"></i>
+                                        </a>
+
+                                        <a href="{{ url_for('estudiantes.pagar_estudiante', id=est.id) }}"
+                                           class="btn btn-sm btn-success"
+                                           title="Registrar Pago">
+                                            <i class="bi bi-cash-stack"></i>
+                                        </a>
+
+                                        <a href="{{ url_for('estudiantes.editar_estudiante', id=est.id) }}"
+                                           class="btn btn-sm btn-warning"
+                                           title="Editar">
+                                            <i class="bi bi-pencil-fill"></i>
+                                        </a>
+                                    {% endif %}
 
                                 </div>
                             </td>
@@ -293,7 +354,7 @@ Gestión de Estudiantes - Colegio Dr. Antonio Vaca Díez
 
             {% else %}
             <div class="alert alert-info">
-                No hay estudiantes registrados para mostrar.
+                No hay estudiantes registrados para mostrar en esta vista.
             </div>
             {% endif %}
 

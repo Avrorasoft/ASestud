@@ -37,8 +37,20 @@
     <div class="documento">
         <div class="header">
             <div>
-                <h2>Colegio Dr. Antonio Vaca Díez</h2>
-                <p>Sistema Integrado de Gestión Institucional | Riberalta - Beni</p>
+                <h2>
+                    {% if institucion and institucion.get('institucion_linea1') %}
+                        {{ institucion.get('institucion_linea1') }}
+                    {% else %}
+                        SISTEMA DE GESTIÓN ESCOLAR
+                    {% endif %}
+                </h2>
+                <p>
+                    {% if institucion and institucion.get('institucion_linea2') %}
+                        {{ institucion.get('institucion_linea2') }}
+                    {% else %}
+                        Dirección Administrativa y Financiera
+                    {% endif %}
+                </p>
                 <p><strong>ESTADO DE CUENTA / HISTORIAL GENERAL DE PAGOS</strong></p>
             </div>
             <div style="text-align: right; font-size: 11px; color: #64748b;">

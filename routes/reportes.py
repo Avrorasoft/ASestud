@@ -57,6 +57,24 @@ def guardar_configuracion_monitor(config_data):
         return False
 
 # =========================================================================
+# HELPER INTELIGENTE PARA DETECCIÓN DE TURNO EN EGRESOS
+# =========================================================================
+def obtener_turno_registro(obj):
+    """Determina estrictamente el turno sin quemar valores por defecto."""
+    turno_obj = getattr(obj, 'turno', None)
+    if turno_obj in ['Mañana', 'Tarde']:
+        return turno_obj
+    
+    # Evaluar por hora solo si existe una marca de tiempo válida con hora real
+    fecha = getattr(obj, 'fecha_pago', None) or getattr(obj, 'fecha', None)
+    if fecha and hasattr(fecha, 'hour') and fecha.hour != 0:
+        return 'Tarde' if fecha.hour >= 13 else 'Mañana'
+    
+    # Si no tiene turno y la hora es 00:00 o no existe, 
+    # retornamos None para que no contamine falsamente ningún turno específico
+    return None
+
+# =========================================================================
 # REPORTES ECONÓMICOS
 # =========================================================================
 @reportes_bp.route('/economico/manana')
@@ -68,20 +86,22 @@ def economico_manana():
     
     total = sum(p.monto_pagado for p in pagos)
 
+    # Filtrar gastos del Turno Mañana usando detección inteligente
     try:
         todos_gastos = Gasto.query.all()
     except Exception:
         todos_gastos = []
     
-    gastos = [g for g in todos_gastos if getattr(g, 'estado', 'Activo') != 'Anulado']
+    gastos = [g for g in todos_gastos if getattr(g, 'estado', 'Activo') != 'Anulado' and obtener_turno_registro(g) == 'Mañana']
     total_gastos = sum(g.monto for g in gastos)
 
+    # Filtrar pagos de personal del Turno Mañana usando detección inteligente
     try:
         todos_personal = PagoPersonal.query.all()
     except Exception:
         todos_personal = []
 
-    pagos_personal = [p for p in todos_personal if getattr(p, 'estado', 'Pagado') != 'Anulado']
+    pagos_personal = [p for p in todos_personal if getattr(p, 'estado', 'Pagado') != 'Anulado' and obtener_turno_registro(p) == 'Mañana']
     
     sueldos = [p for p in pagos_personal if getattr(p, 'tipo', 'Profesor') != 'Adelanto']
     adelantos = [p for p in pagos_personal if getattr(p, 'tipo', 'Profesor') == 'Adelanto']
@@ -113,20 +133,22 @@ def economico_tarde():
     
     total = sum(p.monto_pagado for p in pagos)
 
+    # Filtrar gastos del Turno Tarde usando detección inteligente
     try:
         todos_gastos = Gasto.query.all()
     except Exception:
         todos_gastos = []
 
-    gastos = [g for g in todos_gastos if getattr(g, 'estado', 'Activo') != 'Anulado']
+    gastos = [g for g in todos_gastos if getattr(g, 'estado', 'Activo') != 'Anulado' and obtener_turno_registro(g) == 'Tarde']
     total_gastos = sum(g.monto for g in gastos)
 
+    # Filtrar pagos de personal del Turno Tarde usando detección inteligente
     try:
         todos_personal = PagoPersonal.query.all()
     except Exception:
         todos_personal = []
 
-    pagos_personal = [p for p in todos_personal if getattr(p, 'estado', 'Pagado') != 'Anulado']
+    pagos_personal = [p for p in todos_personal if getattr(p, 'estado', 'Pagado') != 'Anulado' and obtener_turno_registro(p) == 'Tarde']
     
     sueldos = [p for p in pagos_personal if getattr(p, 'tipo', 'Profesor') != 'Adelanto']
     adelantos = [p for p in pagos_personal if getattr(p, 'tipo', 'Profesor') == 'Adelanto']
@@ -286,10 +308,8 @@ def monitor_direccion():
     ahora_local = ahora_bolivia()
     hoy = ahora_local.date()
     
-    # 1. Detección automática del turno según la hora (Antes de las 13:00 = Mañana, desde las 13:00 = Tarde)
     turno_por_defecto = 'Tarde' if ahora_local.hour >= 13 else 'Mañana'
     
-    # Permite forzar el turno mediante parámetro en la URL si se desea (ej: /reportes/monitor-direccion?turno=Tarde)
     turno_activo = request.args.get('turno', turno_por_defecto).capitalize()
     if turno_activo not in ['Mañana', 'Tarde']:
         turno_activo = turno_por_defecto
@@ -305,7 +325,6 @@ def monitor_direccion():
     fotos_excelencia = [f for f in todas_fotos if f.startswith('excelencia_')]
     fotos_valores = [f for f in todas_fotos if f.startswith('valores_')]
     
-    # 2. CONSULTA BLINDADA CON JOIN: Filtra estrictamente por la fecha, estado Falta Y el turno del Estudiante
     ausencias_hoy = db.session.query(Asistencia, Estudiante).join(
         Estudiante, Asistencia.estudiante_id == Estudiante.id
     ).filter(
@@ -386,7 +405,6 @@ def ceremonia_curso(curso_nombre):
                 '2DO DE SECUNDARIA': '3RO DE SECUNDARIA',
                 '3RO DE SECUNDARIA': '4TO DE SECUNDARIA',
                 '4TO DE SECUNDARIA': '5TO DE SECUNDARIA',
-                '5TO DE SECUNDARIA': '6TO DE SECUNDARIA',
                 '6TO DE SECUNDARIA': 'Egresados',
             }
 

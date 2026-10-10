@@ -1,0 +1,92 @@
+@'
+{% extends "base.html" %}
+{% block title %}Registrar Ingreso Directo - Caja{% endblock %}
+
+{% block content %}
+<div class="container mt-4 mb-5">
+    <div class="card shadow border-0 rounded-4" style="background-color: #1e293b; color: #f8fafc;">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center rounded-top-4 py-3">
+            <h4 class="mb-0 fw-bold">
+                <i class="bi bi-cash-stack me-2"></i> Registrar Ingreso Directo a Caja
+            </h4>
+            <a href="{{ url_for('caja.index') }}" class="btn btn-sm btn-light rounded-pill px-3 fw-semibold">
+                <i class="bi bi-arrow-left"></i> Volver a Caja
+            </a>
+        </div>
+
+        <div class="card-body p-4">
+            <div class="alert alert-info d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+                    Entrada directa de dinero a tesorería (independiente de pensiones escolares).
+                </div>
+                <span class="badge bg-primary px-3 py-2 fs-6 rounded-pill">
+                    <i class="bi bi-clock-history me-1"></i> Turno Activo: {{ turno_actual }}
+                </span>
+            </div>
+
+            <form method="POST">
+                <div class="row">
+                    <!-- Categoría -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-light fw-bold">Concepto / Categoría *</label>
+                        <select name="categoria" class="form-select bg-dark text-white border-secondary" required>
+                            {% for cat in categorias %}
+                            <option value="{{ cat }}">{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <!-- Monto -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-light fw-bold">Monto (Bs.) *</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-secondary text-white border-secondary">Bs.</span>
+                            <input type="number" step="0.01" min="0.01" name="monto" class="form-control bg-dark text-white border-secondary fs-5 fw-bold" placeholder="0.00" required autofocus>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <!-- Entregado por -->
+                    <div class="col-md-6 mb-3">
+                        <label class="form-label text-light">Entregado por (Nombre / Entidad)</label>
+                        <input type="text" name="recibido_de" class="form-control bg-dark text-white border-secondary" placeholder="Ej: Juan Pérez / Particular">
+                    </div>
+
+                    <!-- C.I. Depositante -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label text-light">C.I. / NIT (Opcional)</label>
+                        <input type="text" name="ci_depositante" class="form-control bg-dark text-white border-secondary" placeholder="Ej: 5849201">
+                    </div>
+
+                    <!-- Método de Pago -->
+                    <div class="col-md-3 mb-3">
+                        <label class="form-label text-light fw-bold">Método de Pago *</label>
+                        <select name="metodo_pago" class="form-select bg-dark text-white border-secondary" required>
+                            <option value="Efectivo" selected>Efectivo (Cajón Físico)</option>
+                            <option value="Bancario">Bancario / Transferencia / QR</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Detalle / Glosa -->
+                <div class="mb-4">
+                    <label class="form-label text-light fw-bold">Detalle / Glosa de la Transacción *</label>
+                    <textarea name="descripcion" class="form-control bg-dark text-white border-secondary" rows="3" placeholder="Explique brevemente el motivo del ingreso" required></textarea>
+                </div>
+
+                <div class="d-flex justify-content-between pt-2">
+                    <a href="{{ url_for('caja.index') }}" class="btn btn-secondary btn-lg rounded-pill px-4">
+                        <i class="bi bi-x-circle me-1"></i> Cancelar
+                    </a>
+                    <button type="submit" class="btn btn-success btn-lg rounded-pill px-4 shadow">
+                        <i class="bi bi-check-circle-fill me-1"></i> Guardar Ingreso y Generar Recibo
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+'@ | Set-Content -Path "C:\ASestud\templates\caja\ingreso_directo.html" -Encoding UTF8

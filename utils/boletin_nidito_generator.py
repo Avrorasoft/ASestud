@@ -4,7 +4,6 @@ import os
 import tempfile
 import qrcode
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.pdfgen import canvas
@@ -15,7 +14,13 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from utils_pdf import nombre_institucion, ruta_logo
 
-BOLIVIA_TZ = ZoneInfo("America/La_Paz")
+
+def obtener_fecha_hora_local():
+    """
+    Retorna la fecha y hora local del sistema de manera genérica,
+    respetando automáticamente la zona horaria del entorno donde se ejecute.
+    """
+    return datetime.now().astimezone()
 
 def extraer_trimestre_num(texto):
     t = str(texto or "").lower()

@@ -4,13 +4,13 @@
 # Proyecto: Sistema de Gestión Escolar
 # Desarrollado por: Avrora Soft - Vibola LLC
 # Descripción: Blueprint para gestión de Pagos, Caja y Recibos con validación
-#              estricta de turno activo, aplicación correcta de descuentos (menor o igual a la deuda) 
-#              y anulación segura por Bóveda.
+#              estricta de turno activo, aplicación correcta de descuentos (menor o igual a la deuda),
+#              anulación segura por Bóveda y filtro dinámico por Corte Financiero Operativo.
 # ==============================================================================
 
 from flask import Blueprint, render_template, request, redirect, url_for, flash, current_app, send_file, session
 from models import db, Pago, Estudiante, Padre, ConfiguracionSuperadmin
-from datetime import datetime
+from datetime import datetime, date
 import io
 import os
 from sqlalchemy import func, or_, and_
@@ -37,27 +37,95 @@ def validar_boveda(password_ingresada):
         return True
     return False
 
-def obtener_meses_activos():
-    """Obtiene dinámicamente los meses oficiales de cobro configurados en la Bóveda."""
+def obtener_corte_operativo():
+    """Recupera la fecha de corte operativo configurada por Superadmin."""
     try:
-        # Buscamos en la tabla de configuración de superadmin/institución
-        cfg = ConfiguracionSuperadmin.query.filter_by(clave='meses_activos').first()
-        if cfg and cfg.valor:
-            # Mapeo de números a nombres de meses
-            mapa_meses = {
-                '1': 'Enero', '2': 'Febrero', '3': 'Marzo', '4': 'Abril',
-                '5': 'Mayo', '6': 'Junio', '7': 'Julio', '8': 'Agosto',
-                '9': 'Septiembre', '10': 'Octubre', '11': 'Noviembre', '12': 'Diciembre'
-            }
-            numeros = [n.strip() for n in str(cfg.valor).split(',') if n.strip()]
-            meses_nombres = [mapa_meses.get(num) for num in numeros if num in mapa_meses]
-            if meses_nombres:
-                return meses_nombres
+        cfg = ConfiguracionSuperadmin.query.filter_by(clave='fecha_corte_operativo').first()
+        if cfg and cfg.valor and str(cfg.valor).strip():
+            valor_limpio = str(cfg.valor).strip()
+            for fmt in ('%Y-%m-%d', '%Y-%m', '%d/%m/%Y'):
+                try:
+                    return datetime.strptime(valor_limpio, fmt).date()
+                except ValueError:
+                    pass
     except Exception:
         pass
-    
-    # Valor predeterminado por ley en Bolivia (Febrero a Noviembre)
-    return ['Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre']
+    return None
+
+def obtener_parametros_vencimiento():
+    """Recupera el día de vencimiento y los días de gracia configurados."""
+    dia_venc = 10
+    dias_gracia = 5
+    try:
+        cfg_dia = ConfiguracionSuperadmin.query.filter_by(clave='dia_vencimiento_pension').first()
+        if cfg_dia and cfg_dia.valor and str(cfg_dia.valor).strip().isdigit():
+            dia_venc = int(str(cfg_dia.valor).strip())
+            
+        cfg_gracia = ConfiguracionSuperadmin.query.filter_by(clave='dias_gracia_mora').first()
+        if cfg_gracia and cfg_gracia.valor and str(cfg_gracia.valor).strip().isdigit():
+            dias_gracia = int(str(cfg_gracia.valor).strip())
+    except Exception:
+        pass
+    return dia_venc, dias_gracia
+
+def obtener_meses_activos(anio_evaluado=None, solo_vencidos_hasta_hoy=False):
+    """
+    Obtiene la lista de meses oficiales de cobro del ciclo escolar (Febrero a Noviembre).
+    - Aplica estrictamente el corte operativo (ej. si inicia en Agosto, excluye Feb a Jul).
+    - Si solo_vencidos_hasta_hoy=True: solo considera mora los meses cerrados y vencidos.
+      El mes en curso NO genera mora si aún no ha finalizado o vencido su plazo límite.
+    """
+    mapa_meses = {
+        1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+        5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+        9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+    }
+    mapa_inv = {v.lower(): k for k, v in mapa_meses.items()}
+
+    # Ciclo estándar por ley: Febrero a Noviembre (10 cuotas oficiales, excluye Diciembre)
+    meses_base = ['Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre']
+
+    try:
+        cfg = ConfiguracionSuperadmin.query.filter_by(clave='meses_activos').first()
+        if cfg and cfg.valor:
+            numeros = [int(n.strip()) for n in str(cfg.valor).split(',') if n.strip().isdigit()]
+            meses_cfg = [mapa_meses[num] for num in numeros if num in mapa_meses and num != 12]
+            if meses_cfg:
+                meses_base = meses_cfg
+    except Exception:
+        pass
+
+    corte = obtener_corte_operativo()
+    hoy = datetime.now().date()
+    anio_calc = anio_evaluado or hoy.year
+    mes_actual_num = hoy.month
+
+    # Determinar mes inicial según corte operativo
+    mes_inicio_corte = 2
+    if corte:
+        mes_inicio_corte = corte.month
+
+    meses_filtrados = []
+    for mes_nom in meses_base:
+        num_m = mapa_inv.get(mes_nom.lower(), 0)
+        if num_m == 0:
+            continue
+
+        # 1. Filtro estricto de inicio de corte operativo (ignorar todo mes previo)
+        if num_m < mes_inicio_corte:
+            continue
+
+        # 2. Si es para cálculo de MORA: únicamente meses cerrados anteriores al mes en curso
+        if solo_vencidos_hasta_hoy:
+            if int(anio_calc) > hoy.year:
+                continue
+            if int(anio_calc) == hoy.year and num_m >= mes_actual_num:
+                # El mes en curso (Octubre) y meses futuros (Noviembre) NO son mora
+                continue
+
+        meses_filtrados.append(mes_nom)
+
+    return meses_filtrados
 
 
 # =========================================================================
@@ -84,7 +152,7 @@ def index():
 
 
 # =========================================================================
-# REGISTRAR PAGO (ACTUALIZADO PARA SELECCIÓN MÚLTIPLE POR CHECKBOXES)
+# REGISTRAR PAGO
 # =========================================================================
 @pagos_bp.route('/registrar', methods=['GET', 'POST'])
 def registrar():
@@ -100,7 +168,6 @@ def registrar():
             estudiante_id = request.form.get('estudiante_id')
             anio = int(request.form.get('anio', datetime.now().year))
             
-            # Recibir los meses seleccionados mediante checkboxes
             meses_seleccionados = request.form.getlist('meses_seleccionados')
             if not meses_seleccionados:
                 mes_unico = request.form.get('mes', '').strip()
@@ -130,9 +197,8 @@ def registrar():
 
             ci_est = estudiante_obj.ci if estudiante_obj.ci else 'S/N'
             rude_est = estudiante_obj.rude if estudiante_obj.rude else 'S/N'
-            monto_mensual = float(estudiante_obj.pension or 350.0)
+            monto_mensual = float(estudiante_obj.pension or 430.0)
 
-            # Calcular la deuda total de los meses seleccionados
             deuda_total_seleccionada = 0.0
             saldos_por_mes = {}
 
@@ -209,7 +275,12 @@ def registrar():
             db.session.rollback()
             flash(f'❌ Error al registrar el cobro: {str(e)}', 'danger')
     
-    estudiantes = Estudiante.query.filter_by(estado='Activo').order_by(Estudiante.apellidos).all()
+    estudiantes = Estudiante.query.filter(
+        or_(
+            Estudiante.estado.in_(['Activo', 'activo', 'Inscrito', 'inscrito']),
+            Estudiante.estado.is_(None)
+        )
+    ).order_by(Estudiante.apellidos).all()
     return render_template('pagos/registrar.html', estudiantes=estudiantes, turno_actual=turno_actual)
 
 
@@ -218,7 +289,6 @@ def registrar():
 # =========================================================================
 @pagos_bp.route('/anular/<int:id>', methods=['POST'])
 def anular_pago(id):
-    """Anula un pago escolar de manera lógica exigiendo la contraseña de la Bóveda."""
     if not asegurar_turno_activo():
         flash('❌ Transacción bloqueada: Se requiere un turno activo para anular pagos.', 'danger')
         return redirect(url_for('pagos.historial'))
@@ -240,7 +310,7 @@ def anular_pago(id):
         db.session.commit()
         db.session.expire_all()
 
-        flash('✅ Pago escolar anulado correctamente. Queda constancia contable y se excluyó de los ingresos.', 'success')
+        flash('✅ Pago escolar anulado correctamente.', 'success')
     except Exception as e:
         db.session.rollback()
         flash(f'❌ Error al anular el pago: {str(e)}', 'danger')
@@ -308,29 +378,29 @@ def historial():
     pagos = query.order_by(Pago.fecha_pago.desc()).all()
     return render_template('pagos/historial.html', pagos=pagos, search=search)
     
+
 # =========================================================================
-# DEUDORES POR CURSO (DINÁMICO SEGÚN CONFIGURACIÓN DEL SUPERADMIN)
+# DEUDORES POR CURSO (FILTRADO POR EL CORTE OPERATIVO HASTA MES VENCIDO)
 # =========================================================================
 @pagos_bp.route('/deudores/curso', methods=['GET'])
 def deudores_por_curso():
     curso_seleccionado = request.args.get('curso', '')
     gestion = request.args.get('gestion', datetime.now().year, type=int)
 
-    cursos = db.session.query(Estudiante.curso).filter_by(estado='Activo').distinct().order_by(Estudiante.curso).all()
-    cursos = [c[0] for c in cursos]
+    cursos = db.session.query(Estudiante.curso).distinct().order_by(Estudiante.curso).all()
+    cursos = [c[0] for c in cursos if c[0]]
 
     deudores = []
 
     if curso_seleccionado:
-        # Cargar los meses oficialmente habilitados por el Superadmin
-        meses_escolares = obtener_meses_activos()
+        meses_para_mora = obtener_meses_activos(anio_evaluado=gestion, solo_vencidos_hasta_hoy=True)
+        todos_meses_ciclo = obtener_meses_activos(anio_evaluado=gestion, solo_vencidos_hasta_hoy=False)
 
-        estudiantes = Estudiante.query.filter_by(curso=curso_seleccionado, estado='Activo').order_by(Estudiante.apellidos).all()
+        estudiantes = Estudiante.query.filter_by(curso=curso_seleccionado).order_by(Estudiante.apellidos).all()
+        estudiantes = [e for e in estudiantes if (e.estado or 'Activo').lower() not in ['archivado', 'inactivo', 'egresado', 'retirado']]
         
         for est in estudiantes:
-            monto_mensual = float(est.pension or 0.0)
-            if monto_mensual <= 0:
-                monto_mensual = 350.0  # Valor de respaldo institucional
+            monto_mensual = float(est.pension) if est.pension and float(est.pension) > 0 else 430.0
 
             pagos_estudiante = Pago.query.filter(
                 Pago.estudiante_id == est.id,
@@ -352,25 +422,28 @@ def deudores_por_curso():
             meses_pagados_count = 0
             saldo_pendiente_total = 0.0
 
-            for mes in meses_escolares:
+            # 1. Total acumulado cancelado dentro del ciclo
+            for mes in todos_meses_ciclo:
                 info = pagos_por_mes.get(mes, {"abonado": 0.0, "descuento": 0.0})
-                total_abonado = info["abonado"]
-                descuento_mes = info["descuento"]
-                
-                costo_efectivo = max(0.0, monto_mensual - descuento_mes)
-                saldo_pendiente = max(0.0, costo_efectivo - total_abonado)
-                
-                total_pagado_estudiante += total_abonado
-
-                if saldo_pendiente <= 0.5:
+                total_pagado_estudiante += info["abonado"]
+                costo_ef = max(0.0, monto_mensual - info["descuento"])
+                if (costo_ef - info["abonado"]) <= 0.5 and info["abonado"] > 0:
                     meses_pagados_count += 1
-                else:
-                    saldo_pendiente_total += saldo_pendiente
+
+            # 2. Sumatoria de mora ÚNICAMENTE de los meses ya vencidos
+            for mes in meses_para_mora:
+                info = pagos_por_mes.get(mes, {"abonado": 0.0, "descuento": 0.0})
+                costo_efectivo = max(0.0, monto_mensual - info["descuento"])
+                saldo_mes = max(0.0, costo_efectivo - info["abonado"])
+                
+                if saldo_mes > 0.5:
+                    saldo_pendiente_total += saldo_mes
 
             if saldo_pendiente_total > 0.5:
                 deudores.append({
                     'estudiante': est,
                     'meses_pagados': meses_pagados_count,
+                    'total_meses': len(todos_meses_ciclo),
                     'total_pagado': total_pagado_estudiante,
                     'saldo_pendiente': saldo_pendiente_total
                 })
@@ -393,23 +466,34 @@ def generar_recibo_pago_pdf_simple(pago, estudiante, padre):
     except ImportError:
         raise Exception("ReportLab no está instalado.")
     
+    inst_linea1 = "SISTEMA DE GESTIÓN ESCOLAR"
+    inst_linea2 = "Dirección Administrativa y Financiera"
+    try:
+        c1 = ConfiguracionSuperadmin.query.filter_by(clave='institucion_linea1').first()
+        if c1 and c1.valor:
+            inst_linea1 = c1.valor
+        c2 = ConfiguracionSuperadmin.query.filter_by(clave='institucion_linea2').first()
+        if c2 and c2.valor:
+            inst_linea2 = c2.valor
+    except Exception:
+        pass
+
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, 
                             rightMargin=1*inch, leftMargin=1*inch,
                             topMargin=0.5*inch, bottomMargin=0.5*inch)
     
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=18, textColor=colors.HexColor('#1a1a1a'), spaceAfter=12, alignment=TA_CENTER, fontName='Helvetica-Bold')
+    title_style = ParagraphStyle('CustomTitle', parent=styles['Heading1'], fontSize=16, textColor=colors.HexColor('#1a1a1a'), spaceAfter=8, alignment=TA_CENTER, fontName='Helvetica-Bold')
     header_style = ParagraphStyle('HeaderStyle', parent=styles['Normal'], fontSize=10, textColor=colors.HexColor('#333333'), alignment=TA_CENTER)
     normal_style = ParagraphStyle('NormalStyle', parent=styles['Normal'], fontSize=10, textColor=colors.HexColor('#333333'))
     
     elements = []
-    elements.append(Paragraph("COLEGIO DR. ANTONIO VACA DÍEZ", title_style))
-    elements.append(Paragraph("Dirección Administrativa y Académica", header_style))
-    elements.append(Paragraph("Riberalta, Beni, Bolivia", header_style))
-    elements.append(Spacer(1, 0.3*inch))
-    elements.append(Paragraph("RECIBO DE PAGO", title_style))
+    elements.append(Paragraph(inst_linea1.upper(), title_style))
+    elements.append(Paragraph(inst_linea2, header_style))
     elements.append(Spacer(1, 0.2*inch))
+    elements.append(Paragraph("RECIBO DE PAGO DE PENSIÓN", title_style))
+    elements.append(Spacer(1, 0.15*inch))
     
     numero_recibo = f"REC-{pago.anio}-{pago.id:04d}"
     fecha_str = pago.fecha_pago.strftime('%d/%m/%Y %H:%M') if pago.fecha_pago else datetime.now().strftime('%d/%m/%Y %H:%M')
@@ -428,12 +512,9 @@ def generar_recibo_pago_pdf_simple(pago, estudiante, padre):
     elements.append(info_table)
     elements.append(Spacer(1, 0.2*inch))
     
-    elements.append(Paragraph("<b>DATOS DEL ESTUDIANTE</b>", normal_style))
-    elements.append(Spacer(1, 0.1*inch))
-    
     estudiante_data = [
         [Paragraph(f"<b>Nombre:</b> {estudiante.apellidos}, {estudiante.nombres}", normal_style),
-         Paragraph(f"<b>RUDE:</b> {estudiante.rude if estudiante.rude else 'S/N'}", normal_style)],
+         Paragraph(f"<b>RUDE / C.I.:</b> {estudiante.rude if estudiante.rude else (estudiante.ci or 'S/N')}", normal_style)],
         [Paragraph(f"<b>Curso:</b> {estudiante.curso if hasattr(estudiante, 'curso') else 'No asignado'}", normal_style),
          Paragraph(f"<b>Gestión:</b> {pago.anio}", normal_style)],
     ]
@@ -455,9 +536,6 @@ def generar_recibo_pago_pdf_simple(pago, estudiante, padre):
     ]))
     elements.append(estudiante_table)
     elements.append(Spacer(1, 0.2*inch))
-    
-    elements.append(Paragraph("<b>DETALLE DEL PAGO</b>", normal_style))
-    elements.append(Spacer(1, 0.1*inch))
     
     pago_data = [
         [Paragraph("<b>Concepto</b>", normal_style), Paragraph("<b>Valor</b>", normal_style)],
@@ -483,13 +561,13 @@ def generar_recibo_pago_pdf_simple(pago, estudiante, padre):
     elements.append(Spacer(1, 0.3*inch))
     
     elements.append(Paragraph("_" * 50, normal_style))
-    elements.append(Paragraph("Firma del Administrador", normal_style))
+    elements.append(Paragraph("Firma del Administrador / Tesorería", normal_style))
     elements.append(Spacer(1, 0.2*inch))
     
     footer_style = ParagraphStyle('Footer', parent=styles['Normal'], fontSize=8, textColor=colors.grey, alignment=TA_CENTER)
     elements.append(Spacer(1, 0.2*inch))
     footer_text = Paragraph(
-        f"<i>Este recibo es un comprobante oficial de pago. Generado el {datetime.now().strftime('%d/%m/%Y a las %H:%M')} por el Sistema de Gestión Escolar - Colegio Dr. Antonio Vaca Díez.</i>",
+        f"<i>Comprobante oficial de pago generado el {datetime.now().strftime('%d/%m/%Y a las %H:%M')}.</i>",
         footer_style
     )
     elements.append(footer_text)
@@ -498,41 +576,51 @@ def generar_recibo_pago_pdf_simple(pago, estudiante, padre):
     buffer.seek(0)
     return buffer.getvalue()
 
+
+# =========================================================================
+# REPORTE DE DEUDORES GENERAL (FILTRADO POR EL CORTE OPERATIVO)
+# =========================================================================
 @pagos_bp.route('/reporte-deudores', methods=['GET'])
 def reporte_deudores():
     from collections import defaultdict
-    meses_escolares = obtener_meses_activos()
     anio_actual = datetime.now().year
+    
+    # Meses formalmente vencidos a la fecha (Agosto y Septiembre si corte=Agosto y hoy=Octubre)
+    meses_para_mora = obtener_meses_activos(anio_evaluado=anio_actual, solo_vencidos_hasta_hoy=True)
 
-    estudiantes = Estudiante.query.filter(
-        Estudiante.estado.in_(["Activo", "Inscrito"]) | Estudiante.estado.is_(None)
-    ).order_by(Estudiante.curso, Estudiante.apellidos, Estudiante.nombres).all()
+    estudiantes = Estudiante.query.order_by(Estudiante.curso, Estudiante.apellidos, Estudiante.nombres).all()
+    estudiantes = [e for e in estudiantes if (e.estado or 'Activo').lower() not in ['archivado', 'inactivo', 'egresado', 'retirado']]
 
     deudores_por_curso = defaultdict(lambda: {"subtotal": 0.0, "alumnos": []})
     gran_total = 0.0
     total_deudores_conteo = 0
 
     for est in estudiantes:
-        pension_base = float(est.pension or 0.0)
-        if pension_base <= 0:
-            pension_base = 350.0
+        pension_base = float(est.pension) if est.pension and float(est.pension) > 0 else 430.0
 
-        pagos_est = Pago.query.filter_by(estudiante_id=est.id, anio=anio_actual).all()
-        pagos_por_mes = defaultdict(lambda: {"monto_pagado": 0.0, "monto_total": pension_base})
+        pagos_est = Pago.query.filter(
+            Pago.estudiante_id == est.id,
+            or_(Pago.anio == anio_actual, Pago.anio == str(anio_actual))
+        ).all()
         
+        pagos_por_mes = {}
         for p in pagos_est:
-            if p.mes and getattr(p, 'estado', 'Pagado') != 'Anulado':
-                mes_norm = p.mes.strip().capitalize()
-                pagos_por_mes[mes_norm]["monto_pagado"] += float(p.monto_pagado or 0.0)
-                if p.monto_total:
-                    pagos_por_mes[mes_norm]["monto_total"] = float(p.monto_total)
+            if getattr(p, 'estado', 'Pagado') == 'Anulado':
+                continue
+            if p.mes:
+                mes_norm = str(p.mes).strip().capitalize()
+                if mes_norm not in pagos_por_mes:
+                    pagos_por_mes[mes_norm] = {"abonado": 0.0, "descuento": 0.0}
+                pagos_por_mes[mes_norm]["abonado"] += float(p.monto_pagado or 0.0)
+                pagos_por_mes[mes_norm]["descuento"] += float(p.descuento or 0.0)
 
         meses_adeudados = []
         deuda_estudiante = 0.0
 
-        for mes in meses_escolares:
-            info_mes = pagos_por_mes.get(mes, {"monto_pagado": 0.0, "monto_total": pension_base})
-            saldo_mes = info_mes["monto_total"] - info_mes["monto_pagado"]
+        for mes in meses_para_mora:
+            info_mes = pagos_por_mes.get(mes, {"abonado": 0.0, "descuento": 0.0})
+            costo_ef = max(0.0, pension_base - info_mes["descuento"])
+            saldo_mes = max(0.0, costo_ef - info_mes["abonado"])
             
             if saldo_mes > 0.5:
                 deuda_estudiante += saldo_mes
@@ -558,5 +646,6 @@ def reporte_deudores():
         deudores_por_curso=dict(deudores_por_curso),
         gran_total=gran_total,
         total_alumnos_deudores=total_deudores_conteo,
-        anio_actual=anio_actual
+        anio_actual=anio_actual,
+        meses_evaluados=meses_para_mora
     )

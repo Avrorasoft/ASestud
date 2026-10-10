@@ -1447,9 +1447,8 @@ def informes_eliminar(id):
     return redirect(url_for('superadmin.informes_lista'))
 
 # =========================================================================
-# CONFIGURACIÓN DEL AÑO ESCOLAR
+# CONFIGURACIÓN DEL AÑO ESCOLAR Y CORTE FINANCIERO OPERATIVO
 # =========================================================================
-
 @superadmin_bp.route('/configuracion_anio_escolar', methods=['GET', 'POST'])
 def configuracion_anio_escolar():
     from models import ConfiguracionSuperadmin
@@ -1459,9 +1458,23 @@ def configuracion_anio_escolar():
 
     if request.method == 'POST':
         try:
-            # Procesar preset de inicio rápido
+            # 1. Guardar de forma explícita y directa la FECHA DE CORTE OPERATIVO
+            corte_val = request.form.get('fecha_corte_operativo', '').strip()
+            if corte_val:
+                cfg_corte = ConfiguracionSuperadmin.query.filter_by(clave='fecha_corte_operativo').first()
+                if cfg_corte:
+                    cfg_corte.valor = corte_val
+                else:
+                    cfg_corte = ConfiguracionSuperadmin(
+                        clave='fecha_corte_operativo',
+                        valor=corte_val,
+                        descripcion='Fecha inicial para el computo financiero y morosidad'
+                    )
+                    db.session.add(cfg_corte)
+
+            # 2. Procesar el resto de claves habituales
             preset = request.form.get('preset_inicio', 'personalizado')
-            
+            valores_preset = {}
             if preset == 'bolivia':
                 valores_preset = {
                     'anio_escolar_inicio': f'{datetime.now().year}-02-01',
@@ -1473,37 +1486,8 @@ def configuracion_anio_escolar():
                     'tipo_calendario': 'bolivia',
                     'meses_activos': '2,3,4,5,6,7,8,9,10,11',
                     'numero_trimestres': '3',
-                    'trimestre1_inicio': f'{datetime.now().year}-02-01',
-                    'trimestre1_fin': f'{datetime.now().year}-05-31',
-                    'trimestre2_inicio': f'{datetime.now().year}-06-01',
-                    'trimestre2_fin': f'{datetime.now().year}-08-31',
-                    'trimestre3_inicio': f'{datetime.now().year}-09-01',
-                    'trimestre3_fin': f'{datetime.now().year}-12-15',
-                    'inicio_rapido': 'bolivia',
                 }
-            elif preset == 'norte':
-                valores_preset = {
-                    'anio_escolar_inicio': f'{datetime.now().year}-09-01',
-                    'anio_escolar_fin': f'{datetime.now().year + 1}-06-30',
-                    'anio_escolar_nombre': f'Gestión {datetime.now().year}-{datetime.now().year + 1}',
-                    'dia_vencimiento_pension': '10',
-                    'dias_gracia_mora': '10',
-                    'aplicar_mora_automatica': 'true',
-                    'tipo_calendario': 'norte',
-                    'meses_activos': '9,10,11,12,1,2,3,4,5,6',
-                    'numero_trimestres': '3',
-                    'trimestre1_inicio': f'{datetime.now().year}-09-01',
-                    'trimestre1_fin': f'{datetime.now().year}-11-30',
-                    'trimestre2_inicio': f'{datetime.now().year}-12-01',
-                    'trimestre2_fin': f'{datetime.now().year + 1}-03-15',
-                    'trimestre3_inicio': f'{datetime.now().year + 1}-03-16',
-                    'trimestre3_fin': f'{datetime.now().year + 1}-06-30',
-                    'inicio_rapido': 'norte',
-                }
-            else:
-                valores_preset = {}
 
-            # Claves a procesar
             claves = [
                 'anio_escolar_inicio', 'anio_escolar_fin', 'anio_escolar_nombre',
                 'dia_vencimiento_pension', 'dias_gracia_mora', 'aplicar_mora_automatica',
@@ -1513,38 +1497,36 @@ def configuracion_anio_escolar():
                 'inicio_rapido'
             ]
 
-            actualizados = 0
+            actualizados = 1 if corte_val else 0
             for clave in claves:
-                # Usar valor del formulario, o del preset si existe
                 valor = request.form.get(clave)
                 if not valor and clave in valores_preset:
                     valor = valores_preset[clave]
                 
                 if valor is not None:
+                    valor_limpio = valor.strip()
                     cfg = ConfiguracionSuperadmin.query.filter_by(clave=clave).first()
                     if cfg:
-                        cfg.valor = valor
+                        cfg.valor = valor_limpio
                     else:
-                        # Si no existe en la base de datos virgen, se crea desde cero
                         nuevo_cfg = ConfiguracionSuperadmin(
                             clave=clave, 
-                            valor=valor, 
-                            descripcion=f'Configuracion de anio escolar: {clave}'
+                            valor=valor_limpio, 
+                            descripcion=f'Configuración del sistema: {clave}'
                         )
                         db.session.add(nuevo_cfg)
                     actualizados += 1
 
             db.session.commit()
-            flash(f'Configuracion del anio escolar actualizada ({actualizados} parametros).', 'success')
-            return redirect(url_for('superadmin.configuracion_anio_escolar'))
+            flash(f'✅ Configuración guardada correctamente. Corte operativo establecido en: {corte_val or "No definido"}', 'success')
+            return redirect('/superadmin/configuracion_anio_escolar')
 
         except Exception as e:
             db.session.rollback()
-            flash(f'Error al guardar configuracion: {str(e)}', 'danger')
+            flash(f'❌ Error al guardar configuración: {str(e)}', 'danger')
 
-    # Obtener todos los parámetros actuales
+    # Cargar todos los parámetros actuales
     configs = {c.clave: c.valor for c in ConfiguracionSuperadmin.query.all()}
-    
     return render_template('superadmin/configuracion_anio_escolar.html', configs=configs)
 
 @superadmin_bp.route('/configuracion_institucion', methods=['GET', 'POST'])
