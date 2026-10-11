@@ -21,6 +21,9 @@
         <div class="card-body p-4">
             <form method="GET" action="{{ url_for('faltas.index') }}" id="formFiltros" class="row g-3 align-items-end">
                 
+                <!-- Input oculto para garantizar el envío del turno -->
+                <input type="hidden" name="turno" id="inputTurnoOculto" value="{{ turno_seleccionado }}">
+
                 <!-- Fecha -->
                 <div class="col-md-3">
                     <label class="form-label fw-bold text-info"><i class="bi bi-calendar-event"></i> Fecha</label>
@@ -30,7 +33,7 @@
                 <!-- Curso -->
                 <div class="col-md-3">
                     <label class="form-label fw-bold text-info"><i class="bi bi-funnel"></i> Curso</label>
-                    <select name="curso" class="form-select bg-secondary text-light border-0 fw-bold fs-5 p-2 shadow-sm">
+                    <select name="curso" id="selectCurso" class="form-select bg-secondary text-light border-0 fw-bold fs-5 p-2 shadow-sm">
                         <option value="">-- Todos los Cursos --</option>
                         {% for c in cursos %}
                             <option value="{{ c }}" {% if curso_seleccionado == c %}selected{% endif %}>{{ c }}</option>
@@ -38,32 +41,40 @@
                     </select>
                 </div>
 
-                <!-- SLIDE SWITCH DE TURNO (CORREGIDO Y ESPACIADO) -->
-                <div class="col-md-3">
-                    <label class="form-label fw-bold text-warning d-block mb-2 text-center"><i class="bi bi-clock-history"></i> Turno Activo</label>
-                    <div class="bg-secondary px-3 py-2 rounded-3 shadow-inner d-flex align-items-center justify-content-between">
-                        <span class="fw-bold fs-6 {% if turno_seleccionado != 'Tarde' %}text-info{% else %}text-light opacity-50{% endif %}">Mañana</span>
-                        
-                        <div class="form-check form-switch m-0 px-2">
-                            <input class="form-check-input bg-warning border-0 shadow" type="checkbox" role="switch" id="slideTurno" name="turno" value="Tarde" {% if turno_seleccionado == 'Tarde' %}checked{% endif %} style="transform: scale(1.4); cursor: pointer;" onchange="document.getElementById('formFiltros').submit();">
-                        </div>
-                        
-                        <span class="fw-bold fs-6 {% if turno_seleccionado == 'Tarde' %}text-warning{% else %}text-light opacity-50{% endif %}">Tarde</span>
+                <!-- INTERRUPTOR CONMUTADOR DE TURNO (TOTALMENTE VISIBLE Y DESTACADO) -->
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-warning d-block mb-2 text-center">
+                        <i class="bi bi-toggle-on"></i> Conmutador de Turno
+                    </label>
+                    <div class="d-flex justify-content-center p-1 bg-black bg-opacity-50 rounded-pill border border-secondary shadow-sm">
+                        <!-- Botón Mañana -->
+                        <button type="button" 
+                                onclick="cambiarTurno('Mañana')" 
+                                class="btn btn-sm rounded-pill px-4 py-2 fw-bold flex-fill transition-all {% if turno_seleccionado != 'Tarde' %}btn-info text-dark shadow{% else %}btn-outline-secondary text-light border-0 opacity-75{% endif %}">
+                            <i class="bi bi-sun-fill me-1 text-warning"></i> Mañana
+                        </button>
+
+                        <!-- Botón Tarde -->
+                        <button type="button" 
+                                onclick="cambiarTurno('Tarde')" 
+                                class="btn btn-sm rounded-pill px-4 py-2 fw-bold flex-fill transition-all {% if turno_seleccionado == 'Tarde' %}btn-warning text-dark shadow{% else %}btn-outline-secondary text-light border-0 opacity-75{% endif %}">
+                            <i class="bi bi-sunset-fill me-1 text-danger"></i> Tarde
+                        </button>
                     </div>
                 </div>
 
                 <!-- Solo Faltones -->
-                <div class="col-md-3 text-center pb-2">
+                <div class="col-md-2 text-center pb-2">
                     <div class="form-check form-switch d-inline-block">
-                        <input class="form-check-input bg-danger border-0 shadow-sm" type="checkbox" role="switch" id="soloFaltasSwitch" name="solo_faltas" {% if solo_faltas %}checked{% endif %} style="transform: scale(1.5); cursor: pointer;">
-                        <label class="form-check-label fw-bold text-danger ms-2 fs-5" for="soloFaltasSwitch" style="cursor: pointer;">Solo Faltones</label>
+                        <input class="form-check-input bg-danger border-0 shadow-sm" type="checkbox" role="switch" id="soloFaltasSwitch" name="solo_faltas" value="1" {% if solo_faltas %}checked{% endif %} style="transform: scale(1.4); cursor: pointer;" onchange="document.getElementById('formFiltros').submit();">
+                        <label class="form-check-label fw-bold text-danger ms-2 fs-6" for="soloFaltasSwitch" style="cursor: pointer;">Solo Faltones</label>
                     </div>
                 </div>
 
                 <!-- Botón Aplicar -->
-                <div class="col-md-12 text-end mt-3">
+                <div class="col-md-12 text-end mt-3 border-top border-secondary pt-3">
                     <button type="submit" class="btn btn-info fw-bold fs-5 shadow px-5 py-2 text-dark">
-                        <i class="bi bi-search"></i> Aplicar Filtros
+                        <i class="bi bi-search"></i> Actualizar Consulta
                     </button>
                 </div>
             </form>
@@ -76,9 +87,9 @@
             <div class="card bg-dark text-light border-info shadow-lg h-100" style="border-radius: 12px;">
                 <div class="card-header border-bottom border-info p-3 d-flex justify-content-between align-items-center">
                     <h5 class="mb-0 fw-bold text-info">
-                        <i class="bi bi-list-columns-reverse"></i> Registros de la Fecha: {{ fecha_str }} &nbsp;|&nbsp; Turno: <span class="text-warning">{{ turno_seleccionado }}</span>
+                        <i class="bi bi-list-columns-reverse"></i> Registros de la Fecha: {{ fecha_str }} &nbsp;|&nbsp; Turno: <span class="badge {% if turno_seleccionado == 'Tarde' %}bg-warning text-dark{% else %}bg-info text-dark{% endif %} fs-6">{{ turno_seleccionado }}</span>
                     </h5>
-                    <span class="badge bg-info text-dark fs-6">{{ asistencias|length }} Resultados</span>
+                    <span class="badge bg-secondary text-light fs-6">{{ asistencias|length }} Resultados</span>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -182,7 +193,7 @@
                                     <td colspan="5" class="text-center p-5 text-secondary">
                                         <i class="bi bi-folder-x" style="font-size: 4rem;"></i>
                                         <h5 class="mt-3 fw-bold">No se encontraron registros de asistencia para el Turno {{ turno_seleccionado }}.</h5>
-                                        <p class="small">Cambie los filtros de fecha o curso para buscar nuevamente.</p>
+                                        <p class="small">Cambie de turno usando el conmutador superior o verifique los filtros.</p>
                                     </td>
                                 </tr>
                                 {% endfor %}
@@ -237,4 +248,16 @@
         </div>
     </div>
 </div>
+
+<script>
+function cambiarTurno(nuevoTurno) {
+    document.getElementById('inputTurnoOculto').value = nuevoTurno;
+    // Limpia el filtro de curso para que no busque un curso de la mañana en la tarde
+    const selectCurso = document.getElementById('selectCurso');
+    if (selectCurso) {
+        selectCurso.value = '';
+    }
+    document.getElementById('formFiltros').submit();
+}
+</script>
 {% endblock %}

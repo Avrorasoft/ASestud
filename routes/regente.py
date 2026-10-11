@@ -5,8 +5,8 @@ Archivo: routes/regente.py
 Proyecto: ASestud-Konetz / Sistema de Gestión Escolar
 Desarrollado por: Avrora Soft - Vibola LLC
 Descripción: Blueprint exclusivo para Regencia con enrutamiento inteligente.
-             Identifica automáticamente el turno y genera dinámicamente
-             los paralelos reales (A, B, C...) desde la base de datos.
+             Identifica automáticamente el turno y permite conmutar en caliente
+             entre Mañana y Tarde sin cerrar sesión.
 ==============================================================================
 """
 
@@ -14,7 +14,7 @@ import os
 from datetime import datetime
 from functools import wraps
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from models import (
     db, Estudiante, Asistencia, ControlAsistenciaDiaria, 
     Padre, Mensaje, ahora_bolivia
@@ -49,24 +49,26 @@ def regente_requerido(f):
 
 def obtener_cursos_del_turno(turno):
     """
-    Lee los cursos reales de los alumnos en este turno y extrae dinámicamente los paralelos.
-    Limpia el texto para mostrarlo bonito en el desplegable (Ej: '5to Secundaria A').
+    Lee los cursos reales de los alumnos en este turno de forma tolerante a mayúsculas.
     """
+    filtro_turno = func.lower(func.trim(Estudiante.turno)) == turno.lower()
+    
     cursos_db = db.session.query(Estudiante.curso).filter(
-        Estudiante.estado == 'Activo',
-        Estudiante.turno == turno,
+        or_(Estudiante.estado == 'Activo', Estudiante.estado == 'Inscrito', Estudiante.estado.is_(None)),
+        filtro_turno,
         Estudiante.curso != None
     ).distinct().all()
     
     cursos_limpios = set()
     for c in cursos_db:
+        if not c[0]:
+            continue
         nombre = c[0].strip().upper()
-        nombre = nombre.replace(' DE ', ' ') # Quitamos conectores
+        nombre = nombre.replace(' DE ', ' ')
         
         partes = nombre.split()
         clean_partes = []
         for p in partes:
-            # Si es una letra suelta (paralelo), se mantiene en mayúscula
             if len(p) == 1 and p in 'ABCDEFGH':
                 clean_partes.append(p)
             else:
@@ -75,6 +77,17 @@ def obtener_cursos_del_turno(turno):
         cursos_limpios.add(" ".join(clean_partes))
         
     return sorted(list(cursos_limpios))
+
+# ==============================================================================
+# RUTA RÁPIDA: CONMUTADOR DE TURNO EN CALIENTE (SIN CERRAR SESIÓN)
+# ==============================================================================
+@regente_bp.route('/cambiar_turno/<string:nuevo_turno>')
+@regente_requerido
+def cambiar_turno(nuevo_turno):
+    if nuevo_turno.capitalize() in ['Mañana', 'Tarde']:
+        session['turno_regente'] = nuevo_turno.capitalize()
+        flash(f"🔄 Conmutador activado: Ahora visualizando Turno {session['turno_regente']}.", "info")
+    return redirect(request.referrer or url_for('regente.monitor'))
 
 # ==============================================================================
 # LOGIN INTELIGENTE
@@ -109,18 +122,24 @@ def index():
     return redirect(url_for('regente.monitor'))
 
 # ==============================================================================
-# MONITOR DIARIO EN VIVO (FILTRADO POR TURNO DE LA REGENCIA)
+# MONITOR DIARIO EN VIVO (CONMUTABLE)
 # ==============================================================================
 @regente_bp.route('/monitor')
 @regente_requerido
 def monitor():
     hoy = ahora_bolivia().date()
+    
+    # Permite cambiar turno por parámetro GET directo o usar el de sesión
+    turno_get = request.args.get('turno', '').strip()
+    if turno_get.capitalize() in ['Mañana', 'Tarde']:
+        session['turno_regente'] = turno_get.capitalize()
+        
     turno_actual = session.get('turno_regente', 'Mañana')
     
     faltas_hoy = Asistencia.query.join(Estudiante).filter(
         db.func.date(Asistencia.fecha) == hoy,
         Asistencia.estado == 'Falta',
-        Estudiante.turno == turno_actual
+        func.lower(func.trim(Estudiante.turno)) == turno_actual.lower()
     ).order_by(Asistencia.curso, Asistencia.ci_estudiante).all()
     
     controles = ControlAsistenciaDiaria.query.filter(
@@ -134,19 +153,24 @@ def monitor():
         'regente/monitor.html',
         faltas=faltas_hoy,
         cursos_procesados=cursos_procesados,
-        hoy=hoy
+        hoy=hoy,
+        turno_actual=turno_actual
     )
 
 # ==============================================================================
-# PORTAL DE TOMA DE ASISTENCIA (SOPORTA PARALELOS A, B, C...)
+# PORTAL DE TOMA DE ASISTENCIA (CONMUTABLE)
 # ==============================================================================
 @regente_bp.route('/tomar_asistencia', methods=['GET', 'POST'])
 @regente_requerido
 def tomar_asistencia():
     hoy = ahora_bolivia().date()
+    
+    turno_get = request.args.get('turno', '').strip()
+    if turno_get.capitalize() in ['Mañana', 'Tarde']:
+        session['turno_regente'] = turno_get.capitalize()
+
     turno_actual = session.get('turno_regente', 'Mañana')
     
-    # La lista desplegable ahora nace directamente de la base de datos
     cursos_limpios = obtener_cursos_del_turno(turno_actual)
     curso_seleccionado = request.args.get('curso')
     
@@ -215,7 +239,7 @@ def tomar_asistencia():
         
         try:
             db.session.commit()
-            flash(f'✅ Asistencia de {curso} procesada y bloqueada exitosamente por {responsable_turno}.', 'success')
+            flash(f'✅ Asistencia de {curso} ({turno_actual}) procesada y bloqueada exitosamente por {responsable_turno}.', 'success')
         except Exception as e:
             db.session.rollback()
             flash(f'❌ Hubo un error al guardar la asistencia: {str(e)}', 'danger')
@@ -230,15 +254,13 @@ def tomar_asistencia():
         
         if not control or not control.bloqueado:
             query = Estudiante.query.filter(
-                Estudiante.estado == 'Activo',
-                Estudiante.turno == turno_actual
+                or_(Estudiante.estado == 'Activo', Estudiante.estado == 'Inscrito', Estudiante.estado.is_(None)),
+                func.lower(func.trim(Estudiante.turno)) == turno_actual.lower()
             )
             terminos_busqueda = curso_seleccionado.lower().replace(' de ', ' ').replace('-', ' ').split()
             
-            # FILTRO DE ALTA PRECISIÓN PARA PARALELOS
             for termino in terminos_busqueda:
                 if len(termino) == 1:
-                    # Si es una letra sola (ej. 'a'), exige que tenga un espacio antes para no confundirse con Secundari[a]
                     query = query.filter(Estudiante.curso.ilike(f'% {termino}%'))
                 else:
                     query = query.filter(Estudiante.curso.ilike(f'%{termino}%'))
@@ -251,7 +273,8 @@ def tomar_asistencia():
         curso_seleccionado=curso_seleccionado,
         estudiantes=estudiantes,
         hoy=hoy,
-        control=control
+        control=control,
+        turno_actual=turno_actual
     )
 
 # ==============================================================================
@@ -263,12 +286,17 @@ def historial():
     curso = request.args.get('curso', '')
     mes = request.args.get('mes', str(ahora_bolivia().month))
     anio = request.args.get('anio', str(ahora_bolivia().year))
+    
+    turno_get = request.args.get('turno', '').strip()
+    if turno_get.capitalize() in ['Mañana', 'Tarde']:
+        session['turno_regente'] = turno_get.capitalize()
+
     turno_actual = session.get('turno_regente', 'Mañana')
     
     query = Asistencia.query.join(Estudiante).filter(
         Asistencia.estado == 'Falta',
         db.extract('year', Asistencia.fecha) == int(anio),
-        Estudiante.turno == turno_actual
+        func.lower(func.trim(Estudiante.turno)) == turno_actual.lower()
     )
     
     if mes:
@@ -284,5 +312,6 @@ def historial():
         curso_seleccionado=curso,
         mes_seleccionado=mes,
         anio_seleccionado=anio,
-        cursos=obtener_cursos_del_turno(turno_actual)
+        cursos=obtener_cursos_del_turno(turno_actual),
+        turno_actual=turno_actual
     )

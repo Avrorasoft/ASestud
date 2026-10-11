@@ -5,14 +5,17 @@ Archivo: routes/faltas.py
 Proyecto: ASestud-Konetz / Sistema de Gestión Escolar
 Desarrollado por: Avrora Soft - Vibola LLC
 Descripción: Panel Central Administrativo para el control de asistencias.
-             Acceso libre a visualización, blindado con contraseña para modificaciones.
+             Acceso libre a visualización con interruptor conmutador exclusivo
+             (Mañana <-> Tarde) sin cerrar ni alterar la sesión de caja del usuario.
+             Blindado con contraseña de Bóveda para modificaciones.
 ==============================================================================
 """
 
 import os
+from datetime import datetime
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
 from werkzeug.utils import secure_filename
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from models import db, Asistencia, Estudiante, ControlAsistenciaDiaria, ConfiguracionSuperadmin, ahora_bolivia
 
 faltas_bp = Blueprint('faltas', __name__, template_folder='templates/faltas')
@@ -38,7 +41,6 @@ def login_boveda():
     if request.method == 'POST':
         password = request.form.get('password', '').strip()
         
-        # Centralización profesional: Prioriza la variable de entorno y usa respaldo de BD
         clave_boveda = os.getenv('BOVEDA_PASSWORD_MASTER')
         if not clave_boveda:
             config = ConfiguracionSuperadmin.query.filter_by(clave='superadmin_password').first()
@@ -65,19 +67,29 @@ def cerrar_boveda():
     return redirect(url_for('dashboard.index'))
 
 # ==============================================================================
-# PANEL GLOBAL DE ASISTENCIAS (ACCESO LIBRE DE VISUALIZACIÓN)
+# PANEL GLOBAL DE ASISTENCIAS (INTERRUPTOR CONMUTADOR MAÑANA / TARDE)
 # ==============================================================================
 @faltas_bp.route('/')
 def index():
-    fecha_str = request.args.get('fecha', ahora_bolivia().strftime('%Y-%m-%d'))
+    try:
+        fecha_str = request.args.get('fecha') or ahora_bolivia().strftime('%Y-%m-%d')
+    except Exception:
+        fecha_str = datetime.now().strftime('%Y-%m-%d')
+
     curso = request.args.get('curso', '').strip()
-    
-    turno = request.args.get('turno', 'Mañana').strip()
+    solo_faltas = request.args.get('solo_faltas')
+
+    # Lectura del conmutador: Si viene en la URL toma ese valor; si no, el de sesión; defecto 'Mañana'
+    turno = request.args.get('turno', '').strip()
+    if not turno:
+        turno = session.get('faltas_vista_turno') or session.get('turno_activo') or 'Mañana'
+
     if turno not in ['Mañana', 'Tarde']:
         turno = 'Mañana'
-        
-    solo_faltas = request.args.get('solo_faltas') 
 
+    session['faltas_vista_turno'] = turno
+
+    # Filtrar asistencias del turno activo
     query = db.session.query(Asistencia, Estudiante).join(
         Estudiante, Asistencia.estudiante_id == Estudiante.id
     ).filter(
@@ -96,22 +108,34 @@ def index():
 
     controles = ControlAsistenciaDiaria.query.filter(db.func.date(ControlAsistenciaDiaria.fecha) == fecha_str).all()
 
+    # Cursos registrados correspondientes a ese turno
     cursos_estandar = set()
-    cursos_asistencia = db.session.query(Asistencia.curso).filter(Asistencia.curso != None).distinct().all()
+    cursos_turno = db.session.query(Estudiante.curso).filter(
+        or_(Estudiante.estado == 'Activo', Estudiante.estado == 'Inscrito', Estudiante.estado.is_(None)),
+        db.func.trim(db.func.lower(Estudiante.turno)) == turno.lower(),
+        Estudiante.curso != None
+    ).distinct().all()
+
+    for c in cursos_turno:
+        if c[0] and c[0].strip():
+            nombre = c[0].strip().upper().replace(' DE ', ' ')
+            partes = nombre.split()
+            clean_partes = []
+            for p in partes:
+                if len(p) == 1 and p in 'ABCDEFGH':
+                    clean_partes.append(p)
+                else:
+                    clean_partes.append(p.capitalize())
+            cursos_estandar.add(" ".join(clean_partes))
+
+    # Si aún no hay asistencias cargadas pero existen en la tabla Asistencia
+    cursos_asistencia = db.session.query(Asistencia.curso).filter(
+        Asistencia.curso != None,
+        db.func.date(Asistencia.fecha) == fecha_str
+    ).distinct().all()
     for c in cursos_asistencia:
-        cursos_estandar.add(c[0].strip())
-        
-    cursos_db = db.session.query(Estudiante.curso).filter(Estudiante.estado == 'Activo', Estudiante.curso != None).distinct().all()
-    for c in cursos_db:
-        nombre = c[0].strip().upper().replace(' DE ', ' ')
-        partes = nombre.split()
-        clean_partes = []
-        for p in partes:
-            if len(p) == 1 and p in 'ABCDEFGH':
-                clean_partes.append(p)
-            else:
-                clean_partes.append(p.capitalize())
-        cursos_estandar.add(" ".join(clean_partes))
+        if c[0] and c[0].strip():
+            cursos_estandar.add(c[0].strip())
 
     return render_template(
         'faltas/index.html', 
@@ -142,7 +166,6 @@ def editar(id):
         if file and file.filename != '':
             filename = secure_filename(f"justificativo_{asistencia.id}_{file.filename}")
             
-            # Usar la ruta absoluta centralizada en C:\ASestud\uploads
             base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
             upload_folder = os.path.join(base_upload, 'justificaciones')
             os.makedirs(upload_folder, exist_ok=True)
