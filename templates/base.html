@@ -925,6 +925,20 @@
         });
     });
 </script>
+<!-- Bloque anti-burbujas de contraseñas -->
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    // Desactiva autocompletado en todos los inputs de contraseñas y formularios
+    document.querySelectorAll("form").forEach(function(f) {
+        f.setAttribute("autocomplete", "off");
+    });
+    document.querySelectorAll("input[type='password']").forEach(function(p) {
+        p.setAttribute("autocomplete", "new-password");
+        p.setAttribute("data-lpignore", "true"); // LastPass / Gestores externos
+        p.setAttribute("data-form-type", "other");
+    });
+});
+</script>
 </body>
 
 </html>

@@ -6,7 +6,8 @@ Proyecto: ASestud
 Descripción:
     Punto de entrada para ejecución en producción local con IP fija/dinámica de red.
     Configurado para operar de manera absoluta desde C:\ASestud, utilizando
-    Waitress como servidor WSGI y abriendo automáticamente el navegador en Modo App.
+    Waitress como servidor WSGI y maximizando la ventana al 100% mediante
+    la API Win32 (ShowWindow SW_MAXIMIZE) sin carteles de contraseñas.
 ==============================================================================
 """
 
@@ -58,14 +59,52 @@ def obtener_ip_local():
         return "127.0.0.1"
 
 
+def forzar_ventana_maximizada():
+    """
+    Busca la ventana abierta por el sistema y le aplica la instrucción
+    SW_MAXIMIZE (3) a nivel de sistema operativo Windows para forzar el 100%.
+    """
+    user32 = ctypes.windll.user32
+    SW_MAXIMIZE = 3
+
+    # Reintenta durante 6 segundos hasta que la ventana esté creada en pantalla
+    for _ in range(12):
+        time.sleep(0.5)
+        def enum_windows_callback(hwnd, extra):
+            if user32.IsWindowVisible(hwnd):
+                length = user32.GetWindowTextLengthW(hwnd)
+                buff = ctypes.create_unicode_buffer(length + 1)
+                user32.GetWindowTextW(hwnd, buff, length + 1)
+                titulo = buff.value.lower()
+                # Coincide si el título contiene ASestud, el nombre del sistema o la IP/puerto
+                if any(k in titulo for k in ['asestud', 'colegio', '5000', 'gestión', 'gestion', 'cardex', 'unidad']):
+                    user32.ShowWindow(hwnd, SW_MAXIMIZE)
+                    user32.SetForegroundWindow(hwnd)
+                    return False
+            return True
+
+        WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+        cb = WNDENUMPROC(enum_windows_callback)
+        user32.EnumWindows(cb, 0)
+
+
 def abrir_navegador(url):
     """
-    Abre el navegador en 'Modo App' para forzar una ventana limpia (sin pestañas ni menús)
-    y asegurar que la barra de tareas de Windows muestre el ícono del sistema ASestud.
+    Lanza el navegador y ejecuta el forzado de ventana al 100% en Windows.
     """
-    time.sleep(1.5)
-    
-    # Rutas comunes de instalación de navegadores Chromium en Windows
+    time.sleep(1.2)
+
+    # Banderas específicas para neutralizar captura de contraseñas
+    flags_navegador = [
+        f"--app={url}",
+        "--start-maximized",
+        "--disable-save-password-bubble",
+        "--disable-features=PasswordManager,AutofillServerCommunication,PasswordGeneration",
+        "--password-store=basic",
+        "--no-first-run",
+        "--no-default-browser-check"
+    ]
+
     rutas_navegadores = [
         r"C:\Program Files\Google\Chrome\Application\chrome.exe",
         r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
@@ -79,32 +118,31 @@ def abrir_navegador(url):
     for ruta in rutas_navegadores:
         if os.path.exists(ruta):
             try:
-                # Ejecutar el navegador forzando el modo aplicación
-                subprocess.Popen([ruta, f"--app={url}"])
+                subprocess.Popen([ruta] + flags_navegador)
                 navegador_encontrado = True
                 break
             except Exception:
                 continue
-    
-    # Respaldo: Si no existe Chrome ni Edge en la computadora, usar el comportamiento estándar
+
     if not navegador_encontrado:
         try:
             webbrowser.open(url)
         except Exception:
             pass
 
+    # Disparar el forzado a 100% de Windows en segundo plano
+    threading.Thread(target=forzar_ventana_maximizada, daemon=True).start()
+
 
 def main():
     configurar_id_barra_tareas()
     port = get_port()
-    
-    # Detectar dinámicamente la IP local de la red
+
     ip_local = obtener_ip_local()
     url = f'http://{ip_local}:{port}/'
 
     app = create_app()
 
-    # Crear tablas si no existen en la base de datos de C:\ASestud
     with app.app_context():
         db.create_all()
 
@@ -117,7 +155,6 @@ def main():
     print("Presione Ctrl+C para detener el servidor.")
     print("=" * 70)
 
-    # Abrir navegador automáticamente usando la IP real de red
     threading.Thread(
         target=abrir_navegador,
         args=(url,),
