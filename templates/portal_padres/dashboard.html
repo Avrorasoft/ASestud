@@ -1,27 +1,25 @@
 {% extends "base_padres.html" %}
 
-{% block title %}Inicio - Portal de Padres - Colegio Dr. Antonio Vaca Díez{% endblock %}
+{% block title %}Inicio - Portal de Padres - {{ institucion.get('institucion_linea1', 'Unidad Educativa') if institucion else 'Unidad Educativa' }}{% endblock %}
 
 {% block page_title %}Inicio{% endblock %}
 
 {% block content %}
 <style id="estilo-boletin-carta-impresion">
-    /* MEDIDAS Y MÁRGENES ESTRICTOS TAMAÑO CARTA */
     @page {
         size: letter portrait !important;
         margin: 8mm 10mm 8mm 10mm !important;
     }
 
-    /* CONTENEDOR EN PANTALLA: HOJA CENTRADA */
     @media screen {
         body {
             background-color: #f8fafc !important;
             margin: 0 !important;
-            padding: 0 !important; /* CORRECCIÓN: Cero franja blanca */
+            padding: 0 !important;
         }
         .hoja-impresion-boletin {
             background: transparent !important;
-            width: 100% !important; /* CORRECCIÓN: Ocupa el 100% para no bloquear los clics */
+            width: 100% !important;
             min-height: auto !important;
             padding: 0 !important;
             margin: 0 !important;
@@ -32,7 +30,6 @@
         }
     }
 
-    /* REGLAS OBLIGATORIAS DE IMPRESIÓN: CERO COLAPSO Y CERO SCROLL */
     @media print {
         html, body {
             width: 100% !important;
@@ -84,7 +81,6 @@
         }
     }
 
-    /* MARCA DE AGUA DE FONDO (INTEGRADA, NO FLOTANTE) */
     .watermark-fondo {
         position: absolute;
         top: 48%;
@@ -95,10 +91,10 @@
         pointer-events: none;
         z-index: 0;
         user-select: none;
-        color: rgba(15, 23, 42, 0.09);
+        color: rgba(15, 23, 42, 0.08);
     }
     .wm-alumno {
-        font-size: 34px;
+        font-size: 38px;
         font-weight: 900;
         text-transform: uppercase;
         letter-spacing: 3px;
@@ -106,96 +102,101 @@
         margin-bottom: 5px;
     }
     .wm-datos {
-        font-size: 16px;
+        font-size: 18px;
         font-weight: 700;
         letter-spacing: 2px;
         text-transform: uppercase;
         margin-bottom: 4px;
     }
     .wm-col {
-        font-size: 13px;
+        font-size: 15px;
         font-weight: 800;
         letter-spacing: 3px;
         text-transform: uppercase;
     }
 
-    /* CONTENIDO PRINCIPAL SOBRE LA MARCA DE AGUA */
     .contenido-documento {
         position: relative;
         z-index: 1;
     }
-    .contenido-documento table {
-        background-color: transparent !important;
+
+    /* TARJETAS DE ACCESOS RÁPIDOS AMPLIADAS */
+    .hover-card {
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border-width: 2px !important;
     }
-    .contenido-documento table th {
-        background-color: #1e293b !important;
-        color: #ffffff !important;
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
-    }
-    .contenido-documento table td {
-        background-color: transparent !important;
+    .hover-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.12) !important;
     }
 </style>
 
 <div class="hoja-impresion-boletin">
-    {# MARCA DE AGUA INTEGRADA DE FONDO (DETRÁS DEL TEXTO) #}
     {% set _est = est if (est is defined and est) else (estudiante if (estudiante is defined and estudiante) else (alumno if (alumno is defined and alumno) else None)) %}
     {% if _est %}
     <div class="watermark-fondo">
         <div class="wm-alumno">{{ _est.apellidos }} {{ _est.nombres }}</div>
-        <div class="wm-datos">C.I. {{ _est.ci }} {{ _est.expedido or 'BN' }} &bull; RUDE: {{ _est.rude or '-' }}</div>
-        <div class="wm-col">COLEGIO DR. ANTONIO VACA DÍEZ</div>
+        <div class="wm-datos">C.I. {{ _est.ci }} {{ _est.expedido or '' }} &bull; RUDE: {{ _est.rude or '-' }}</div>
+        <div class="wm-col">{{ institucion.get('institucion_linea1', 'UNIDAD EDUCATIVA') if institucion else 'UNIDAD EDUCATIVA' }}</div>
     </div>
     {% endif %}
 
     <div class="contenido-documento">
-        <div class="container-fluid py-4">
+        <div class="container-fluid py-3">
+            <!-- Saludo Principal -->
             <div class="row mb-4">
                 <div class="col-12">
-                    <h2 class="fw-bold mb-0 text-dark">
+                    <h1 class="fw-bold mb-1 text-dark" style="font-size: 2.3rem;">
                         <i class="bi bi-house-door-fill text-primary me-2"></i>
-                        Hola, {{ padre.nombres }}
-                    </h2>
+                        Hola, {{ padre.nombres if padre else 'Tutor/a' }}
+                    </h1>
+                    <p class="text-muted fs-5 mb-0">Bienvenido/a al portal de seguimiento académico y administrativo de su hijo/a.</p>
                 </div>
             </div>
 
             <!-- Banner PWA -->
-            <div id="pwaBanner" class="alert alert-info alert-dismissible fade show shadow-sm" style="display: none;">
+            <div id="pwaBanner" class="alert alert-info alert-dismissible fade show shadow-sm p-4 mb-4" style="display: none; border-radius: 12px;">
                 <div class="d-flex align-items-center gap-3">
-                    <i class="bi bi-phone-fill fs-3"></i>
+                    <i class="bi bi-phone-fill" style="font-size: 3rem;"></i>
                     <div class="flex-grow-1">
-                        <strong>¡Instala la App Oficial!</strong>
-                        <p class="mb-0 small">Accede desde tu celular con un solo toque.</p>
+                        <strong class="fs-4 d-block">¡Instale la Aplicación Oficial en su Celular!</strong>
+                        <p class="mb-0 fs-5">Acceda con un solo toque sin tener que escribir la dirección cada vez.</p>
                     </div>
-                    <button id="btnInstalarPWA" class="btn btn-primary btn-sm">
-                        <i class="bi bi-download me-1"></i>Instalar
+                    <button id="btnInstalarPWA" class="btn btn-primary btn-lg fw-bold px-4">
+                        <i class="bi bi-download me-2"></i>Instalar App
                     </button>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="alert" onclick="cerrarBannerPWA()"></button>
             </div>
 
             <!-- Perfil del Estudiante -->
-            <div class="card mb-4 shadow-sm border-0">
-                <div class="card-header bg-white py-3">
-                    <h5 class="mb-0">
-                        <i class="bi bi-person-badge-fill text-primary me-2"></i>
+            <div class="card mb-4 shadow-sm border-2">
+                <div class="card-header bg-white py-3 border-bottom">
+                    <h4 class="mb-0 fw-bold text-dark">
+                        <i class="bi bi-person-badge-fill text-primary me-2 fs-3"></i>
                         Perfil del Estudiante
-                    </h5>
+                    </h4>
                 </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-md-6">
-                            <p class="mb-2 text-muted"><strong>Nombre Completo:</strong></p>
-                            <h4 class="text-primary fw-bold">{% if estudiante %}{{ estudiante.apellidos }}, {{ estudiante.nombres }}{% else %}Sin estudiante asignado{% endif %}</h4>
-                            <p class="mb-0"><strong>RUDE:</strong> <span class="badge bg-light text-dark border">{{ estudiante.rude if estudiante else 'N/D' }}</span></p>
+                <div class="card-body p-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-6 mb-3 mb-md-0">
+                            <span class="text-muted fs-6 fw-bold text-uppercase d-block mb-1">Nombre Completo:</span>
+                            <h2 class="text-primary fw-bold mb-2" style="font-size: 2rem;">
+                                {% if estudiante %}{{ estudiante.apellidos }}, {{ estudiante.nombres }}{% else %}Sin estudiante asignado{% endif %}
+                            </h2>
+                            <p class="mb-0 fs-5">
+                                <strong>C.I. del Estudiante:</strong> 
+                                <span class="badge bg-light text-dark border fs-6 px-3 py-2 ms-2">{{ estudiante.ci if estudiante and estudiante.ci else 'N/D' }}</span>
+                            </p>
                         </div>
-                        <div class="col-md-6 mt-3 mt-md-0">
-                            <p class="mb-2 text-muted"><strong>Información Académica:</strong></p>
-                            <p class="mb-2"><strong>Curso:</strong> <span class="text-primary fw-bold">{{ estudiante.curso if estudiante else 'N/D' }}</span></p>
-                            <p class="mb-0">
-                                <strong>Estado:</strong>
-                                <span class="badge bg-{{ 'success' if estudiante and estudiante.estado == 'Activo' else 'warning text-dark' }}">
+                        <div class="col-md-6">
+                            <span class="text-muted fs-6 fw-bold text-uppercase d-block mb-1">Información del Curso:</span>
+                            <p class="mb-2 fs-4">
+                                <strong>Curso:</strong> <span class="text-dark fw-bold">{{ estudiante.curso if estudiante else 'N/D' }}</span>
+                            </p>
+                            <p class="mb-0 fs-5">
+                                <strong>Estado de Matrícula:</strong>
+                                <span class="badge bg-{{ 'success' if estudiante and estudiante.estado == 'Activo' else 'warning text-dark' }} fs-6 px-3 py-2 ms-2">
                                     {{ estudiante.estado if estudiante else 'Inactivo' }}
                                 </span>
                             </p>
@@ -204,52 +205,67 @@
                 </div>
             </div>
 
-            <!-- Accesos Rápidos -->
-            <div class="row g-3 mb-4">
-                <div class="col-md-6 col-lg-3">
+            <!-- Accesos Rápidos en Cuadrícula Grande y Fácil de Tocar -->
+            <div class="row g-4 mb-4">
+                <div class="col-sm-6 col-lg">
                     <a href="{{ url_for('portal_padres.nuevo_mensaje') }}" class="text-decoration-none">
                         <div class="card h-100 border-primary shadow-sm hover-card">
                             <div class="card-body text-center py-4">
-                                <i class="bi bi-send-fill text-primary" style="font-size: 2.2rem;"></i>
-                                <h5 class="mt-3 mb-1 text-dark">Nuevo Mensaje</h5>
-                                <p class="text-muted mb-0 small">Escribir al colegio</p>
+                                <i class="bi bi-send-fill text-primary d-block mb-2" style="font-size: 3.5rem;"></i>
+                                <h4 class="fw-bold mb-1 text-dark">Nuevo Mensaje</h4>
+                                <p class="text-muted mb-0 fs-6">Escribir a la institución</p>
                             </div>
                         </div>
                     </a>
                 </div>
-                <div class="col-md-6 col-lg-3">
+
+                <div class="col-sm-6 col-lg">
                     <a href="{{ url_for('portal_padres.mensajes') }}" class="text-decoration-none">
                         <div class="card h-100 border-info shadow-sm hover-card">
                             <div class="card-body text-center py-4">
-                                <i class="bi bi-chat-dots-fill text-info" style="font-size: 2.2rem;"></i>
-                                <h5 class="mt-3 mb-1 text-dark">Bandeja de Entrada</h5>
-                                <p class="text-muted mb-0 small">{{ mensajes_recientes|length if mensajes_recientes is defined else 0 }} mensajes</p>
+                                <i class="bi bi-chat-dots-fill text-info d-block mb-2" style="font-size: 3.5rem;"></i>
+                                <h4 class="fw-bold mb-1 text-dark">Mensajes</h4>
+                                <p class="text-muted mb-0 fs-6 fw-bold text-info">{{ mensajes_recientes|length if mensajes_recientes is defined else 0 }} recibidos</p>
                             </div>
                         </div>
                     </a>
                 </div>
-                <div class="col-md-6 col-lg-3">
+
+                <div class="col-sm-6 col-lg">
+                    <a href="{{ url_for('portal_padres.pizarra') }}" class="text-decoration-none">
+                        <div class="card h-100 border-success shadow-sm hover-card">
+                            <div class="card-body text-center py-4">
+                                <i class="bi bi-grid-3x3-gap-fill text-success d-block mb-2" style="font-size: 3.5rem;"></i>
+                                <h4 class="fw-bold mb-1 text-dark">Pizarra Escolar</h4>
+                                <p class="text-muted mb-0 fs-6">Ver tareas y materias</p>
+                            </div>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="col-sm-6 col-lg">
                     <a href="{{ url_for('portal_padres.ver_boletin') }}" class="text-decoration-none">
                         <div class="card h-100 border-warning shadow-sm hover-card">
                             <div class="card-body text-center py-4">
-                                <i class="bi bi-journal-check text-warning" style="font-size: 2.2rem;"></i>
-                                <h5 class="mt-3 mb-1 text-dark">Boletín de Notas</h5>
-                                <p class="text-muted mb-0 small">Ver calificaciones</p>
+                                <i class="bi bi-journal-check text-warning d-block mb-2" style="font-size: 3.5rem;"></i>
+                                <h4 class="fw-bold mb-1 text-dark">Boletín</h4>
+                                <p class="text-muted mb-0 fs-6">Ver calificaciones</p>
                             </div>
                         </div>
                     </a>
                 </div>
-                <div class="col-md-6 col-lg-3">
+
+                <div class="col-sm-6 col-lg">
                     <a href="{{ url_for('portal_padres.pagos') }}" class="text-decoration-none">
                         <div class="card h-100 border-{{ 'danger' if monto_pendiente > 0 else 'success' }} shadow-sm hover-card">
                             <div class="card-body text-center py-4">
-                                <i class="bi bi-wallet2 text-{{ 'danger' if monto_pendiente > 0 else 'success' }}" style="font-size: 2.2rem;"></i>
-                                <h5 class="mt-3 mb-1 text-dark">Finanzas</h5>
-                                <p class="text-muted mb-0 small">
+                                <i class="bi bi-wallet2 text-{{ 'danger' if monto_pendiente > 0 else 'success' }} d-block mb-2" style="font-size: 3.5rem;"></i>
+                                <h4 class="fw-bold mb-1 text-dark">Finanzas</h4>
+                                <p class="mb-0 fs-6 fw-bold text-{{ 'danger' if monto_pendiente > 0 else 'success' }}">
                                     {% if monto_pendiente > 0 %}
                                         Pendiente: Bs. {{ "%.2f"|format(monto_pendiente) }}
                                     {% else %}
-                                        Al día <i class="bi bi-check-circle-fill text-success"></i>
+                                        Al día con sus cuotas <i class="bi bi-check-circle-fill"></i>
                                     {% endif %}
                                 </p>
                             </div>
@@ -259,13 +275,13 @@
             </div>
 
             <!-- Últimos Mensajes -->
-            <div class="card shadow-sm border-0">
-                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">
-                        <i class="bi bi-inboxes-fill text-primary me-2"></i>
-                        Últimos Mensajes
-                    </h5>
-                    <a href="{{ url_for('portal_padres.mensajes') }}" class="btn btn-sm btn-outline-primary fw-bold">Ver todos</a>
+            <div class="card shadow-sm border-2">
+                <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-bottom">
+                    <h4 class="mb-0 fw-bold text-dark">
+                        <i class="bi bi-inboxes-fill text-primary me-2 fs-3"></i>
+                        Últimos Mensajes Recibidos
+                    </h4>
+                    <a href="{{ url_for('portal_padres.mensajes') }}" class="btn btn-outline-primary btn-md fw-bold">Ver todos los mensajes</a>
                 </div>
                 <div class="card-body p-0">
                     {% if mensajes_recientes %}
@@ -275,26 +291,26 @@
                             {% set texto_limpio = partes[0].strip() %}
                             {% set tiene_adjunto = partes|length > 1 %}
 
-                            <a href="{{ url_for('portal_padres.ver_mensaje', id=msg.id) }}" class="list-group-item list-group-item-action p-3">
+                            <a href="{{ url_for('portal_padres.ver_mensaje', id=msg.id) }}" class="list-group-item list-group-item-action p-4 border-bottom">
                                 <div class="d-flex justify-content-between align-items-start mb-2">
                                     <div class="d-flex flex-wrap gap-2 align-items-center">
-                                        <span class="badge bg-{{ 'primary' if 'Boletín' in msg.tipo_mensaje else 'info' if 'Citación' in msg.tipo_mensaje else 'success' if 'Pago' in msg.tipo_mensaje else 'secondary' }}">
+                                        <span class="badge bg-{{ 'primary' if 'Boletín' in msg.tipo_mensaje else 'info' if 'Citación' in msg.tipo_mensaje else 'success' if 'Pago' in msg.tipo_mensaje else 'secondary' }} fs-6 px-3 py-1">
                                             {{ msg.tipo_mensaje }}
                                         </span>
-                                        {% if msg.remitente == 'Colegio' %}
-                                            <small class="text-success fw-bold"><i class="bi bi-building me-1"></i>Colegio</small>
+                                        {% if msg.remitente == 'Colegio' or msg.remitente == 'Institución' %}
+                                            <span class="text-success fw-bold fs-6"><i class="bi bi-building me-1"></i>Institución</span>
                                         {% else %}
-                                            <small class="text-primary fw-bold"><i class="bi bi-person-fill me-1"></i>Usted</small>
+                                            <span class="text-primary fw-bold fs-6"><i class="bi bi-person-fill me-1"></i>Usted</span>
                                         {% endif %}
                                         {% if tiene_adjunto %}
-                                            <span class="badge bg-warning text-dark"><i class="bi bi-paperclip"></i> Adjunto</span>
+                                            <span class="badge bg-warning text-dark fs-6 px-2 py-1"><i class="bi bi-paperclip"></i> Con Adjunto</span>
                                         {% endif %}
                                     </div>
-                                    <small class="text-muted text-nowrap">
+                                    <span class="text-muted fs-6 fw-bold text-nowrap">
                                         <i class="bi bi-calendar3 me-1"></i>{{ msg.fecha_envio.strftime('%d/%m/%Y') }}
-                                    </small>
+                                    </span>
                                 </div>
-                                <p class="mb-0 text-muted text-truncate">
+                                <p class="mb-0 text-dark fs-5 text-truncate" style="max-width: 90%;">
                                     {{ texto_limpio }}
                                 </p>
                             </a>
@@ -302,8 +318,8 @@
                         </div>
                     {% else %}
                         <div class="text-center py-5">
-                            <i class="bi bi-mailbox text-muted" style="font-size: 3rem;"></i>
-                            <p class="text-muted mt-3 mb-0">No hay mensajes en la bandeja</p>
+                            <i class="bi bi-mailbox text-muted" style="font-size: 4rem;"></i>
+                            <h4 class="text-secondary mt-3 mb-0">No hay mensajes recientes en la bandeja.</h4>
                         </div>
                     {% endif %}
                 </div>
@@ -334,7 +350,7 @@ if (btnInstalar) {
             }
             deferredPrompt = null;
         } else {
-            alert('Para instalar la app, usa el menú de tu navegador y selecciona "Añadir a pantalla de inicio"');
+            alert('Para instalar la app, pulse en el menú de su navegador (los tres puntos) y elija "Añadir a pantalla de inicio"');
         }
     });
 }

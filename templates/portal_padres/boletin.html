@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="author" content="Avrora Soft - Vibola LLC">
+    <title>Boletín - {{ estudiante.apellidos }}, {{ estudiante.nombres }}</title>
+    
+    <style>
+        @page {
+            size: letter portrait;
+            margin: 10mm 12mm;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 10pt;
+            color: #0f172a;
+            background: #e2e8f0;
+        }
+
+        .paper {
+            width: 200mm;
+            min-height: 270mm;
+            margin: 15px auto;
+            background: #ffffff;
+            padding: 8mm 10mm;
+            box-shadow: 0 0 15px rgba(0,0,0,0.15);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .marca-fija-papel {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-32deg);
+            width: 90%;
+            text-align: center;
+            pointer-events: none;
+            z-index: 0;
+            user-select: none;
+            color: rgba(15, 23, 42, 0.08) !important;
+        }
+        .mf-nombre {
+            font-size: 34px;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            line-height: 1.15;
+            margin-bottom: 5px;
+        }
+        .mf-datos {
+            font-size: 15px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            border-bottom: 2px solid #0f172a;
+            padding-bottom: 6px;
+            margin-bottom: 10px;
+        }
+        .header h1 { 
+            font-size: 15pt; 
+            margin-bottom: 2px; 
+            text-transform: uppercase; 
+            font-weight: 800;
+            color: #0f172a;
+        }
+        .header h2 { font-size: 12pt; font-weight: bold; letter-spacing: 1px; color: #1e3c72; }
+        .header p { font-size: 8.5pt; color: #475569; margin-top: 2px; font-weight: 600; }
+
+        .student-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            border: 2px solid #0f172a;
+            padding: 6px 10px;
+            background: rgba(248, 250, 252, 0.95);
+            border-radius: 6px;
+        }
+        .student-data {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            font-size: 9.5pt;
+            gap: 4px 15px;
+        }
+        .student-data div { 
+            padding: 1px 0; 
+            border-bottom: 1px dotted #cbd5e1;
+        }
+        .student-data strong { font-weight: bold; color: #1e293b; }
+
+        table.grades {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9pt;
+            margin-bottom: 10px;
+        }
+        table.grades th {
+            background: #0f172a;
+            color: #ffffff;
+            padding: 6px 8px;
+            text-align: center;
+            font-size: 8.5pt;
+            text-transform: uppercase;
+            border: 1px solid #0f172a;
+        }
+        table.grades td {
+            padding: 5px 8px;
+            border: 1px solid #94a3b8;
+            vertical-align: middle;
+        }
+        
+        .trimestre-label {
+            font-weight: bold;
+            color: #1e3c72;
+            width: 130px;
+            white-space: nowrap;
+        }
+        .materia-header-cell {
+            background: #e2e8f0;
+            color: #0f172a;
+            font-weight: 800;
+            font-size: 9.5pt;
+            text-align: left;
+            padding-left: 10px;
+        }
+        
+        .prom-box {
+            text-align: center;
+            font-weight: 800;
+            font-size: 11pt;
+            width: 110px;
+        }
+        .prom-aprobado { color: #065f46; background: rgba(209, 250, 229, 0.7); }
+        .prom-reprobado { color: #991b1b; background: rgba(254, 226, 226, 0.7); }
+
+        table.grades tfoot td {
+            background: #f1f5f9;
+            font-weight: 800;
+            padding: 8px;
+            border: 2px solid #0f172a;
+            font-size: 10.5pt;
+        }
+
+        .resultado {
+            text-align: center;
+            padding: 6px;
+            margin-bottom: 12px;
+            font-size: 10pt;
+            font-weight: bold;
+            border: 2px solid #0f172a;
+            border-radius: 6px;
+        }
+        .res-aprobado { background: #d1fae5; color: #065f46; }
+        .res-reprobado { background: #fee2e2; color: #991b1b; }
+        .res-sindatos { background: #fef3c7; color: #92400e; }
+
+        .verification-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            padding: 8px 12px;
+            border: 1px dashed #0f172a;
+            background: rgba(248, 250, 252, 0.95);
+            font-size: 8.5pt;
+            border-radius: 6px;
+        }
+        .qr-container { text-align: center; }
+        .qr-container img { width: 22mm; height: 22mm; border: 1px solid #0f172a; }
+        .qr-label { font-size: 7pt; color: #0f172a; margin-top: 2px; font-weight: bold; }
+        .verification-info { flex: 1; margin-left: 15px; font-size: 8pt; }
+        .verification-code {
+            font-family: monospace;
+            font-weight: bold;
+            color: #0f172a;
+            background: #fff;
+            padding: 2px 6px;
+            border: 1px solid #0f172a;
+            display: inline-block;
+        }
+
+        .firmas {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 45px;
+            padding-top: 5px;
+            font-size: 8.5pt;
+            text-align: center;
+        }
+        .firma-box { width: 30%; border-top: 1px solid #0f172a; padding-top: 5px; font-weight: bold; }
+
+        .footer {
+            margin-top: 10px;
+            text-align: center;
+            font-size: 7.5pt;
+            color: #64748b;
+            border-top: 1px solid #cbd5e1;
+            padding-top: 4px;
+        }
+
+        .screen-only { text-align: center; margin: 15px auto; max-width: 200mm; }
+        .btn { padding: 10px 20px; font-size: 11pt; cursor: pointer; border: none; border-radius: 6px; margin: 0 5px; text-decoration: none; color: #fff; font-weight: bold; }
+        .btn-print { background: #1e3c72; }
+        .btn-back { background: #475569; }
+
+        @media print {
+            body { background: #fff; }
+            .paper { width: 100%; min-height: auto; margin: 0; padding: 0; box-shadow: none; border: none; }
+            .screen-only { display: none !important; }
+            table.grades, tr, .firmas, .resultado, .verification-section { page-break-inside: avoid; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="screen-only">
+    <button onclick="window.print()" class="btn btn-print">🖨️ Imprimir Boletín</button>
+    <a href="{{ url_for('calificaciones.libro_notas') }}" class="btn btn-back">⬅️ Volver al Libro</a>
+</div>
+
+<div class="paper">
+    <div class="marca-fija-papel">
+        <div class="mf-nombre">{{ estudiante.apellidos }} {{ estudiante.nombres }}</div>
+        <div class="mf-datos">C.I. {{ estudiante.ci or '' }} &bull; RUDE: {{ estudiante.rude or '-' }} &bull; {{ institucion.get('institucion_linea1', 'UNIDAD EDUCATIVA') if institucion else 'UNIDAD EDUCATIVA' }}</div>
+    </div>
+
+    <div class="content">
+        <div class="header">
+            <h1>{{ institucion.get('institucion_linea1', 'UNIDAD EDUCATIVA') if institucion else 'UNIDAD EDUCATIVA' }}</h1>
+            <h2>Boletín Oficial de Calificaciones</h2>
+            <p>Gestión Académica {{ now.year }} | Fecha de Emisión: {{ now.strftime('%d/%m/%Y') }}</p>
+        </div>
+
+        <div class="student-info">
+            <div class="student-data">
+                <div><strong>Apellidos y Nombres:</strong> {{ estudiante.apellidos }}, {{ estudiante.nombres }}</div>
+                <div><strong>Curso:</strong> {{ estudiante.curso }}</div>
+                <div><strong>C.I.:</strong> {{ estudiante.ci or 'N/D' }}</div>
+                <div><strong>RUDE:</strong> {{ estudiante.rude or 'N/D' }}</div>
+                <div><strong>Fecha de Nacimiento:</strong> {{ estudiante.fecha_nacimiento.strftime('%d/%m/%Y') if estudiante.fecha_nacimiento else 'N/D' }}</div>
+                <div><strong>Condición Académica:</strong> {{ estudiante.estado or 'Activo' }}</div>
+            </div>
+        </div>
+
+        <table class="grades">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Asignatura / Materia</th>
+                    <th style="width: 20%;">Trimestre</th>
+                    <th style="width: 40%;">Evaluaciones y Criterios Registrados</th>
+                    <th style="width: 15%;">Nota Final</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% set sumatoria_promedios = namespace(total=0.0, materias_calificadas=0) %}
+
+                {% for item in boletin %}
+                    {% set trim_notas = namespace(lista=[]) %}
+                    {% for trim in ['1er Trimestre', '2do Trimestre', '3er Trimestre'] %}
+                        {% set nota_trim = item.notas_por_trimestre.get(trim, {}).get('nota_final') if item.notas_por_trimestre is defined else None %}
+                        {% if nota_trim is not none %}
+                            {% set trim_notas.lista = trim_notas.lista + [nota_trim] %}
+                        {% endif %}
+                    {% endfor %}
+
+                    {% set cant_eval = trim_notas.lista|length %}
+                    {% if cant_eval > 0 %}
+                        {% set prom_materia = (trim_notas.lista|sum / cant_eval)|round(1) %}
+                        {% set sumatoria_promedios.total = sumatoria_promedios.total + prom_materia %}
+                        {% set sumatoria_promedios.materias_calificadas = sumatoria_promedios.materias_calificadas + 1 %}
+                    {% else %}
+                        {% set prom_materia = 0.0 %}
+                    {% endif %}
+
+                    <!-- FILA 1: 1er Trimestre -->
+                    <tr style="border-top: 2px solid #0f172a;">
+                        <td rowspan="3" class="materia-header-cell align-middle">
+                            <div style="font-size: 10.5pt;">{{ item.materia.nombre }}</div>
+                            <div class="mt-2 text-muted" style="font-size: 8pt; font-weight: normal;">
+                                Promedio acumulado:
+                                <strong class="{% if prom_materia >= 51 %}text-success{% elif prom_materia > 0 %}text-danger{% endif %}">
+                                    {{ "%.1f"|format(prom_materia) if cant_eval > 0 else '-' }}
+                                </strong>
+                                <br>({{ cant_eval }} trim. calificado{{ 's' if cant_eval != 1 else '' }})
+                            </div>
+                        </td>
+                        <td class="trimestre-label">1er Trimestre</td>
+                        <td>
+                            {% set evals_t1 = item.notas_por_trimestre.get('1er Trimestre', {}).get('evaluaciones', []) if item.notas_por_trimestre is defined else [] %}
+                            {% if evals_t1 %}
+                                {% for e in evals_t1 %}
+                                    {{ e.tipo }}: <strong>{{ "%.0f"|format(e.nota) if e.nota is not none else '-' }}</strong>{% if not loop.last %} &bull; {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <span style="color: #94a3b8; font-style: italic;">Sin notas registradas</span>
+                            {% endif %}
+                        </td>
+                        <td class="prom-box {% set n1 = item.notas_por_trimestre.get('1er Trimestre', {}).get('nota_final') if item.notas_por_trimestre is defined else None %}{% if n1 is not none and n1 >= 51 %}prom-aprobado{% elif n1 is not none and n1 > 0 %}prom-reprobado{% endif %}">
+                            {{ "%.0f"|format(n1) if n1 is not none else '-' }}
+                        </td>
+                    </tr>
+
+                    <!-- FILA 2: 2do Trimestre -->
+                    <tr>
+                        <td class="trimestre-label">2do Trimestre</td>
+                        <td>
+                            {% set evals_t2 = item.notas_por_trimestre.get('2do Trimestre', {}).get('evaluaciones', []) if item.notas_por_trimestre is defined else [] %}
+                            {% if evals_t2 %}
+                                {% for e in evals_t2 %}
+                                    {{ e.tipo }}: <strong>{{ "%.0f"|format(e.nota) if e.nota is not none else '-' }}</strong>{% if not loop.last %} &bull; {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <span style="color: #94a3b8; font-style: italic;">Sin notas registradas</span>
+                            {% endif %}
+                        </td>
+                        <td class="prom-box {% set n2 = item.notas_por_trimestre.get('2do Trimestre', {}).get('nota_final') if item.notas_por_trimestre is defined else None %}{% if n2 is not none and n2 >= 51 %}prom-aprobado{% elif n2 is not none and n2 > 0 %}prom-reprobado{% endif %}">
+                            {{ "%.0f"|format(n2) if n2 is not none else '-' }}
+                        </td>
+                    </tr>
+
+                    <!-- FILA 3: 3er Trimestre -->
+                    <tr style="border-bottom: 2px solid #0f172a;">
+                        <td class="trimestre-label">3er Trimestre</td>
+                        <td>
+                            {% set evals_t3 = item.notas_por_trimestre.get('3er Trimestre', {}).get('evaluaciones', []) if item.notas_por_trimestre is defined else [] %}
+                            {% if evals_t3 %}
+                                {% for e in evals_t3 %}
+                                    {{ e.tipo }}: <strong>{{ "%.0f"|format(e.nota) if e.nota is not none else '-' }}</strong>{% if not loop.last %} &bull; {% endif %}
+                                {% endfor %}
+                            {% else %}
+                                <span style="color: #94a3b8; font-style: italic;">Sin notas registradas</span>
+                            {% endif %}
+                        </td>
+                        <td class="prom-box {% set n3 = item.notas_por_trimestre.get('3er Trimestre', {}).get('nota_final') if item.notas_por_trimestre is defined else None %}{% if n3 is not none and n3 >= 51 %}prom-aprobado{% elif n3 is not none and n3 > 0 %}prom-reprobado{% endif %}">
+                            {{ "%.0f"|format(n3) if n3 is not none else '-' }}
+                        </td>
+                    </tr>
+                {% else %}
+                    <tr>
+                        <td colspan="4" style="text-align: center; padding: 20px; color: #64748b;">
+                            No existen materias asignadas para este curso en la gestión actual.
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                {% set prom_general_real = (sumatoria_promedios.total / sumatoria_promedios.materias_calificadas)|round(1) if sumatoria_promedios.materias_calificadas > 0 else 0.0 %}
+                <tr>
+                    <td colspan="3" style="text-align: right; padding-right: 15px;">
+                        PROMEDIO GENERAL ACUMULADO (CALCULADO ENTRE TRIMESTRES EVALUADOS):
+                    </td>
+                    <td class="prom-box {% if prom_general_real >= 51 %}prom-aprobado{% elif prom_general_real > 0 %}prom-reprobado{% endif %}">
+                        {{ "%.1f"|format(prom_general_real) if prom_general_real > 0 else '-' }}
+                    </td>
+                </tr>
+            </tfoot>
+        </table>
+
+        <div class="resultado {% if prom_general_real >= 51 %}res-aprobado{% elif prom_general_real > 0 %}res-reprobado{% else %}res-sindatos{% endif %}">
+            {% if prom_general_real >= 51 %}
+                ✅ ESTADO ACADÉMICO: APROBADO / PROMOVIDO (Calificación mínima de aprobación: 51 pts)
+            {% elif prom_general_real > 0 %}
+                ❌ ESTADO ACADÉMICO: EN RIESGO / REPROBADO (Promedio inferior a 51 pts)
+            {% else %}
+                ⚠️ ESTADO ACADÉMICO: EN PROCESO DE EVALUACIÓN
+            {% endif %}
+        </div>
+
+        <div class="verification-section">
+            <div class="qr-container">
+                <img src="{{ qr_imagen }}" alt="QR de Verificación">
+                <div class="qr-label">🔒 Escanee para verificar</div>
+            </div>
+            <div class="verification-info">
+                <p><strong>🔐 Documento Verificable en Línea</strong></p>
+                <p>La autenticidad de las calificaciones puede validarse escaneando el código QR oficial.</p>
+                <p>Código de Verificación: <span class="verification-code">{{ codigo_verificacion or (estudiante.ci ~ '-' ~ now.year) }}</span></p>
+            </div>
+        </div>
+
+        <div class="firmas">
+            <div class="firma-box">Profesor(a) / Asesor(a)</div>
+            <div class="firma-box">Dirección Académica</div>
+            <div class="firma-box">Firma Padre / Tutor</div>
+        </div>
+
+        <div class="footer">
+            Documento oficial generado por el Sistema de Gestión Escolar | 
+            <strong>Avrora Soft - Vibola LLC</strong> &bull; Gestión {{ now.year }}
+        </div>
+    </div>
+</div>
+</body>
+</html>

@@ -106,7 +106,7 @@
     <!-- Cabecera de la Materia -->
     <div class="cal-header-box">
         <div class="row align-items-center">
-            <div class="col-md-7">
+            <div class="col-md-6">
                 <div class="d-flex align-items-center gap-2 mb-2">
                     <span class="badge bg-light text-dark fw-bold px-3 py-1">{{ nivel|upper }}</span>
                     {% if origen_rubrica == 'especifico' %}
@@ -137,24 +137,37 @@
                     {% endif %}
                 </div>
             </div>
-            <div class="col-md-5 text-md-end mt-3 mt-md-0 no-print">
-                <form method="GET" action="{{ url_for('profesores_portal.ver_materia', materia_id=materia.id) }}" class="d-inline-block me-2">
-                    <select name="periodo" class="form-select fw-bold border-0 shadow-sm" onchange="this.form.submit()" style="border-radius: 8px;">
-                        {% for p in periodos %}
-                            <option value="{{ p }}" {% if periodo_sel == p %}selected{% endif %}>{{ p }}</option>
-                        {% endfor %}
-                    </select>
-                </form>
-                <button type="button" onclick="window.print()" class="btn btn-outline-light me-2 fw-bold" style="border-radius: 8px;">
-                    <i class="fas fa-print me-1"></i> Imprimir
-                </button>
-                <a href="{{ url_for('profesores_portal.index') }}" class="btn btn-light fw-bold text-primary shadow-sm" style="border-radius: 8px;">
-                    <i class="fas fa-arrow-left me-1"></i> Volver
-                </a>
+            
+            <div class="col-md-6 text-md-end mt-3 mt-md-0 no-print">
+                <div class="d-inline-flex flex-wrap gap-2 mb-2 justify-content-md-end">
+                    <button type="button" class="btn btn-warning fw-bold text-dark shadow-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaTarea" style="border-radius: 8px;">
+                        <i class="fas fa-plus-circle me-1"></i> Publicar Tarea a Pizarra
+                    </button>
+                    <button type="button" class="btn btn-outline-light fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalVerTareas" style="border-radius: 8px;">
+                        <i class="fas fa-tasks me-1"></i> Tareas Enviadas ({{ tareas|length if tareas else 0 }})
+                    </button>
+                </div>
+
+                <div class="d-flex align-items-center justify-content-md-end gap-2">
+                    <form method="GET" action="{{ url_for('profesores_portal.ver_materia', materia_id=materia.id) }}" class="d-inline-block">
+                        <select name="periodo" class="form-select form-select-sm fw-bold border-0 shadow-sm" onchange="this.form.submit()" style="border-radius: 8px;">
+                            {% for p in periodos %}
+                                <option value="{{ p }}" {% if periodo_sel == p %}selected{% endif %}>{{ p }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                    <button type="button" onclick="window.print()" class="btn btn-sm btn-outline-light fw-bold" style="border-radius: 8px;">
+                        <i class="fas fa-print me-1"></i> Imprimir
+                    </button>
+                    <a href="{{ url_for('profesores_portal.index') }}" class="btn btn-sm btn-light fw-bold text-primary shadow-sm" style="border-radius: 8px;">
+                        <i class="fas fa-arrow-left me-1"></i> Volver
+                    </a>
+                </div>
             </div>
         </div>
     </div>
-<!-- Planilla de Calificaciones con Soporte para Subida Múltiple -->
+
+    <!-- Planilla de Calificaciones con Soporte para Subida Múltiple -->
     <form method="POST" action="{{ url_for('profesores_portal.guardar_notas_matriz', materia_id=materia.id) }}" enctype="multipart/form-data" id="formPlanillaNotas" novalidate>
         <input type="hidden" name="periodo" value="{{ periodo_sel }}">
 
@@ -237,7 +250,7 @@
                                                 {{ "%.1f"|format(nota_fin) if nota_fin else '0.0' }}
                                             </span>
                                         </td>
-                                        <td class="text-center" id="estado_box_{* est.id *}">
+                                        <td class="text-center" id="estado_box_{{ est.id }}">
                                             {% if nota_fin >= 51 %}
                                                 <span class="badge bg-success px-2 py-1">Aprobado</span>
                                             {% else %}
@@ -246,10 +259,8 @@
                                         </td>
                                     {% endif %}
 
-                                    <!-- Columna Estilizada Jaguar: Subida Múltiple y Botón Único de Galería -->
                                     <td class="text-center align-middle">
                                         <div class="jaguar-upload-wrapper">
-                                            <!-- Selector múltiple de archivos -->
                                             <label class="btn btn-outline-primary btn-sm btn-jaguar-action w-100 text-truncate mb-1 py-1 px-2" style="cursor: pointer;">
                                                 <i class="fas fa-cloud-upload-alt me-1"></i> <span class="lbl-file-name">Adjuntar Varios...</span>
                                                 <input type="file" name="respaldo_{{ est.id }}" class="d-none" multiple accept=".png, .jpg, .jpeg, .pdf, .doc, .docx" onchange="this.previousElementSibling.lastElementChild.textContent = this.files.length + ' archivo(s) listo(s)';">
@@ -317,8 +328,6 @@
                                         </div>
                                     </div>
                                 </div>
-                                <!-- FIN DEL MODAL -->
-
                                 {% endfor %}
                             {% else %}
                                 <tr>
@@ -344,6 +353,111 @@
             </div>
         </div>
     </form>
+</div>
+
+<!-- ========================================================================= -->
+<!-- MODALES INTERACTIVOS PARA GESTIÓN DE TAREAS Y PIZARRA DE PADRES -->
+<!-- ========================================================================= -->
+
+<!-- 1. Modal para Publicar Nueva Tarea (con Selector de Fotos y Archivos) -->
+<div class="modal fade" id="modalNuevaTarea" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-pencil-alt me-2"></i>Publicar Tarea para la Pizarra
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form action="{{ url_for('profesores_portal.nueva_tarea', materia_id=materia.id) }}" method="POST" enctype="multipart/form-data">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Título de la Tarea / Trabajo *</label>
+                        <input type="text" name="titulo" class="form-control" placeholder="Ej. Ejercicios Prácticos del Tema 2" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Descripción e Instrucciones</label>
+                        <textarea name="descripcion" class="form-control" rows="3" placeholder="Detalle qué deben presentar los alumnos, páginas del libro, instrucciones..."></textarea>
+                    </div>
+                    
+                    <!-- SELECTOR DE FOTOS Y ARCHIVOS ADJUNTOS -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">
+                            <i class="fas fa-paperclip text-primary me-1"></i> Foto o Archivo Adjunto (Opcional)
+                        </label>
+                        <input type="file" name="archivo_adjunto" class="form-control" accept=".png, .jpg, .jpeg, .pdf, .doc, .docx, .xls, .xlsx">
+                        <small class="text-muted">Puede subir imágenes (JPG, PNG) o guías en PDF / Word.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold text-dark">Fecha y Hora Límite de Entrega *</label>
+                        <input type="datetime-local" name="fecha_entrega" class="form-control" required>
+                        <small class="text-muted">Los padres verán la cuenta regresiva en su semáforo de colores.</small>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-0">
+                    <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary fw-bold px-3">
+                        <i class="fas fa-paper-plane me-1"></i> Publicar en Pizarra
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 2. Modal para Revisar y Eliminar Tareas Publicadas -->
+<div class="modal fade" id="modalVerTareas" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-tasks text-warning me-2"></i>Tareas Publicadas en {{ materia.nombre }}
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                {% if tareas %}
+                    <div class="list-group shadow-sm">
+                        {% for t in tareas %}
+                        {% set file_name = t.archivo_adjunto or t.archivo or None %}
+                        <div class="list-group-item d-flex justify-content-between align-items-center p-3 border-0 mb-2 rounded-3 shadow-sm">
+                            <div class="me-3">
+                                <h6 class="fw-bold mb-1 text-primary">{{ t.titulo }}</h6>
+                                <p class="mb-1 text-muted small">{{ t.descripcion or t.detalle or t.indicaciones or t.contenido or 'Sin descripción detallada.' }}</p>
+                                
+                                <div class="d-flex flex-wrap gap-3 align-items-center mt-1">
+                                    <small class="text-dark fw-bold">
+                                        <i class="far fa-clock text-warning me-1"></i>
+                                        Fecha límite: {{ t.fecha_entrega.strftime('%d/%m/%Y %H:%M') if t.fecha_entrega else 'Sin fecha' }}
+                                    </small>
+                                    {% if file_name %}
+                                    <a href="{{ url_for('profesores_portal.descargar_tarea_adjunto', filename=file_name) }}" target="_blank" class="badge bg-info text-dark text-decoration-none">
+                                        <i class="fas fa-paperclip me-1"></i> Ver Archivo Adjunto
+                                    </a>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <form action="{{ url_for('profesores_portal.eliminar_tarea', tarea_id=t.id) }}" method="POST" onsubmit="return confirm('¿Está seguro de eliminar esta tarea? Desaparecerá de la pizarra de los tutores.');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger px-3 py-1 fw-bold" title="Eliminar tarea">
+                                    <i class="fas fa-trash-alt me-1"></i> Eliminar
+                                </button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-4 text-muted">
+                        <i class="fas fa-clipboard-list fa-3x mb-2 text-secondary"></i>
+                        <p class="mb-0">No se registran tareas activas publicadas para esta materia.</p>
+                    </div>
+                {% endif %}
+            </div>
+            <div class="modal-footer bg-white border-0">
+                <button type="button" class="btn btn-secondary fw-bold" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>

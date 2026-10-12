@@ -1,0 +1,93 @@
+{% extends "base_padres.html" %}
+
+{% block title %}{{ materia.nombre }} - Portal de Padres{% endblock %}
+
+{% block page_title %}{{ materia.nombre }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+    <!-- Barra Superior de Navegación -->
+    <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+        <div>
+            <h2 class="fw-bold mb-1 text-dark" style="font-size: 2.2rem;">
+                <i class="bi bi-book-half text-primary me-2"></i>{{ materia.nombre }}
+            </h2>
+            <span class="text-muted fs-5">Estudiante: <strong>{{ estudiante.apellidos }}, {{ estudiante.nombres }}</strong> ({{ estudiante.curso }})</span>
+        </div>
+        <a href="{{ url_for('portal_padres.pizarra') }}" class="btn btn-outline-secondary btn-lg fw-bold px-4">
+            <i class="bi bi-arrow-left me-2"></i> Volver a la Pizarra
+        </a>
+    </div>
+
+    {% if tareas %}
+    <div class="row g-4">
+        {% for t in tareas %}
+        {% set texto_tarea = t.tarea.descripcion or t.tarea.detalle or t.tarea.indicaciones or t.tarea.contenido or t.tarea.instrucciones or t.tarea.nota or '' %}
+        <div class="col-12">
+            <div class="card shadow-sm border-start border-5 rounded-4" style="border-left-color: {{ t.color_hex }} !important; border-width: 2px;">
+                <div class="card-body p-4">
+                    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+                        <div>
+                            <h3 class="fw-bold mb-2 text-dark" style="font-size: 1.8rem;">{{ t.tarea.titulo }}</h3>
+                            <span class="badge text-white px-3 py-2 rounded-pill fs-6" style="background-color: {{ t.color_hex }};">
+                                {{ t.estado_texto }}
+                            </span>
+                        </div>
+                        <div class="text-end">
+                            <span class="badge bg-light text-dark border fs-6 px-3 py-2">
+                                <i class="bi bi-calendar-event text-primary me-1 fs-5"></i>
+                                Fecha límite: <strong>{{ t.tarea.fecha_entrega.strftime('%d/%m/%Y %H:%M') if t.tarea.fecha_entrega else 'Sin fecha límite' }}</strong>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- DESCRIPCIÓN E INSTRUCCIONES EN TAMAÑO CÓMODO -->
+                    <div class="p-4 my-3 bg-light rounded-3 border border-2">
+                        <div class="fw-bold text-secondary mb-2 fs-5 text-uppercase">
+                            <i class="bi bi-card-text me-2"></i> Instrucciones / Tarea Asignada:
+                        </div>
+                        <p class="mb-0 text-dark" style="white-space: pre-wrap; font-size: 1.25rem; line-height: 1.6;">
+                            {{ texto_tarea if texto_tarea else 'El profesor no añadió texto explicativo adicional para esta tarea.' }}
+                        </p>
+
+                        <!-- ARCHIVO O FOTO ADJUNTA POR EL PROFESOR (BOTÓN DESTACADO) -->
+                        {% if t.adjunto %}
+                        <div class="mt-4 pt-3 border-top border-2">
+                            <span class="fs-5 fw-bold text-dark d-block mb-2">
+                                <i class="bi bi-paperclip text-primary fs-4 me-1"></i> Archivo o Foto Adjunta por el Docente:
+                            </span>
+                            <a href="{{ url_for('portal_padres.descargar_tarea_adjunto', filename=t.adjunto) }}" target="_blank" class="btn btn-primary btn-lg fw-bold px-4 py-2 shadow-sm">
+                                <i class="bi bi-file-earmark-arrow-down-fill me-2 fs-4"></i> Abrir o Descargar Archivo ({{ t.adjunto.split('_')[-1] }})
+                            </a>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Pie de la Tarea -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-3 border-top fs-5 text-muted">
+                        <div>
+                            <i class="bi bi-clock me-1"></i>
+                            Estado actual: <strong style="color: {{ t.color_hex }};">{{ t.estado_texto }}</strong>
+                        </div>
+                        {% if t.entrega and t.entrega.calificacion is not None %}
+                        <div class="text-success fw-bold fs-4">
+                            <i class="bi bi-check-circle-fill me-1"></i> Calificación obtenida: {{ t.entrega.calificacion }} pts.
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card shadow-sm border-2 text-center py-5">
+        <div class="card-body">
+            <i class="bi bi-clipboard2-check text-muted" style="font-size: 4rem;"></i>
+            <h3 class="text-secondary mt-3">No hay tareas publicadas en esta materia en este momento.</h3>
+            <p class="text-muted fs-5">Cada nueva tarea que publique el profesor aparecerá listada en esta sección con sus materiales.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

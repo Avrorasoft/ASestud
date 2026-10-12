@@ -1,0 +1,121 @@
+{% extends "base_padres.html" %}
+
+{% block title %}Pizarra Escolar - Portal de Padres{% endblock %}
+
+{% block page_title %}Pizarra de Seguimiento Escolar{% endblock %}
+
+{% block content %}
+<style>
+    .mosaico-materia {
+        border-radius: 16px;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        border: 2px solid #cbd5e1 !important;
+        overflow: hidden;
+    }
+    .mosaico-materia:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 14px 28px rgba(0,0,0,0.14) !important;
+    }
+    .mosaico-header {
+        padding: 20px;
+        color: #ffffff;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .badge-semaforo-grande {
+        font-size: 1.05rem;
+        padding: 8px 14px;
+        border-radius: 8px;
+        font-weight: 700;
+    }
+</style>
+
+<div class="container-fluid py-3">
+    <!-- Encabezado Informativo -->
+    <div class="card shadow-sm border-2 mb-4">
+        <div class="card-body p-4 d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h2 class="fw-bold mb-1 text-dark" style="font-size: 2.1rem;">
+                    <i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i> Pizarra Escolar
+                </h2>
+                <p class="text-muted mb-0 fs-5">
+                    Tareas y trabajos del estudiante: 
+                    <strong class="text-primary">{{ estudiante.apellidos }}, {{ estudiante.nombres }}</strong> 
+                    ({{ estudiante.curso }})
+                </p>
+            </div>
+
+            <!-- Leyenda del Semáforo en formato grande -->
+            <div class="d-flex flex-wrap gap-2 align-items-center bg-light p-3 rounded-3 border border-2">
+                <span class="badge bg-danger fs-6 py-2 px-3"><i class="bi bi-exclamation-triangle-fill me-1"></i>Vencida</span>
+                <span class="badge fs-6 py-2 px-3" style="background-color: #6f42c1;"><i class="bi bi-clock-fill me-1"></i>En Plazo</span>
+                <span class="badge bg-warning text-dark fs-6 py-2 px-3"><i class="bi bi-hourglass-split me-1"></i>Por Calificar</span>
+                <span class="badge bg-success fs-6 py-2 px-3"><i class="bi bi-check-circle-fill me-1"></i>Calificada</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Grilla de Mosaicos por Materia -->
+    {% if mosaicos %}
+    <div class="row g-4">
+        {% for item in mosaicos %}
+        <div class="col-sm-6 col-lg-4 col-xl-3">
+            <a href="{{ url_for('portal_padres.detalle_materia', materia_id=item.materia.id) }}" class="text-decoration-none">
+                <div class="card h-100 shadow-sm mosaico-materia">
+                    <div class="mosaico-header" style="background-color: {{ item.color_resumen }};">
+                        <div>
+                            <span class="badge bg-dark bg-opacity-50 text-white mb-2 fs-6">{{ item.sigla }}</span>
+                            <h4 class="mb-0 fw-bold text-truncate text-white" style="max-width: 220px; font-size: 1.45rem;">
+                                {{ item.materia.nombre }}
+                            </h4>
+                        </div>
+                        <i class="bi bi-chevron-right fs-1 text-white"></i>
+                    </div>
+
+                    <div class="card-body bg-white p-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom">
+                            <span class="text-muted fs-6 fw-bold">Total Tareas:</span>
+                            <span class="badge bg-secondary rounded-pill fs-6 px-3 py-1">{{ item.total_tareas }}</span>
+                        </div>
+
+                        <!-- Estado Desglosado del Semáforo en Tamaño Cómodo -->
+                        <div class="d-flex flex-column gap-2 fs-6">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-danger fw-bold"><i class="bi bi-x-circle me-1"></i>Vencidas:</span>
+                                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger-subtle fs-6">{{ item.conteo.rojo }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span style="color: #6f42c1;" class="fw-bold"><i class="bi bi-calendar-event me-1"></i>En Plazo:</span>
+                                <span class="badge bg-opacity-10 border fs-6" style="background-color: #f3e8ff; color: #6f42c1; border-color: #d8b4fe !important;">{{ item.conteo.morado }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-warning-emphasis fw-bold"><i class="bi bi-hourglass-top me-1"></i>Por Calificar:</span>
+                                <span class="badge bg-warning bg-opacity-10 text-dark border border-warning-subtle fs-6">{{ item.conteo.amarillo }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-success fw-bold"><i class="bi bi-check-all me-1"></i>Calificadas:</span>
+                                <span class="badge bg-success bg-opacity-10 text-success border border-success-subtle fs-6">{{ item.conteo.verde }}</span>
+                            </div>
+                        </div>
+
+                        <div class="mt-3 pt-2 text-center text-primary fw-bold fs-6">
+                            <span>Tocar para ver detalles <i class="bi bi-arrow-right"></i></span>
+                        </div>
+                    </div>
+                </div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="card shadow-sm border-2 text-center py-5">
+        <div class="card-body">
+            <i class="bi bi-journal-x text-muted" style="font-size: 4.5rem;"></i>
+            <h3 class="text-secondary mt-3">No hay materias asignadas para este curso todavía.</h3>
+            <p class="text-muted fs-5">La institución publicará las materias tan pronto se completen los registros del ciclo.</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

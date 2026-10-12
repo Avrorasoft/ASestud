@@ -7,8 +7,9 @@ Desarrollado por: Avrora Soft - Vibola LLC
 Descripción: Portal docente integral:
              - Motor de precedencia de rúbricas (específica y general).
              - Control financiero con distinción entre sueldos íntegros y adelantos.
-             - Gestión de tareas y seguimiento para la Pizarra Escolar.
+             - Publicación de tareas con adjuntos garantizados en base de datos.
              - Módulo de asistencia y galería de respaldos documentales.
+             - Consulta de alumnos morosos sincronizada con el Corte Operativo.
 ==============================================================================
 """
 
@@ -21,14 +22,15 @@ from flask import (
     Blueprint, render_template, request, redirect, url_for,
     flash, session, abort, current_app, send_from_directory
 )
+from sqlalchemy import text
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
-# Modelos centralizados del sistema (incluyendo Falta para asistencia unificada)
+# Modelos centralizados del sistema
 from models import (
     db, Profesor, Materia, Estudiante, Calificacion,
     CriterioEvaluacion, nivel_de_curso, Pago, PagoPersonal,
-    Tarea, EntregaTarea, Falta
+    Tarea, EntregaTarea, Falta, ConfiguracionSuperadmin
 )
 
 # Importación segura de RespaldoEstudiante si existe en models
@@ -54,7 +56,7 @@ except ImportError:
             profesor_id = db.Column(db.Integer, db.ForeignKey('profesores.id'), nullable=True)
             fecha_envio = db.Column(db.DateTime, default=datetime.now)
 
-# Modelo seguro de asistencia (respaldo si fuera necesario)
+# Modelo seguro de asistencia
 try:
     from models import AsistenciaEstudiante
 except ImportError:
@@ -72,8 +74,8 @@ profesores_portal_bp = Blueprint(
     __name__
 )
 
-# Carpeta independiente para los respaldos documentales y fotográficos de los profesores
 UPLOAD_FOLDER_RESPALDOS = 'static/uploads/respaldos_docentes'
+UPLOAD_FOLDER_TAREAS = 'static/uploads/tareas'
 
 def allowed_file(filename):
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'pdf', 'doc', 'docx', 'xls', 'xlsx'}
@@ -88,6 +90,70 @@ def login_requerido(f):
             return redirect(url_for('profesores_portal.login'))
         return f(*args, **kwargs)
     return decorated_function
+
+
+def asegurar_columna_adjunto_tarea():
+    """Garantiza que la columna archivo_adjunto exista físicamente en la tabla tareas."""
+    try:
+        db.session.execute(text("ALTER TABLE tareas ADD COLUMN archivo_adjunto TEXT"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
+def obtener_corte_operativo():
+    """Recupera la fecha de corte operativo configurada por Superadmin."""
+    try:
+        cfg = ConfiguracionSuperadmin.query.filter_by(clave='fecha_corte_operativo').first()
+        if cfg and cfg.valor and str(cfg.valor).strip():
+            valor_limpio = str(cfg.valor).strip()
+            for fmt in ('%Y-%m-%d', '%Y-%m', '%d/%m/%Y'):
+                try:
+                    return datetime.strptime(valor_limpio, fmt).date()
+                except ValueError:
+                    pass
+    except Exception:
+        pass
+    return None
+
+
+def obtener_meses_mora_docente(anio_evaluado=None):
+    """
+    Calcula los meses exigibles para mora respetando el corte operativo
+    y excluyendo el mes en curso y meses posteriores.
+    """
+    mapa_meses = {
+        1: 'Enero', 2: 'Febrero', 3: 'Marzo', 4: 'Abril',
+        5: 'Mayo', 6: 'Junio', 7: 'Julio', 8: 'Agosto',
+        9: 'Septiembre', 10: 'Octubre', 11: 'Noviembre', 12: 'Diciembre'
+    }
+    mapa_inv = {v.lower(): k for k, v in mapa_meses.items()}
+    meses_base = ['Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre']
+
+    corte = obtener_corte_operativo()
+    hoy = datetime.now().date()
+    anio_calc = anio_evaluado or hoy.year
+    mes_actual_num = hoy.month
+
+    mes_inicio_corte = 2
+    if corte:
+        mes_inicio_corte = corte.month
+
+    meses_mora = []
+    for m in meses_base:
+        num_m = mapa_inv.get(m.lower(), 0)
+        if num_m == 0:
+            continue
+        if num_m < mes_inicio_corte:
+            continue
+        if int(anio_calc) > hoy.year:
+            continue
+        if int(anio_calc) == hoy.year and num_m >= mes_actual_num:
+            continue
+
+        meses_mora.append(m)
+
+    return meses_mora
 
 
 def obtener_criterios_materia(materia_id):
@@ -149,10 +215,6 @@ def obtener_criterios_materia(materia_id):
 
 
 def recalcular_nota_final(materia_id, periodo='1er Trimestre'):
-    """
-    Calcula la sumatoria sobre 100 puntos y genera el desglose JSON.
-    Se omite en régimen cualitativo.
-    """
     criterios, origen, es_nidito, nivel = obtener_criterios_materia(materia_id)
     if es_nidito:
         return
@@ -269,7 +331,7 @@ def logout():
     return redirect(url_for('profesores_portal.login'))
 
 
-# --- HISTORIAL FINANCIERO: DISTINCIÓN ENTRE SUELDO CANCELADO Y RETENCIONES ---
+# --- HISTORIAL FINANCIERO ---
 @profesores_portal_bp.route('/mis-pagos')
 @login_requerido
 def mis_pagos():
@@ -292,7 +354,6 @@ def mis_pagos():
     mes_filtro = request.args.get('mes', mes_por_defecto).strip()
     anio_filtro = datetime.now().year
 
-    # Traer todos los pagos del profesor
     query = PagoPersonal.query.filter(
         (PagoPersonal.persona_id == profesor.id) | 
         (PagoPersonal.ci_persona == profesor.ci)
@@ -374,23 +435,14 @@ def alumnos_morosos():
 
     estudiantes = Estudiante.query.filter(
         Estudiante.curso.in_(cursos_busqueda),
-        Estudiante.estado == 'Activo'
+        Estudiante.estado.in_(['Activo', 'Inscrito']) | Estudiante.estado.is_(None)
     ).order_by(Estudiante.curso.asc(), Estudiante.apellidos.asc()).all()
 
-    meses_evaluados = ['Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre']
     anio_actual = datetime.now().year
+    meses_evaluados = obtener_meses_mora_docente(anio_evaluado=anio_actual)
 
     lista_morosos = []
     for est in estudiantes:
-        pagos_est = Pago.query.filter(
-            ((Pago.estudiante_id == est.id) | (Pago.ci_estudiante == est.ci)),
-            Pago.anio == anio_actual,
-            Pago.estado == 'Pagado'
-        ).all()
-
-        meses_pagados_set = {p.mes.strip().capitalize() for p in pagos_est if p.mes}
-        meses_en_mora = [m for m in meses_evaluados if m not in meses_pagados_set]
-
         cuota = 0.0
         for attr in ['pension', 'monto_mensualidad', 'mensualidad', 'costo_mensual']:
             val = getattr(est, attr, None)
@@ -398,34 +450,46 @@ def alumnos_morosos():
                 cuota = float(val)
                 break
         if cuota <= 0:
-            cuota = 250.0
+            cuota = 430.0
 
-        saldo_cardex = float(getattr(est, 'saldo_deuda', 0.0) or 0.0)
+        pagos_est = Pago.query.filter(
+            ((Pago.estudiante_id == est.id) | (Pago.ci_estudiante == est.ci)),
+            db.or_(Pago.anio == anio_actual, Pago.anio == str(anio_actual))
+        ).all()
 
-        if len(meses_en_mora) > 0:
-            monto_deuda = (len(meses_en_mora) * cuota) if saldo_cardex <= 0 else saldo_cardex
+        pagos_por_mes = {}
+        for p in pagos_est:
+            if getattr(p, 'estado', 'Pagado') == 'Anulado':
+                continue
+            if p.mes:
+                mes_norm = str(p.mes).strip().capitalize()
+                if mes_norm not in pagos_por_mes:
+                    pagos_por_mes[mes_norm] = {'abonado': 0.0, 'descuento': 0.0}
+                pagos_por_mes[mes_norm]['abonado'] += float(p.monto_pagado or 0.0)
+                pagos_por_mes[mes_norm]['descuento'] += float(p.descuento or 0.0)
+
+        meses_en_mora = []
+        deuda_total_estudiante = 0.0
+
+        for m in meses_evaluados:
+            info = pagos_por_mes.get(m, {'abonado': 0.0, 'descuento': 0.0})
+            costo_efectivo = max(0.0, cuota - info['descuento'])
+            saldo_mes = max(0.0, costo_efectivo - info['abonado'])
+
+            if saldo_mes > 0.5:
+                meses_en_mora.append(f"{m[:3]} (Bs.{saldo_mes:,.0f})")
+                deuda_total_estudiante += saldo_mes
+
+        if deuda_total_estudiante > 0.5:
             lista_morosos.append({
                 'id': est.id,
                 'apellidos': est.apellidos,
                 'nombres': est.nombres,
                 'curso': est.curso,
                 'ci': est.ci or 'S/C',
-                'deuda': monto_deuda,
+                'deuda': deuda_total_estudiante,
                 'meses_deuda': len(meses_en_mora),
                 'detalle_meses': ', '.join(meses_en_mora),
-                'tutor': getattr(est, 'nombre_padre', '') or getattr(est, 'tutor', 'N/D'),
-                'telefono': getattr(est, 'telefono_tutor', '') or getattr(est, 'celular', 'S/N')
-            })
-        elif saldo_cardex > 0:
-            lista_morosos.append({
-                'id': est.id,
-                'apellidos': est.apellidos,
-                'nombres': est.nombres,
-                'curso': est.curso,
-                'ci': est.ci or 'S/C',
-                'deuda': saldo_cardex,
-                'meses_deuda': 1,
-                'detalle_meses': 'Saldo pendiente acumulado',
                 'tutor': getattr(est, 'nombre_padre', '') or getattr(est, 'tutor', 'N/D'),
                 'telefono': getattr(est, 'telefono_tutor', '') or getattr(est, 'celular', 'S/N')
             })
@@ -434,11 +498,12 @@ def alumnos_morosos():
         ['profesores_portal/morosos.html', 'morosos.html'],
         profesor=profesor,
         morosos=lista_morosos,
-        cursos=cursos_docente
+        cursos=cursos_docente,
+        meses_evaluados=meses_evaluados
     )
 
 
-# --- ASISTENCIA DIARIA (UNIFICADA Y BLINDADA) ---
+# --- ASISTENCIA DIARIA ---
 @profesores_portal_bp.route('/asistencia/<int:materia_id>', methods=['GET', 'POST'])
 @login_requerido
 def registrar_asistencia(materia_id):
@@ -468,7 +533,6 @@ def registrar_asistencia(materia_id):
             estado='Activo'
         ).order_by(Estudiante.apellidos.asc(), Estudiante.nombres.asc()).all()
 
-    # Verificar registros previos en el modelo unificado Falta
     registros_previos = Falta.query.filter(
         Falta.tipo_sujeto == 'Estudiante',
         Falta.fecha == fecha_sel,
@@ -517,9 +581,131 @@ def registrar_asistencia(materia_id):
     )
 
 
+# =========================================================================
+# GESTIÓN Y ENVÍO DE TAREAS HACIA LA PIZARRA DE PADRES (CON ARCHIVO GARANTIZADO)
+# =========================================================================
+
+@profesores_portal_bp.route('/materia/<int:materia_id>/nueva-tarea', methods=['POST'])
+@login_requerido
+def nueva_tarea(materia_id):
+    asegurar_columna_adjunto_tarea()
+    profesor_id = int(session['profesor_id'])
+    materia = Materia.query.get_or_404(materia_id)
+
+    if materia.profesor_id != profesor_id:
+        abort(403)
+
+    titulo = request.form.get('titulo', '').strip()
+    texto_tarea = request.form.get('descripcion', '').strip()
+    fecha_entrega_str = request.form.get('fecha_entrega', '').strip()
+
+    if not titulo:
+        flash('⚠️ El título del trabajo o tarea es obligatorio.', 'warning')
+        return redirect(url_for('profesores_portal.ver_materia', materia_id=materia_id))
+
+    fecha_entrega = None
+    if fecha_entrega_str:
+        try:
+            fecha_entrega = datetime.strptime(fecha_entrega_str, '%Y-%m-%dT%H:%M')
+        except ValueError:
+            try:
+                fecha_entrega = datetime.strptime(fecha_entrega_str, '%Y-%m-%d')
+            except ValueError:
+                fecha_entrega = datetime.now()
+    else:
+        fecha_entrega = datetime.now()
+
+    # Guardar archivo adjunto si existe
+    nombre_adjunto = None
+    if 'archivo_adjunto' in request.files:
+        file = request.files['archivo_adjunto']
+        if file and file.filename != '' and allowed_file(file.filename):
+            nombre_limpio = secure_filename(f"tarea_mat_{materia.id}_{int(datetime.now().timestamp())}_{file.filename}")
+            upload_dir = os.path.join(current_app.root_path, UPLOAD_FOLDER_TAREAS)
+            os.makedirs(upload_dir, exist_ok=True)
+            file.save(os.path.join(upload_dir, nombre_limpio))
+            nombre_adjunto = nombre_limpio
+
+    try:
+        nueva_tarea_obj = Tarea(
+            titulo=titulo,
+            materia_id=materia.id,
+            fecha_entrega=fecha_entrega
+        )
+
+        for campo_texto in ['descripcion', 'detalle', 'indicaciones', 'contenido', 'instrucciones', 'nota']:
+            if hasattr(Tarea, campo_texto):
+                setattr(nueva_tarea_obj, campo_texto, texto_tarea)
+                break
+
+        if hasattr(Tarea, 'curso_id') and not getattr(nueva_tarea_obj, 'curso_id', None):
+            nueva_tarea_obj.curso_id = materia.curso_id
+
+        if hasattr(Tarea, 'profesor_id') and not getattr(nueva_tarea_obj, 'profesor_id', None):
+            nueva_tarea_obj.profesor_id = profesor_id
+
+        db.session.add(nueva_tarea_obj)
+        db.session.commit()
+
+        # PERSISTENCIA DIRECTA EN SQLITE: Graba el nombre del archivo en la base física
+        if nombre_adjunto:
+            db.session.execute(
+                text("UPDATE tareas SET archivo_adjunto = :adj WHERE id = :id"),
+                {"adj": nombre_adjunto, "id": nueva_tarea_obj.id}
+            )
+            db.session.commit()
+
+        flash(f'✅ Tarea "{titulo}" publicada exitosamente en la Pizarra Escolar con sus materiales adjuntos.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ Error al publicar la tarea: {str(e)}', 'danger')
+
+    return redirect(url_for('profesores_portal.ver_materia', materia_id=materia_id))
+
+
+@profesores_portal_bp.route('/materia/eliminar-tarea/<int:tarea_id>', methods=['POST'])
+@login_requerido
+def eliminar_tarea(tarea_id):
+    profesor_id = int(session['profesor_id'])
+    tarea = Tarea.query.get_or_404(tarea_id)
+    materia = Materia.query.get_or_404(tarea.materia_id)
+
+    if materia.profesor_id != profesor_id:
+        abort(403)
+
+    materia_id = tarea.materia_id
+    try:
+        # Recuperar nombre de archivo desde SQL directo para borrarlo del disco
+        res = db.session.execute(text("SELECT archivo_adjunto FROM tareas WHERE id = :id"), {"id": tarea.id}).fetchone()
+        if res and res[0]:
+            path_file = os.path.join(current_app.root_path, UPLOAD_FOLDER_TAREAS, str(res[0]))
+            if os.path.exists(path_file):
+                os.remove(path_file)
+
+        EntregaTarea.query.filter_by(tarea_id=tarea.id).delete()
+        db.session.delete(tarea)
+        db.session.commit()
+        flash('🗑️ Tarea y sus archivos adjuntos eliminados correctamente.', 'info')
+    except Exception as e:
+        db.session.rollback()
+        flash(f'❌ Error al eliminar la tarea: {str(e)}', 'danger')
+
+    return redirect(url_for('profesores_portal.ver_materia', materia_id=materia_id))
+
+
+@profesores_portal_bp.route('/descargar-tarea-adjunto/<path:filename>')
+@login_requerido
+def descargar_tarea_adjunto(filename):
+    """Permite abrir o descargar el material que el profesor adjuntó a la tarea."""
+    folder = os.path.join(current_app.root_path, UPLOAD_FOLDER_TAREAS)
+    return send_from_directory(folder, filename, as_attachment=False)
+
+
+# --- VISTA PRINCIPAL DE MATERIA CON MATRIZ Y SEGUIMIENTO DE TAREAS ---
 @profesores_portal_bp.route('/materia/<int:materia_id>')
 @login_requerido
 def ver_materia(materia_id):
+    asegurar_columna_adjunto_tarea()
     profesor_id = int(session['profesor_id'])
     materia = Materia.query.get_or_404(materia_id)
 
@@ -557,6 +743,12 @@ def ver_materia(materia_id):
         else:
             cal_matrix[(c.estudiante_id, tipo_limpio)] = c
 
+    # Cargar tareas con sus archivos adjuntos recuperados directamente de SQL
+    tareas = Tarea.query.filter_by(materia_id=materia_id).order_by(Tarea.fecha_entrega.desc(), Tarea.id.desc()).all()
+    for t in tareas:
+        res = db.session.execute(text("SELECT archivo_adjunto FROM tareas WHERE id = :id"), {"id": t.id}).fetchone()
+        t.archivo_adjunto = res[0] if (res and res[0]) else None
+
     return render_template(
         ['profesores_portal/materia.html', 'materia.html'],
         materia=materia,
@@ -569,7 +761,8 @@ def ver_materia(materia_id):
         cal_matrix=cal_matrix,
         notas_finales=notas_finales,
         periodos=['1er Trimestre', '2do Trimestre', '3er Trimestre'],
-        RespaldoEstudiante=RespaldoEstudiante
+        RespaldoEstudiante=RespaldoEstudiante,
+        tareas=tareas
     )
 
 
@@ -724,14 +917,12 @@ def guardar_notas_matriz(materia_id):
 @profesores_portal_bp.route('/ver_respaldo/<filename>')
 @login_requerido
 def ver_respaldo(filename):
-    """Permite visualizar o descargar de forma segura cualquier archivo adjuntado."""
     return send_from_directory(os.path.join(current_app.root_path, UPLOAD_FOLDER_RESPALDOS), filename)
 
 
 @profesores_portal_bp.route('/eliminar_respaldo/<int:respaldo_id>', methods=['POST'])
 @login_requerido
 def eliminar_respaldo(respaldo_id):
-    """Elimina un archivo de respaldo individual desde la galería modal del estudiante."""
     respaldo = RespaldoEstudiante.query.get_or_404(respaldo_id)
     materia_id = respaldo.materia_id
     
@@ -748,7 +939,6 @@ def eliminar_respaldo(respaldo_id):
     return redirect(url_for('profesores_portal.ver_materia', materia_id=materia_id))
 
 
-# Bloqueo de mutación de rúbricas desde el portal docente
 @profesores_portal_bp.route('/nueva_evaluacion/<int:materia_id>', methods=['POST'])
 @login_requerido
 def nueva_evaluacion(materia_id):

@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # ==============================================================================
 # Archivo: routes/calificaciones.py
-# Proyecto: Sistema de Gestión Escolar - Colegio Dr. Antonio Vaca Díez
+# Proyecto: Sistema de Gestión Escolar
 # Desarrollado por: Avrora Soft - Vibola LLC
 # Descripción: Blueprint para gestión de Calificaciones, Libro de Notas,
-#              Carga de Notas por Materia/Curso y Verificación de Boletines por QR
+#              Carga de Notas por Materia/Curso, Kárdex Trimestral y Verificación por QR
 # ==============================================================================
 
 import os
@@ -26,26 +26,63 @@ def ahora_bolivia():
     """Devuelve la fecha/hora actual en zona horaria Bolivia (UTC-4)"""
     return datetime.now(BOLIVIA_TZ)
 
+def calcular_promedio_trimestres_dinamico(notas_trimestres):
+    """
+    Calcula el promedio acumulado real dividiendo estrictamente entre
+    la cantidad de trimestres evaluados (1, 2 o 3).
+    """
+    notas_validas = [float(n) for n in notas_trimestres if n is not None and str(n).strip() != '']
+    if not notas_validas:
+        return 0.0, 0
+    promedio = sum(notas_validas) / len(notas_validas)
+    return round(promedio, 1), len(notas_validas)
+
 def actualizar_promedio_materia(estudiante_id, materia_id):
     """
-    Calcula automáticamente el promedio de las notas regulares (bimestres/exámenes)
-    de una materia y lo almacena/actualiza en la base de datos como tipo 'Promedio'.
+    Calcula automáticamente el promedio acumulado real de una materia
+    evaluando la sumatoria de trimestres calificados y dividiendo entre
+    la cantidad de trimestres con nota (1, 2 o 3).
     """
     try:
-        cals = Calificacion.query.filter(
-            Calificacion.estudiante_id == estudiante_id,
-            Calificacion.materia_id == materia_id,
-            Calificacion.tipo != 'Promedio'
-        ).all()
+        trimestres = ['1er Trimestre', '2do Trimestre', '3er Trimestre']
+        notas_finales_trim = []
 
-        if not cals:
-            return
+        for trim in trimestres:
+            cal_final = Calificacion.query.filter_by(
+                estudiante_id=estudiante_id,
+                materia_id=materia_id,
+                periodo=trim,
+                tipo='Nota Final'
+            ).first()
 
-        notas = [c.nota for c in cals if c.nota is not None]
-        if not notas:
-            return
+            if cal_final and cal_final.nota is not None:
+                notas_finales_trim.append(float(cal_final.nota))
+            else:
+                # Búsqueda complementaria de notas regulares registradas en ese trimestre
+                cals_reg = Calificacion.query.filter(
+                    Calificacion.estudiante_id == estudiante_id,
+                    Calificacion.materia_id == materia_id,
+                    Calificacion.periodo == trim,
+                    Calificacion.tipo != 'Promedio',
+                    Calificacion.nota.isnot(None)
+                ).all()
+                if cals_reg:
+                    suma_reg = sum(float(c.nota) for c in cals_reg)
+                    notas_finales_trim.append(round(suma_reg, 1))
 
-        promedio_calculado = round(sum(notas) / len(notas), 2)
+        if not notas_finales_trim:
+            # Si no hay periodos con notas trimestrales, evalúa notas directas
+            cals_directas = Calificacion.query.filter(
+                Calificacion.estudiante_id == estudiante_id,
+                Calificacion.materia_id == materia_id,
+                Calificacion.tipo != 'Promedio'
+            ).all()
+            notas_directas = [c.nota for c in cals_directas if c.nota is not None]
+            if not notas_directas:
+                return
+            promedio_calculado = round(sum(notas_directas) / len(notas_directas), 2)
+        else:
+            promedio_calculado, cant_eval = calcular_promedio_trimestres_dinamico(notas_finales_trim)
 
         cal_prom = Calificacion.query.filter_by(
             estudiante_id=estudiante_id,
@@ -68,7 +105,7 @@ def actualizar_promedio_materia(estudiante_id, materia_id):
             
         db.session.flush()
     except Exception as e:
-        print(f"Error al calcular promedio automático para materia {materia_id}: {e}")
+        print(f"Error al calcular promedio dinámico para materia {materia_id}: {e}")
 
 # =========================================================================
 # LIBRO DE NOTAS (Vista principal por curso - Lógica Independiente por Fila)
@@ -114,7 +151,7 @@ def libro_notas():
                     calificaciones_dict[cal.estudiante_id][cal.materia_id] = []
                 calificaciones_dict[cal.estudiante_id][cal.materia_id].append(cal)
 
-    tipos_evaluacion = ['Parcial 1', 'Parcial 2', 'Parcial 3', 'Examen Final', 'Promedio']
+    tipos_evaluacion = ['1er Trimestre', '2do Trimestre', '3er Trimestre', 'Parcial 1', 'Parcial 2', 'Parcial 3', 'Examen Final', 'Promedio']
 
     return render_template('calificaciones/libro.html',
                            cursos=cursos,
@@ -131,6 +168,7 @@ def cargar_notas(materia_id):
     """Permite ingresar y actualizar notas basadas en los criterios dinámicos de forma 100% parcial y flexible."""
     materia = Materia.query.get_or_404(materia_id)
     curso = request.args.get('curso', '') or request.form.get('curso', '')
+    periodo_sel = request.args.get('periodo', '1er Trimestre')
 
     estudiantes = Estudiante.query.filter_by(
         curso=curso, estado='Activo'
@@ -157,6 +195,7 @@ def cargar_notas(materia_id):
                                 cal_existente = Calificacion.query.filter_by(
                                     estudiante_id=est.id,
                                     materia_id=materia.id,
+                                    periodo=periodo_sel,
                                     tipo=crit.nombre
                                 ).first()
 
@@ -167,6 +206,7 @@ def cargar_notas(materia_id):
                                     nueva_cal = Calificacion(
                                         estudiante_id=est.id,
                                         materia_id=materia.id,
+                                        periodo=periodo_sel,
                                         tipo=crit.nombre,
                                         nota=valor,
                                         fecha=ahora_bolivia()
@@ -177,6 +217,7 @@ def cargar_notas(materia_id):
                             cal_existente = Calificacion.query.filter_by(
                                 estudiante_id=est.id,
                                 materia_id=materia.id,
+                                periodo=periodo_sel,
                                 tipo=crit.nombre
                             ).first()
 
@@ -187,6 +228,7 @@ def cargar_notas(materia_id):
                                 nueva_cal = Calificacion(
                                     estudiante_id=est.id,
                                     materia_id=materia.id,
+                                    periodo=periodo_sel,
                                     tipo=crit.nombre,
                                     observacion=nota_str,
                                     fecha=ahora_bolivia()
@@ -203,11 +245,11 @@ def cargar_notas(materia_id):
 
             db.session.commit()
             if guardados_count > 0:
-                flash(f'✅ Se guardaron {guardados_count} registros correctamente', 'success')
+                flash(f'✅ Se guardaron {guardados_count} registros correctamente para {periodo_sel}', 'success')
             else:
                 flash('ℹ️ No se detectaron cambios nuevos para guardar.', 'info')
                 
-            return redirect(url_for('calificaciones.cargar_notas', materia_id=materia_id, curso=curso))
+            return redirect(url_for('calificaciones.cargar_notas', materia_id=materia_id, curso=curso, periodo=periodo_sel))
 
         except Exception as e:
             db.session.rollback()
@@ -219,12 +261,13 @@ def cargar_notas(materia_id):
     for est in estudiantes:
         cals = Calificacion.query.filter(
             Calificacion.estudiante_id == est.id,
-            Calificacion.materia_id == materia.id
+            Calificacion.materia_id == materia.id,
+            Calificacion.periodo == periodo_sel
         ).all()
         
         notas_dict[est.id] = {c.tipo: (c.nota if c.nota is not None else c.observacion) for c in cals}
         
-        notas_validas = [c.nota for c in cals if c.tipo != 'Promedio' and c.nota is not None]
+        notas_validas = [c.nota for c in cals if c.tipo not in ['Promedio', 'Nota Final'] and c.nota is not None]
         if notas_validas:
             promedios[est.id] = round(sum(notas_validas), 2)
         else:
@@ -233,6 +276,7 @@ def cargar_notas(materia_id):
     return render_template('calificaciones/cargar_notas.html',
                            materia=materia,
                            curso=curso,
+                           periodo_sel=periodo_sel,
                            estudiantes=estudiantes,
                            criterios=criterios,
                            promedios=promedios,
@@ -247,13 +291,15 @@ def registrar_calificacion():
     try:
         estudiante_id = int(request.form.get('estudiante_id'))
         materia_id = int(request.form.get('materia_id'))
-        tipo = request.form.get('tipo', 'Parcial 1')
+        periodo = request.form.get('periodo', '1er Trimestre')
+        tipo = request.form.get('tipo', 'Nota Final')
         nota_str = request.form.get('nota', '').strip()
 
         if not nota_str:
             cal_existente = Calificacion.query.filter_by(
                 estudiante_id=estudiante_id,
                 materia_id=materia_id,
+                periodo=periodo,
                 tipo=tipo
             ).first()
             if cal_existente:
@@ -277,6 +323,7 @@ def registrar_calificacion():
         cal_existente = Calificacion.query.filter_by(
             estudiante_id=estudiante_id,
             materia_id=materia_id,
+            periodo=periodo,
             tipo=tipo
         ).first()
 
@@ -288,6 +335,7 @@ def registrar_calificacion():
             nueva_cal = Calificacion(
                 estudiante_id=estudiante_id,
                 materia_id=materia_id,
+                periodo=periodo,
                 tipo=tipo,
                 nota=nota,
                 fecha=ahora_bolivia()
@@ -318,7 +366,8 @@ def registrar_masivo():
     """Registra calificaciones de forma masiva y recalcula promedios afectados."""
     try:
         curso = request.form.get('curso', '')
-        tipo = request.form.get('tipo', 'Parcial 1')
+        periodo = request.form.get('periodo', '1er Trimestre')
+        tipo = request.form.get('tipo', 'Nota Final')
         count = 0
         parejas_afectadas = set()
 
@@ -337,6 +386,7 @@ def registrar_masivo():
                         cal_existente = Calificacion.query.filter_by(
                             estudiante_id=estudiante_id,
                             materia_id=materia_id,
+                            periodo=periodo,
                             tipo=tipo
                         ).first()
 
@@ -347,6 +397,7 @@ def registrar_masivo():
                             nueva_cal = Calificacion(
                                 estudiante_id=estudiante_id,
                                 materia_id=materia_id,
+                                periodo=periodo,
                                 tipo=tipo,
                                 nota=nota,
                                 fecha=ahora_bolivia()
@@ -403,50 +454,69 @@ def eliminar_calificacion(id):
     return redirect(url_for('calificaciones.libro_notas', curso=curso))
 
 # =========================================================================
-# REPORTE DE CALIFICACIONES POR ESTUDIANTE
+# REPORTE DE CALIFICACIONES / KÁRDEX DEL ESTUDIANTE (3 FILAS HORIZONTALES)
 # =========================================================================
 @calificaciones_bp.route('/reporte/<int:estudiante_id>')
 def reporte_estudiante(estudiante_id):
-    """Muestra el reporte completo de calificaciones y sus promedios por materia."""
+    """
+    Muestra el kárdex completo con una fila horizontal por cada trimestre,
+    calculando el promedio dinámico dividiendo entre trimestres calificados.
+    """
     estudiante = Estudiante.query.get_or_404(estudiante_id)
-    from sqlalchemy import case
-    orden_tipo = case(
-        (Calificacion.tipo == 'P1', 1),
-        (Calificacion.tipo == 'P2', 2),
-        (Calificacion.tipo == 'P3', 3),
-        (Calificacion.tipo == 'E1', 4),
-        (Calificacion.tipo == 'EF', 5),
-        (Calificacion.tipo == 'NF', 6),
-        else_=99
-    )
-    calificaciones = Calificacion.query.filter_by(
-        estudiante_id=estudiante_id
-    ).options(joinedload(Calificacion.materia)).order_by(
-        Calificacion.materia_id, Calificacion.fecha, orden_tipo
-    ).all()
+    materias = Materia.query.filter_by(curso_id=estudiante.curso).order_by(Materia.nombre).all()
+    if not materias:
+        materias = Materia.query.order_by(Materia.nombre).all()
 
-    materias_notas = {}
-    for cal in calificaciones:
-        mat_nombre = cal.materia.nombre if cal.materia else 'Materia Eliminada'
-        if mat_nombre not in materias_notas:
-            materias_notas[mat_nombre] = []
-        materias_notas[mat_nombre].append(cal)
+    kardex_materias = []
+    promedios_materias = []
 
-    promedios = {}
-    for mat_nombre, cals in materias_notas.items():
-        prom_obj = next((c for c in cals if c.tipo == 'Promedio'), None)
-        if prom_obj:
-            promedios[mat_nombre] = prom_obj.nota
-        else:
-            notas_reg = [c.nota for c in cals if c.tipo != 'Promedio' and c.nota is not None]
-            promedios[mat_nombre] = sum(notas_reg) / len(notas_reg) if notas_reg else 0
+    for mat in materias:
+        filas_trimestres = []
+        notas_finales_trim = []
 
-    promedio_general = sum(promedios.values()) / len(promedios) if promedios else 0
+        for nombre_trim in ['1er Trimestre', '2do Trimestre', '3er Trimestre']:
+            cals_trim = Calificacion.query.filter(
+                Calificacion.estudiante_id == estudiante.id,
+                Calificacion.materia_id == mat.id,
+                Calificacion.periodo == nombre_trim
+            ).all()
+
+            cals_reg = [c for c in cals_trim if c.tipo not in ['Promedio', 'Nota Final']]
+            cal_final_obj = next((c for c in cals_trim if c.tipo == 'Nota Final'), None)
+
+            if cal_final_obj and cal_final_obj.nota is not None:
+                nota_final_val = float(cal_final_obj.nota)
+            elif cals_reg:
+                notas_nums = [float(c.nota) for c in cals_reg if c.nota is not None]
+                nota_final_val = round(sum(notas_nums), 1) if notas_nums else None
+            else:
+                nota_final_val = None
+
+            if nota_final_val is not None:
+                notas_finales_trim.append(nota_final_val)
+
+            filas_trimestres.append({
+                'trimestre': nombre_trim,
+                'evaluaciones': cals_reg,
+                'nota_final': nota_final_val
+            })
+
+        prom_mat, cant_eval = calcular_promedio_trimestres_dinamico(notas_finales_trim)
+        if cant_eval > 0:
+            promedios_materias.append(prom_mat)
+
+        kardex_materias.append({
+            'materia': mat,
+            'trimestres': filas_trimestres,
+            'promedio_acumulado': prom_mat if cant_eval > 0 else None,
+            'trimestres_evaluados': cant_eval
+        })
+
+    promedio_general = round(sum(promedios_materias) / len(promedios_materias), 1) if promedios_materias else 0.0
 
     return render_template('calificaciones/reporte.html',
                            estudiante=estudiante,
-                           materias_notas=materias_notas,
-                           promedios=promedios,
+                           kardex_materias=kardex_materias,
                            promedio_general=promedio_general)
 
 # =========================================================================
@@ -519,12 +589,12 @@ def verificar_boletin():
         else:
             return render_template('calificaciones/verificacion_error.html',
                                    mensaje=f"No se encontró ningún estudiante con C.I. {ci} "
-                                           f"en los registros del colegio."), 404
+                                           f"en los registros de la institución."), 404
     else:
         estudiante_id = estudiante.id
         nombre_estudiante = f"{estudiante.apellidos}, {estudiante.nombres}"
 
-    # Buscar el archivo PDF en la ruta absoluta unificada en C:\ASestud\uploads\boletines
+    # Buscar el archivo PDF en la ruta absoluta unificada
     nombre_archivo = f"boletin_{estudiante_id}_{anio}_{ci}.pdf"
     base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
     filepath = os.path.join(base_upload, 'boletines', nombre_archivo)
@@ -600,27 +670,27 @@ def verificar_manual():
                            anio=anio,
                            anio_actual=ahora_bolivia().year)
 
-
-
 # =========================================================================
-# GENERAR BOLETINES MASIVOS POR CURSO
+# GENERAR BOLETINES MASIVOS POR CURSO (PROMEDIO DINÁMICO)
 # =========================================================================
 @calificaciones_bp.route('/generar_boletines_curso/<curso>')
 def generar_boletines_curso(curso):
-    """Genera boletines PDF para todos los estudiantes de un curso."""
+    """Genera boletines PDF para todos los estudiantes de un curso con cálculo dinámico."""
     try:
         from utils.boletin_generator import generar_boletin_pdf
 
         estudiantes = Estudiante.query.filter_by(
             curso=curso, estado='Activo'
         ).order_by(Estudiante.apellidos).all()
-        materias = Materia.query.all()
+        materias = Materia.query.filter_by(curso_id=curso).all()
+        if not materias:
+            materias = Materia.query.all()
 
         try:
             tunnel_url = current_app.config.get('TUNNEL_URL', '')
             if not tunnel_url:
                 tunnel_url = request.host_url.rstrip('/')
-        except:
+        except Exception:
             tunnel_url = 'http://localhost:5000'
 
         base_upload = current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads")
@@ -637,13 +707,13 @@ def generar_boletines_curso(curso):
                 continue
 
             try:
-                url_verificacion = f"{tunnel_url}/calificaciones/verificar-boletin?rude={est.rude}&anio={ahora_bolivia().year}"
+                url_verificacion = f"{tunnel_url}/calificaciones/verificar-boletin?ci={est.ci}&anio={ahora_bolivia().year}"
 
                 bytes_pdf = generar_boletin_pdf(
                     est, calificaciones, materias, cloudinary_url=url_verificacion
                 )
 
-                filename = f"boletin_{est.id}_{ahora_bolivia().year}_{est.rude}.pdf"
+                filename = f"boletin_{est.id}_{ahora_bolivia().year}_{est.ci}.pdf"
                 filepath = os.path.join(boletines_dir, filename)
 
                 with open(filepath, 'wb') as f:

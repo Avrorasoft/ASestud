@@ -14,29 +14,77 @@
     <meta name="theme-color" content="#0f172a">
 
     <style>
-        /* FONDO BLANCO PURO COMO SOLICITASTE */
-        body { background-color: #ffffff; font-family: Arial, Helvetica, sans-serif; }
+        /* TIPOGRAFÍA BASE EXPANDIDA PARA LECTURA CÓMODA */
+        html { font-size: 18px; }
+        body { 
+            background-color: #ffffff; 
+            font-family: Arial, Helvetica, sans-serif; 
+            font-size: 1.15rem; 
+            line-height: 1.6;
+            color: #0f172a;
+        }
+        
         .wrapper { display: flex; min-height: 100vh; }
-        #sidebarPadres { min-width: 260px; max-width: 260px; background: #0f172a; color: #fff; transition: all .3s; display: flex; flex-direction: column; }
-        #sidebarPadres.active { margin-left: -260px; }
-        .sidebar-brand { padding: 12px 15px; border-bottom: 1px solid rgba(255,255,255,.08); text-align: center; }
-        .sidebar-brand .logo-img { max-width: 60px; max-height: 60px; border-radius: 8px; margin: 0 auto 5px; display: block; border: 2px solid rgba(255,255,255,.15); }
-        .sidebar-brand h5 { margin: 0; font-size: 13px; font-weight: bold; line-height: 1.2; }
-        .sidebar-brand small { color: #94a3b8; font-size: 10px; }
-        .sidebar-menu { flex-grow: 1; padding: 8px 0; }
-        #sidebarPadres .nav-link { color: #e2e8f0; padding: 8px 15px; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; font-size: 16px; text-decoration: none; }
-        #sidebarPadres .nav-link:hover { background: #1e293b; color: #fff; border-left: 3px solid #38bdf8; }
-        #sidebarPadres .nav-link.active { background: #1e293b; color: #fff; border-left: 3px solid #38bdf8; font-weight: bold; }
-        #sidebarPadres .nav-link i { width: 20px; text-align: center; font-size: 15px; }
-        .sidebar-separator { height: 1px; background: rgba(255,255,255,.08); margin: 6px 15px; }
-        .padre-badge { background: #1e293b; border: 1px solid #38bdf8; color: #38bdf8; border-radius: 8px; padding: 6px 10px; margin: 10px 15px; font-size: 13px; font-weight: bold; text-align: center; }
+        
+        /* BARRA LATERAL CON ÍCONOS Y TEXTOS GRANDES */
+        #sidebarPadres { 
+            min-width: 300px; 
+            max-width: 300px; 
+            background: #0f172a; 
+            color: #fff; 
+            transition: all .3s; 
+            display: flex; 
+            flex-direction: column; 
+        }
+        #sidebarPadres.active { margin-left: -300px; }
+        
+        .sidebar-brand { padding: 18px 20px; border-bottom: 1px solid rgba(255,255,255,.12); text-align: center; }
+        .sidebar-brand .logo-img { max-width: 80px; max-height: 80px; border-radius: 10px; margin: 0 auto 8px; display: block; border: 2px solid rgba(255,255,255,.2); }
+        .sidebar-brand h5 { margin: 0; font-size: 1.15rem; font-weight: bold; line-height: 1.3; }
+        .sidebar-brand small { color: #94a3b8; font-size: 0.95rem; font-weight: 600; }
+        
+        .sidebar-menu { flex-grow: 1; padding: 12px 0; }
+        #sidebarPadres .nav-link { 
+            color: #f1f5f9; 
+            padding: 14px 22px; 
+            display: flex; 
+            align-items: center; 
+            gap: 16px; 
+            border-left: 5px solid transparent; 
+            font-size: 1.15rem; 
+            font-weight: 600;
+            text-decoration: none; 
+        }
+        #sidebarPadres .nav-link:hover { background: #1e293b; color: #fff; border-left: 5px solid #38bdf8; }
+        #sidebarPadres .nav-link.active { background: #1e293b; color: #fff; border-left: 5px solid #38bdf8; font-weight: bold; }
+        #sidebarPadres .nav-link i { width: 30px; text-align: center; font-size: 1.5rem; }
+        
+        .sidebar-separator { height: 2px; background: rgba(255,255,255,.12); margin: 12px 20px; }
+        .padre-badge { 
+            background: #1e293b; 
+            border: 2px solid #38bdf8; 
+            color: #38bdf8; 
+            border-radius: 10px; 
+            padding: 10px 14px; 
+            margin: 12px 18px; 
+            font-size: 1.05rem; 
+            font-weight: bold; 
+            text-align: center; 
+        }
+        
         .main-content { flex-grow: 1; display: flex; flex-direction: column; background-color: #ffffff; }
-        .topbar { background: #fff; border-bottom: 1px solid #e2e8f0; padding: 12px 20px; }
-        .content-area { padding: 20px; flex-grow: 1; }
-        .footer { background: #fff; border-top: 1px solid #e2e8f0; padding: 10px 20px; font-size: 13px; color: #64748b; }
-        .card { box-shadow: 0 0.5rem 0.5rem rgba(0,0,0,.08) !important; border: 1px solid rgba(0,0,0,.12) !important; }
-        #sidebarOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 1040; }
+        .topbar { background: #fff; border-bottom: 2px solid #e2e8f0; padding: 16px 24px; }
+        .topbar h5 { font-size: 1.35rem; font-weight: bold; }
+        
+        .content-area { padding: 26px; flex-grow: 1; }
+        .footer { background: #fff; border-top: 2px solid #e2e8f0; padding: 16px 24px; font-size: 1rem; color: #475569; font-weight: 500; }
+        .card { box-shadow: 0 0.5rem 1rem rgba(0,0,0,.08) !important; border: 2px solid #cbd5e1 !important; border-radius: 12px; }
+        
+        #sidebarOverlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 1040; }
         #sidebarOverlay.active { display: block; }
+
+        .btn { font-size: 1.1rem; padding: 10px 20px; border-radius: 8px; font-weight: 700; }
+        .badge { font-size: 0.95rem; padding: 6px 12px; }
 
         @media (min-width: 768px) {
             html, body { height: 100%; overflow: hidden; }
@@ -47,15 +95,16 @@
             .content-area::-webkit-scrollbar { display: none; }
         }
         @media (max-width: 767.98px) {
+            html { font-size: 17px; }
             html, body { height: auto !important; overflow: visible !important; overflow-x: hidden !important; }
             .wrapper { height: auto !important; display: block !important; }
-            #sidebarPadres { position: fixed; top: 0; left: 0; height: 100vh; z-index: 1050; margin-left: -260px; overflow-y: auto; }
+            #sidebarPadres { position: fixed; top: 0; left: 0; height: 100vh; z-index: 1050; margin-left: -300px; overflow-y: auto; }
             #sidebarPadres.active { margin-left: 0; }
             .main-content { width: 100% !important; }
-            .content-area { padding: 10px !important; }
-            .topbar { position: sticky; top: 0; z-index: 1030; padding: 10px 12px !important; }
-            .btn { min-height: 44px; }
-            .form-control, .form-select { min-height: 44px; font-size: 16px !important; }
+            .content-area { padding: 14px !important; }
+            .topbar { position: sticky; top: 0; z-index: 1030; padding: 12px 16px !important; }
+            .btn { min-height: 52px; font-size: 1.15rem; }
+            .form-control, .form-select { min-height: 52px; font-size: 1.15rem !important; }
         }
         @media print {
             #sidebarPadres, .topbar, .footer, .no-print, #sidebarOverlay { display: none !important; }
@@ -65,8 +114,7 @@
         }
     </style>
     {% block extra_head %}{% endblock %}
-    
-    </head>
+</head>
 <body>
 <div id="sidebarOverlay"></div>
     <div class="wrapper">
@@ -76,49 +124,57 @@
                 {% if institucion and institucion.get('institucion_logo') %}
                 <img src="{{ institucion.institucion_logo_url }}" alt="Logo" class="logo-img">
                 {% endif %}
-                <h5>{{ institucion.get('institucion_linea1', 'Colegio') if institucion else 'Colegio' }}</h5>
+                <h5>{{ institucion.get('institucion_linea1', 'Unidad Educativa') if institucion else 'Unidad Educativa' }}</h5>
                 {% if institucion and institucion.get('institucion_linea2') %}
-                <div style="font-size:11px;color:#94a3b8;">{{ institucion['institucion_linea2'] }}</div>
+                <div style="font-size: 0.95rem; color: #94a3b8; font-weight: 500;">{{ institucion['institucion_linea2'] }}</div>
                 {% endif %}
                 <small>Portal de Padres</small>
             </div>
 
             <div class="padre-badge">
-                <i class="bi bi-person-fill me-1"></i>{{ session.get('padre_nombre', 'Padre') }}
+                <i class="bi bi-person-fill me-1 fs-5"></i>{{ session.get('padre_nombre', 'Padre') }}
             </div>
 
             <div class="sidebar-menu">
                 <a class="nav-link {% if request.endpoint == 'portal_padres.dashboard' %}active{% endif %}" href="{{ url_for('portal_padres.dashboard') }}">
-                    <i class="bi bi-house-door-fill"></i> Inicio
+                    <i class="bi bi-house-door-fill text-primary"></i> Inicio
                 </a>
                 <a class="nav-link {% if request.endpoint in ['portal_padres.mensajes', 'portal_padres.ver_mensaje', 'portal_padres.nuevo_mensaje'] %}active{% endif %}" href="{{ url_for('portal_padres.mensajes') }}">
-                    <i class="bi bi-chat-dots-fill"></i> Mensajes
+                    <i class="bi bi-chat-dots-fill text-info"></i> Mensajes
+                </a>
+                <a class="nav-link {% if request.endpoint == 'portal_padres.pizarra' %}active{% endif %}" href="{{ url_for('portal_padres.pizarra') }}">
+                    <i class="bi bi-grid-3x3-gap-fill text-success"></i> Pizarra Escolar
                 </a>
                 <a class="nav-link {% if request.endpoint == 'portal_padres.ver_boletin' %}active{% endif %}" href="{{ url_for('portal_padres.ver_boletin') }}">
-                    <i class="bi bi-journal-text"></i> Boletín de Notas
+                    <i class="bi bi-journal-text text-warning"></i> Boletín de Notas
                 </a>
                 <a class="nav-link {% if request.endpoint == 'portal_padres.pagos' %}active{% endif %}" href="{{ url_for('portal_padres.pagos') }}">
-                    <i class="bi bi-cash-stack"></i> Estado de Pagos
+                    <i class="bi bi-cash-stack text-success"></i> Estado de Pagos
                 </a>
+                
                 <div class="sidebar-separator"></div>
-                <a class="nav-link text-danger" href="{{ url_for('portal_padres.login') }}">
-                    <i class="bi bi-box-arrow-left"></i>
-                    Cerrar Sesión
+
+                <a class="nav-link {% if request.endpoint == 'portal_padres.cambiar_password' %}active{% endif %} text-warning" href="{{ url_for('portal_padres.cambiar_password') }}">
+                    <i class="bi bi-shield-lock-fill text-warning"></i> Cambiar Contraseña
+                </a>
+
+                <div class="sidebar-separator"></div>
+                <a class="nav-link text-danger" href="{{ url_for('portal_padres.logout') }}">
+                    <i class="bi bi-box-arrow-left"></i> Cerrar Sesión
                 </a>
             </div>
         </nav>
 
         <div class="main-content">
             <div class="topbar d-flex justify-content-between align-items-center">
-                <!-- LOGO GIGANTE ELIMINADO DE AQUÍ PARA EVITAR BLOQUEO DE PANTALLA -->
                 <div class="d-flex align-items-center gap-3">
-                    <button class="btn btn-outline-secondary btn-sm" type="button" id="sidebarTogglePadres">
-                        <i class="bi bi-list"></i>
+                    <button class="btn btn-outline-secondary btn-lg" type="button" id="sidebarTogglePadres">
+                        <i class="bi bi-list fs-4"></i>
                     </button>
                     <h5 class="mb-0">{% block page_title %}Portal de Padres{% endblock %}</h5>
                 </div>
-                <div class="text-muted d-none d-md-block">
-                    <i class="bi bi-calendar-date"></i> {{ now().strftime('%d/%m/%Y') }}
+                <div class="text-muted d-none d-md-block fs-6 fw-bold">
+                    <i class="bi bi-calendar-date text-primary"></i> {{ now().strftime('%d/%m/%Y') }}
                 </div>
             </div>
 
@@ -126,7 +182,7 @@
                 {% with messages = get_flashed_messages(with_categories=true) %}
                     {% if messages %}
                         {% for category, message in messages %}
-                            <div class="alert alert-{{ category if category in ['success','danger','warning','info'] else 'secondary' }} alert-dismissible fade show" role="alert">
+                            <div class="alert alert-{{ category if category in ['success','danger','warning','info'] else 'secondary' }} alert-dismissible fade show fs-5 p-3" role="alert">
                                 {{ message }}
                                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
                             </div>
@@ -137,7 +193,7 @@
             </div>
 
             <div class="footer">
-                © 2026 {{ institucion.get('institucion_linea1', '') if institucion else 'Colegio Dr. Antonio Vaca Díez' }} | Desarrollado por Avrora Soft - Vibola LLC
+                © 2026 {{ institucion.get('institucion_linea1', 'Unidad Educativa') if institucion else 'Unidad Educativa' }} | Desarrollado por Avrora Soft - Vibola LLC
             </div>
         </div>
     </div>
@@ -162,37 +218,5 @@
         });
     </script>
     {% block extra_scripts %}{% endblock %}
-<script>
-(function(){
-    var VERSION = 'v20260819-limpieza';
-    if (localStorage.getItem('app_version') !== VERSION) {
-        localStorage.setItem('app_version', VERSION);
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function(rs){ rs.forEach(function(r){ r.unregister(); }); });
-        }
-        if ('caches' in window) {
-            caches.keys().then(function(ns){ ns.forEach(function(n){ caches.delete(n); }); });
-        }
-        location.reload(true);
-    }
-})();
-</script>
-<script>
-    // SCRIPT DETECTIVE DE SALTOS DE SCROLL EN VIVO
-    window.addEventListener('scroll', function() {
-        // Si la página se desplaza bruscamente hacia arriba sin que el usuario haya usado la rueda o la barra
-        if (window.scrollY > 0) {
-            console.log("Detectado scroll en posición:", window.scrollY);
-        }
-    }, { passive: true });
-
-    // Interceptar cualquier clic para ver qué elemento causó el desplazamiento o la recarga
-    document.addEventListener('click', function(e) {
-        let target = e.target.closest('a, button');
-        if (target) {
-            console.log("Click detectado en elemento:", target, "con href/action:", target.getAttribute('href') || target.type);
-        }
-    }, true);
-</script>
 </body>
 </html>

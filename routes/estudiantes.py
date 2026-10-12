@@ -1244,21 +1244,26 @@ def enviar_recibo_chat(id):
     except Exception as e:
         flash(f'❌ Error al enviar: {str(e)}', 'danger')
         return redirect(url_for('estudiantes.ver_recibo_oficial', id=id, recibo=recibo_filename))
-
-
+        
 def _generar_bytes_boletin(est):
+    from datetime import datetime, timezone, timedelta
+    bolivia_now = datetime.now(timezone(timedelta(hours=-4)))
+    
     curso_txt = str(getattr(est, 'curso', '')).lower()
     es_nidito = any(k in curso_txt for k in ['nidito', 'inicial', 'kinder', 'kínder', 'pre-kinder', 'prekinder'])
-    
     calificaciones = Calificacion.query.filter_by(estudiante_id=est.id).all()
-    
+
+    tunnel_url = current_app.config.get('TUNNEL_URL', '') or request.host_url.rstrip('/')
+    url_verificacion = f"{tunnel_url}/calificaciones/verificar-boletin?ci={est.ci}&anio={bolivia_now.year}"
+
     if es_nidito:
         from utils.boletin_nidito_generator import generar_boletin_nidito_pdf
-        return generar_boletin_nidito_pdf(est, calificaciones=calificaciones)
+        return generar_boletin_nidito_pdf(est, calificaciones=calificaciones, cloudinary_url=url_verificacion)
     else:
         from utils.boletin_generator import generar_boletin_pdf
-        materias = Materia.query.all()
-        url_verificacion = f"/calificaciones/verificar-boletin?ci={est.ci}"
+        materias = Materia.query.filter_by(curso_id=est.curso).all()
+        if not materias:
+            materias = Materia.query.all()
         return generar_boletin_pdf(est, calificaciones, materias, cloudinary_url=url_verificacion)
 
 
@@ -1279,31 +1284,37 @@ def pdf_boletin_stream(id):
     return response
 
 
+@estudiantes_bp.route('/ver_boletin/<int:id>')
+def ver_boletin(id):
+    from datetime import datetime, timezone, timedelta
+    bolivia_now = datetime.now(timezone(timedelta(hours=-4)))
+    
+    est = Estudiante.query.get_or_404(id)
+    from utils.boletin_generator import guardar_boletin_localmente
+
+    pdf_bytes = _generar_bytes_boletin(est)
+    filename = guardar_boletin_localmente(pdf_bytes, est.id, bolivia_now.year, est.rude or est.ci)
+
+    boletin_url = f"/static/boletines/{filename}?v={int(bolivia_now.timestamp())}"
+
+    return render_template('estudiantes/ver_boletin.html',
+                           est=est,
+                           boletin_url=boletin_url)
+
+
 @estudiantes_bp.route('/descargar_boletin/<int:id>')
 def descargar_boletin(id):
+    from datetime import datetime, timezone, timedelta
+    bolivia_now = datetime.now(timezone(timedelta(hours=-4)))
+    
     est = Estudiante.query.get_or_404(id)
     pdf_bytes = _generar_bytes_boletin(est)
-    
+
     return send_file(
         io.BytesIO(pdf_bytes),
         mimetype='application/pdf',
         as_attachment=True,
-        download_name=f"boletin_{est.apellidos}_{est.nombres}_{est.ci}.pdf".replace(" ", "_")
-    )
-
-
-@estudiantes_bp.route('/ver_boletin/<int:id>')
-@estudiantes_bp.route('/generar_boletin/<int:id>')
-def ver_boletin(id):
-    est = Estudiante.query.get_or_404(id)
-    padre = Padre.query.filter_by(estudiante_id=id).first()
-    
-    pdf_stream_url = url_for('estudiantes.pdf_boletin_stream', id=est.id)
-    return render_template(
-        'estudiantes/ver_boletin.html',
-        est=est,
-        padre=padre,
-        boletin_url=pdf_stream_url
+        download_name=f"Boletin_{est.apellidos}_{est.nombres}_{bolivia_now.year}.pdf"
     )
 
 
@@ -1329,7 +1340,7 @@ def imprimir_calificaciones_detalle(id):
         as_attachment=False,
         download_name=f"Calificaciones_Detalle_{est.ci}.pdf"
     )
-
+    
 @estudiantes_bp.route('/imprimir_boletin_directo/<int:id>')
 def imprimir_boletin_directo(id):
     from utils.boletin_generator import generar_boletin_pdf

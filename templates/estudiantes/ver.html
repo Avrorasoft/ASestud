@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 
 {% block title %}
-Cardex - {{ est.apellidos }}, {{ est.nombres }} - Colegio Dr. Antonio Vaca Díez
+Cardex - {{ est.apellidos }}, {{ est.nombres }} - {{ institucion.get('institucion_linea1', 'Unidad Educativa') if institucion else 'Unidad Educativa' }}
 {% endblock %}
 
 {% block content %}
@@ -10,6 +10,30 @@ Cardex - {{ est.apellidos }}, {{ est.nombres }} - Colegio Dr. Antonio Vaca Díez
         .no-print {
             display: none !important;
         }
+    }
+    .trim-cell-title {
+        font-weight: 800;
+        color: #1e3c72;
+        width: 160px;
+        font-size: 1.15rem;
+        white-space: nowrap;
+    }
+    .materia-main-header {
+        background-color: #f8fafc;
+        color: #0f172a;
+        font-weight: 800;
+    }
+    .badge-criterio {
+        font-size: 1.15rem !important;
+        padding: 0.65rem 1rem !important;
+        border-radius: 8px !important;
+        border: 1.5px solid #cbd5e1 !important;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+    }
+    .nota-criterio-grande {
+        font-size: 1.4rem !important;
+        font-weight: 800 !important;
+        color: #0284c7 !important;
     }
 </style>
 
@@ -223,7 +247,7 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
 </script>
 
     <!-- =============================================================== -->
-    <!-- BARRA DE BOTONES (COLORES ORIGINALES) -->
+    <!-- BARRA DE BOTONES -->
     <!-- =============================================================== -->
 
     <div class="btn-group w-100 mb-2 no-print" role="group">
@@ -263,7 +287,6 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
             <i class="bi bi-heart-pulse-fill"></i> Salud
         </a>
 
-        <!-- Botón para eliminar kárdex con Bóveda / Superadmin -->
         <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalEliminarCardex">
             <i class="bi bi-trash-fill"></i> Eliminar Kárdex
         </button>
@@ -532,13 +555,11 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
                                 {% endif %}
                             </td>
                             <td class="text-center no-print">
-                                <!-- Botón para Justificar Directamente -->
                                 {% if a.estado in ['Falta', 'Retraso'] %}
                                 <button type="button" class="btn btn-sm btn-outline-warning fw-bold shadow-sm" data-bs-toggle="modal" data-bs-target="#modalJustificar{{ a.id }}" title="Justificar Inasistencia">
                                     <i class="bi bi-file-earmark-medical"></i> Justificar
                                 </button>
                                 
-                                <!-- Modal de Justificación Médica / Permiso -->
                                 <div class="modal fade text-start" id="modalJustificar{{ a.id }}" tabindex="-1" aria-labelledby="modalJustificarLabel{{ a.id }}" aria-hidden="true">
                                  <div class="modal-dialog modal-dialog-centered">
                                     <div class="modal-content bg-dark text-light border-warning shadow-lg" style="border-radius: 12px;">
@@ -577,7 +598,6 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
                                 {% endif %}
                                 
                                 {% if session.get('superadmin_activo') %}
-                                <!-- Edición Administrativa Abierta (Solo visible para superadmin) -->
                                 <button type="button" class="btn btn-sm btn-outline-danger shadow-sm ms-1" data-bs-toggle="modal" data-bs-target="#modalEditarAsistencia{{ a.id }}" title="Edición de Estado Administrativo">
                                     <i class="bi bi-pencil-square"></i>
                                 </button>
@@ -692,14 +712,12 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
                                     </a>
 
                                     {% if session.get('superadmin_activo') and p.estado != 'Anulado' %}
-                                    <!-- Botón para abrir modal de anulación por Bóveda -->
                                     <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal" data-bs-target="#modalAnularPago{{ p.id }}" title="Anular transacción">
                                         <i class="bi bi-x-circle-fill"></i>
                                     </button>
                                     {% endif %}
                                 </div>
 
-                                <!-- MODAL DE ANULACIÓN PROTEGIDO POR BÓVEDA -->
                                 {% if session.get('superadmin_activo') and p.estado != 'Anulado' %}
                                 <div class="modal fade text-start" id="modalAnularPago{{ p.id }}" tabindex="-1" aria-hidden="true">
                                     <div class="modal-dialog">
@@ -749,109 +767,245 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
     </div>
 
     <!-- =============================================================== -->
-    <!-- CALIFICACIONES OFICIALES -->
+    <!-- CALIFICACIONES OFICIALES (KÁRDEX CON NÚMEROS Y TEXTOS AMPLIOS) -->
     <!-- =============================================================== -->
 
     <div class="card shadow mb-4">
-        <div class="card-header bg-white">
-            <h5 class="mb-0">
-                <i class="bi bi-journal-check-fill text-primary"></i>
-                Calificaciones Oficiales
-            </h5>
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+            <h4 class="mb-0 fw-bold text-dark">
+                <i class="bi bi-journal-check text-primary me-2"></i>
+                Calificaciones Oficiales por Materia y Trimestre
+            </h4>
+            <span class="badge bg-light text-muted border fs-6">
+                Promedios calculados dividiendo únicamente entre trimestres calificados
+            </span>
         </div>
 
-        <div class="card-body">
+        <div class="card-body p-0">
 
             {% if materias_notas %}
 
-            {% set calculo_promedio = namespace(suma=0, cantidad=0, suma_total=0, cantidad_total=0) %}
+            {% set calculo_promedio_general = namespace(suma=0.0, materias_con_nota=0) %}
 
             <div class="table-responsive">
-                <table class="table table-bordered align-middle">
-                    <thead class="table-light">
+                <table class="table table-bordered align-middle mb-0">
+                    <thead class="table-dark">
                         <tr>
-                            <th style="width: 250px;">Materia</th>
-                            <th>Evaluaciones y Notas Registradas</th>
+                            <th style="width: 250px;" class="py-3 fs-5">Materia</th>
+                            <th style="width: 170px;" class="py-3 fs-5">Trimestre</th>
+                            <th class="py-3 fs-5">Evaluaciones y Criterios Registrados</th>
+                            <th style="width: 150px;" class="text-center py-3 fs-5">Nota Final</th>
                         </tr>
                     </thead>
 
                     <tbody>
                         {% for item in materias_notas %}
-                        <tr>
-                            <td><strong>{{ item['nombre'] }}</strong></td>
 
-                            <td>
-                                <div class="d-flex justify-content-between align-items-center">
-                                    <div class="d-flex flex-wrap align-items-center gap-1">
-                                        {% for n in item['notas'] %}
-                                            
-                                            <!-- NOTA NUMÉRICA -->
-                                            {% if n.nota != '-' %}
-                                                {% set es_final = 'final' in n.tipo|lower or 'promedio' in n.tipo|lower %}
-                                                <div class="d-inline-flex flex-column justify-content-between align-items-center p-2 rounded shadow-sm text-center mb-2" 
-                                                     style="min-width: 82px; 
-                                                            background: {{ '#ecfdf5' if es_final else '#f8fafc' }}; 
-                                                            border: 1px solid {{ '#10b981' if es_final else '#cbd5e1' }};">
-                                                    <span class="text-uppercase fw-semibold" 
-                                                          style="font-size: 0.68rem; letter-spacing: 0.3px; color: {{ '#047857' if es_final else '#64748b' }};">
-                                                        {{ n.tipo }}
-                                                    </span>
-                                                    <span class="fw-bold mt-1" 
-                                                          style="font-size: 1.05rem; color: {{ '#065f46' if es_final else '#1e293b' }};">
-                                                        {{ "%.1f"|format(n.nota) if n.nota is number else n.nota }}
-                                                </span>
-                                        </div>
-                                        {% endif %}
-                                        
-                                        <!-- VALORACIÓN CUALITATIVA -->
-                                        {% if n.valoracion_cualitativa %}
-                                            <div class="p-2 mb-2 bg-light border-start border-4 border-success rounded">
-                                                <div class="fw-bold text-dark small">{{ n.tipo }}</div>
-                                                <span class="badge bg-success text-white px-2 py-1 mt-1">{{ n.valoracion_cualitativa }}</span>
-                                            </div>
-                                        {% endif %}
-                                        
-                                        <!-- INFORME DESCRIPTIVO -->
-                                        {% if n.informe_descriptivo %}
-                                            <div class="p-2 mb-2 bg-light border-start border-4 border-info rounded">
-                                                <div class="fw-bold text-dark small">{{ n.tipo }}</div>
-                                                <div class="text-dark fst-italic small mt-1">{{ n.informe_descriptivo }}</div>
-                                            </div>
-                                        {% endif %}
+                            {# PROCESAR NOTAS Y ORGANIZAR POR TRIMESTRE #}
+                            {% set trim_data = {
+                                '1er Trimestre': {'evals': [], 'final': None},
+                                '2do Trimestre': {'evals': [], 'final': None},
+                                '3er Trimestre': {'evals': [], 'final': None}
+                            } %}
 
-                                        {% endfor %}
-                                    </div>
-                                </div>
-                                {% if 'nidito' not in est.curso|lower and 'inicial' not in est.curso|lower and 'kinder' not in est.curso|lower %}
-                                <div class="ms-auto ps-3 text-end">
-                                    <a href="{{ url_for('estudiantes.imprimir_materia_individual', id=est.id, materia_nombre=item['nombre']) }}" 
-                                       target="_blank" 
-                                       class="btn btn-sm btn-outline-secondary border-0 text-primary" 
-                                       title="Imprimir materia">
-                                        <i class="bi bi-printer fs-5"></i>
-                                    </a>
-                                </div>
+                            {% for n in item['notas'] %}
+                                {% set per = (n.periodo or '')|string|lower %}
+                                {% set t_key = None %}
+                                {% if '1' in per or 'primer' in per %}
+                                    {% set t_key = '1er Trimestre' %}
+                                {% elif '2' in per or 'segundo' in per %}
+                                    {% set t_key = '2do Trimestre' %}
+                                {% elif '3' in per or 'tercer' in per %}
+                                    {% set t_key = '3er Trimestre' %}
                                 {% endif %}
-                            </td>
-                        </tr>
+
+                                {% if t_key %}
+                                    {% set es_final_node = 'final' in n.tipo|lower or 'promedio' in n.tipo|lower %}
+                                    {% if es_final_node and n.nota is not none and n.nota != '-' %}
+                                        {% if trim_data[t_key].update({'final': n.nota|float}) %}{% endif %}
+                                    {% else %}
+                                        {% if trim_data[t_key]['evals'].append(n) %}{% endif %}
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+
+                            {# RESOLVER NOTA FINAL POR TRIMESTRE #}
+                            {% set notas_validas_materia = namespace(lista=[]) %}
+                            {% for tk in ['1er Trimestre', '2do Trimestre', '3er Trimestre'] %}
+                                {% if trim_data[tk]['final'] is not none %}
+                                    {% set _ = notas_validas_materia.lista.append(trim_data[tk]['final']) %}
+                                {% elif trim_data[tk]['evals'] %}
+                                    {% set suma_e = namespace(val=0.0, tiene=false) %}
+                                    {% for ev in trim_data[tk]['evals'] %}
+                                        {% if ev.nota is not none and ev.nota != '-' %}
+                                            {% set suma_e.val = suma_e.val + ev.nota|float %}
+                                            {% set suma_e.tiene = true %}
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if suma_e.tiene %}
+                                        {% if trim_data[tk].update({'final': suma_e.val|round(1)}) %}{% endif %}
+                                        {% set _ = notas_validas_materia.lista.append(suma_e.val|round(1)) %}
+                                    {% endif %}
+                                {% endif %}
+                            {% endfor %}
+
+                            {# CÁLCULO DINÁMICO DEL PROMEDIO ACUMULADO #}
+                            {% set cant_trim = notas_validas_materia.lista|length %}
+                            {% if cant_trim > 0 %}
+                                {% set prom_mat = (notas_validas_materia.lista|sum / cant_trim)|round(1) %}
+                                {% set calculo_promedio_general.suma = calculo_promedio_general.suma + prom_mat %}
+                                {% set calculo_promedio_general.materias_con_nota = calculo_promedio_general.materias_con_nota + 1 %}
+                            {% else %}
+                                {% set prom_mat = None %}
+                            {% endif %}
+
+                            <!-- FILA 1: 1er Trimestre -->
+                            <tr style="border-top: 3px solid #0f172a;">
+                                <td rowspan="3" class="materia-main-header align-middle p-3">
+                                    <div class="fs-4 fw-bold text-dark">{{ item['nombre'] }}</div>
+                                    <div class="mt-3 p-2 bg-white rounded border">
+                                        <div class="text-muted small fw-semibold">Promedio Acumulado:</div>
+                                        {% if prom_mat is not none %}
+                                            <div class="{% if prom_mat >= 51 %}text-success{% else %}text-danger{% endif %} fs-3 fw-bold">
+                                                {{ "%.1f"|format(prom_mat) }} pts
+                                            </div>
+                                            <div class="text-muted small">({{ cant_trim }} trim. evaluado{{ 's' if cant_trim != 1 else '' }})</div>
+                                        {% else %}
+                                            <span class="text-secondary fs-5">-</span>
+                                        {% endif %}
+                                    </div>
+                                    {% if 'nidito' not in est.curso|lower and 'inicial' not in est.curso|lower and 'kinder' not in est.curso|lower %}
+                                    <div class="mt-3 no-print">
+                                        <a href="{{ url_for('estudiantes.imprimir_materia_individual', id=est.id, materia_nombre=item['nombre']) }}" 
+                                           target="_blank" 
+                                           class="btn btn-outline-primary btn-sm fw-bold w-100" 
+                                           title="Imprimir materia">
+                                            <i class="bi bi-printer me-1"></i> Imprimir Materia
+                                        </a>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                <td class="trim-cell-title p-3">
+                                    <i class="bi bi-calendar-check text-primary me-2"></i>1er Trimestre
+                                </td>
+                                <td class="p-3">
+                                    {% if trim_data['1er Trimestre']['evals'] %}
+                                        <div class="d-flex flex-wrap align-items-center gap-3">
+                                            {% for ev in trim_data['1er Trimestre']['evals'] %}
+                                                {% if ev.nota is not none and ev.nota != '-' %}
+                                                    <span class="badge bg-white text-dark badge-criterio">
+                                                        <span class="text-muted me-2">{{ ev.tipo }}:</span>
+                                                        <span class="nota-criterio-grande">{{ "%.1f"|format(ev.nota|float) }}</span>
+                                                    </span>
+                                                {% elif ev.valoracion_cualitativa %}
+                                                    <span class="badge bg-success badge-criterio">{{ ev.tipo }}: {{ ev.valoracion_cualitativa }}</span>
+                                                {% elif ev.informe_descriptivo %}
+                                                    <span class="badge bg-info text-dark badge-criterio">{{ ev.tipo }}: {{ ev.informe_descriptivo }}</span>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted fst-italic fs-6">Sin calificaciones registradas</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center fw-bold p-3">
+                                    {% if trim_data['1er Trimestre']['final'] is not none %}
+                                        <span class="{% if trim_data['1er Trimestre']['final'] >= 51 %}text-success{% else %}text-danger{% endif %} fs-3">
+                                            {{ "%.1f"|format(trim_data['1er Trimestre']['final']) }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted fs-4">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <!-- FILA 2: 2do Trimestre -->
+                            <tr>
+                                <td class="trim-cell-title p-3">
+                                    <i class="bi bi-calendar-check text-primary me-2"></i>2do Trimestre
+                                </td>
+                                <td class="p-3">
+                                    {% if trim_data['2do Trimestre']['evals'] %}
+                                        <div class="d-flex flex-wrap align-items-center gap-3">
+                                            {% for ev in trim_data['2do Trimestre']['evals'] %}
+                                                {% if ev.nota is not none and ev.nota != '-' %}
+                                                    <span class="badge bg-white text-dark badge-criterio">
+                                                        <span class="text-muted me-2">{{ ev.tipo }}:</span>
+                                                        <span class="nota-criterio-grande">{{ "%.1f"|format(ev.nota|float) }}</span>
+                                                    </span>
+                                                {% elif ev.valoracion_cualitativa %}
+                                                    <span class="badge bg-success badge-criterio">{{ ev.tipo }}: {{ ev.valoracion_cualitativa }}</span>
+                                                {% elif ev.informe_descriptivo %}
+                                                    <span class="badge bg-info text-dark badge-criterio">{{ ev.tipo }}: {{ ev.informe_descriptivo }}</span>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted fst-italic fs-6">Sin calificaciones registradas</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center fw-bold p-3">
+                                    {% if trim_data['2do Trimestre']['final'] is not none %}
+                                        <span class="{% if trim_data['2do Trimestre']['final'] >= 51 %}text-success{% else %}text-danger{% endif %} fs-3">
+                                            {{ "%.1f"|format(trim_data['2do Trimestre']['final']) }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted fs-4">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+
+                            <!-- FILA 3: 3er Trimestre -->
+                            <tr style="border-bottom: 3px solid #0f172a;">
+                                <td class="trim-cell-title p-3">
+                                    <i class="bi bi-calendar-check text-primary me-2"></i>3er Trimestre
+                                </td>
+                                <td class="p-3">
+                                    {% if trim_data['3er Trimestre']['evals'] %}
+                                        <div class="d-flex flex-wrap align-items-center gap-3">
+                                            {% for ev in trim_data['3er Trimestre']['evals'] %}
+                                                {% if ev.nota is not none and ev.nota != '-' %}
+                                                    <span class="badge bg-white text-dark badge-criterio">
+                                                        <span class="text-muted me-2">{{ ev.tipo }}:</span>
+                                                        <span class="nota-criterio-grande">{{ "%.1f"|format(ev.nota|float) }}</span>
+                                                    </span>
+                                                {% elif ev.valoracion_cualitativa %}
+                                                    <span class="badge bg-success badge-criterio">{{ ev.tipo }}: {{ ev.valoracion_cualitativa }}</span>
+                                                {% elif ev.informe_descriptivo %}
+                                                    <span class="badge bg-info text-dark badge-criterio">{{ ev.tipo }}: {{ ev.informe_descriptivo }}</span>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    {% else %}
+                                        <span class="text-muted fst-italic fs-6">Sin calificaciones registradas</span>
+                                    {% endif %}
+                                </td>
+                                <td class="text-center fw-bold p-3">
+                                    {% if trim_data['3er Trimestre']['final'] is not none %}
+                                        <span class="{% if trim_data['3er Trimestre']['final'] >= 51 %}text-success{% else %}text-danger{% endif %} fs-3">
+                                            {{ "%.1f"|format(trim_data['3er Trimestre']['final']) }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted fs-4">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
                         {% endfor %}
 
-                        {% set suma_final_calc = calculo_promedio.suma if calculo_promedio.cantidad > 0 else calculo_promedio.suma_total %}
-                        {% set cantidad_final_calc = calculo_promedio.cantidad if calculo_promedio.cantidad > 0 else calculo_promedio.cantidad_total %}
-
-                        {% if cantidad_final_calc > 0 %}
-                        <tr class="table-success">
-                            <td>
-                                <strong>
-                                    {{ 'Promedio General de Todas las Materias (Notas Finales):' if calculo_promedio.cantidad > 0 else 'Promedio General de Todas las Materias (Todas las Notas):' }}
-                                </strong>
+                        <!-- PROMEDIO GENERAL DE TODAS LAS MATERIAS -->
+                        {% if calculo_promedio_general.materias_con_nota > 0 %}
+                        {% set promedio_final_global = (calculo_promedio_general.suma / calculo_promedio_general.materias_con_nota)|round(1) %}
+                        <tr class="table-success" style="border-top: 3px solid #0f172a;">
+                            <td colspan="3" class="text-end pe-4 py-3 fs-4 fw-bold">
+                                Promedio General Acumulado:
                             </td>
-                            <td>
-                                {% set promedio_final = suma_final_calc / cantidad_final_calc %}
-                                <strong class="fs-5">{{ "%.1f"|format(promedio_final) }}</strong>
-                                <small class="text-muted">
-                                    (Calculado sobre {{ cantidad_final_calc }} calificaciones)
-                                </small>
+                            <td class="text-center py-3">
+                                <strong class="fs-2 text-{{ 'success' if promedio_final_global >= 51 else 'danger' }}">
+                                    {{ "%.1f"|format(promedio_final_global) }}
+                                </strong>
+                                <div class="text-muted small fw-semibold">
+                                    ({{ calculo_promedio_general.materias_con_nota }} materias evaluadas)
+                                </div>
                             </td>
                         </tr>
                         {% endif %}
@@ -861,10 +1015,9 @@ document.getElementById('formSubirFoto').addEventListener('submit', async functi
             </div>
 
             {% else %}
-            <div class="alert alert-info mb-0">
-                <i class="bi bi-info-circle-fill"></i>
-                No hay calificaciones registradas para este estudiante.
-                Las notas aparecerán aquí automáticamente cuando los profesores las ingresen.
+            <div class="alert alert-info mb-0 p-4 fs-5">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                No hay calificaciones registradas para este estudiante. Las notas aparecerán aquí automáticamente cuando los profesores las ingresen.
             </div>
             {% endif %}
 
