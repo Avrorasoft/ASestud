@@ -25,14 +25,24 @@
             {% endif %}
 
             {% if partes|length > 1 %}
-                {% set url_archivo = partes[1].strip() %}
+                {% set ruta_cruda = partes[1].strip() %}
+                {% if ruta_cruda.startswith('http') or ruta_cruda.startswith('/') %}
+                    {% set url_archivo = ruta_cruda %}
+                {% else %}
+                    {% set url_archivo = '/' ~ ruta_cruda %}
+                {% endif %}
 
                 <hr>
                 <div class="alert alert-info">
-                    <h5 class="mb-3"><i class="bi bi-paperclip me-2"></i>Archivo Adjunto</h5>
-                    <a href="{{ url_archivo }}" target="_blank" class="btn btn-primary w-100">
-                        <i class="bi bi-box-arrow-up-right me-2"></i>ABRIR ARCHIVO
-                    </a>
+                    <h5 class="mb-3"><i class="bi bi-file-earmark-pdf-fill text-danger me-2"></i>Documento Adjunto</h5>
+                    <div class="d-flex flex-column flex-sm-row gap-2">
+                        <a href="{{ url_for('chat.descargar_adjunto', mensaje_id=mensaje.id) }}" target="_blank" class="btn btn-primary flex-fill">
+                            <i class="bi bi-box-arrow-up-right me-2"></i>ABRIR ARCHIVO
+                        </a>
+                        <a href="{{ url_for('chat.descargar_adjunto', mensaje_id=mensaje.id) }}" class="btn btn-outline-primary flex-fill">
+                            <i class="bi bi-download me-2"></i>DESCARGAR COPIA
+                        </a>
+                    </div>
                 </div>
             {% endif %}
         </div>

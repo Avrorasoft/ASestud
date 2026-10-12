@@ -37,7 +37,6 @@ if not os.path.exists(BASE_SYSTEM_DIR):
         pass
 
 # Directorio de subidas absoluto en C:\ASestud\uploads
-# Reemplaza esto en app.py:
 UPLOAD_FOLDER = r"C:\ASestud\uploads"
 if not os.path.exists(UPLOAD_FOLDER):
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -163,18 +162,30 @@ def inject_configuracion_institucional():
 
 @app.route('/uploads/<path:filename>')
 def servir_archivo_subido(filename):
-    """Entrega fotos y PDFs de forma limpia evitando duplicidad de carpetas."""
-    import os
-    from flask import send_from_directory
+    """Entrega fotos y PDFs de forma limpia evitando duplicidad de carpetas y resolviendo subcarpetas."""
+    nombre_limpio = filename.replace('\\', '/').strip('/')
     
-    # Normalizar barras
-    nombre_limpio = filename.replace('\\', '/')
-    
-    # CORRECCIÓN MAESTRA: Si el path incluye 'uploads/', lo depuramos para evitar el 404
-    if nombre_limpio.startswith('uploads/'):
-        nombre_limpio = nombre_limpio[8:]
+    # Limpiar prefijos redundantes
+    while nombre_limpio.startswith('uploads/'):
+        nombre_limpio = nombre_limpio[len('uploads/'):]
         
-    return send_from_directory(app.config['UPLOAD_FOLDER'], nombre_limpio)
+    base_upload = os.path.abspath(app.config['UPLOAD_FOLDER'])
+    ruta_directa = os.path.abspath(os.path.join(base_upload, nombre_limpio))
+    
+    # Si existe en la ruta relativa solicitada
+    if os.path.isfile(ruta_directa) and ruta_directa.startswith(base_upload):
+        carpeta = os.path.dirname(ruta_directa)
+        archivo = os.path.basename(ruta_directa)
+        return send_from_directory(carpeta, archivo)
+    
+    # Búsqueda de respaldo en subdirectorios comunes si no se especificó subcarpeta
+    solo_archivo = os.path.basename(nombre_limpio)
+    for sub in ['boletines', 'chat']:
+        ruta_sub = os.path.join(base_upload, sub, solo_archivo)
+        if os.path.isfile(ruta_sub):
+            return send_from_directory(os.path.join(base_upload, sub), solo_archivo)
+            
+    return send_from_directory(base_upload, nombre_limpio)
     
 @app.route('/ver-foto-profesor/<int:id>')
 def ver_foto_profesor(id):
@@ -453,7 +464,7 @@ def proteger_acceso_global():
 
     if (path.startswith('/static') or 
         path.startswith('/uploads') or 
-        path.startswith('/ver-foto-profesor') or  # <--- EXCEPCIÓN AÑADIDA AQUÍ
+        path.startswith('/ver-foto-profesor') or 
         path.startswith('/portal-padres') or 
         path.startswith('/profesor-portal') or 
         path.startswith('/regente') or 
