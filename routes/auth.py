@@ -211,7 +211,7 @@ def reset_fabrica():
             ('institucion_linea3', 'Gestión Educativa Integral'),
             ('institucion_logo', ''),
             ('institucion_configurada', 'true'),
-            ('pwa_password', 'VacaDiez2026'),
+            ('pwa_password', 'admin2026'),
             ('superadmin_password', 'ADMIN2026')
         ]
         for clave, valor in configs_globales:

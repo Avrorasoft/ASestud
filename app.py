@@ -219,7 +219,7 @@ def cambiar_password_rapido():
             return redirect(request.referrer or url_for('dashboard.index'))
             
         if tipo == 'sistema':
-            clave_actual = _obtener_clave('sistema_password', 'VacaDiez2026')
+            clave_actual = _obtener_clave('sistema_password', 'admin2026')
             if password_antigua != clave_actual:
                 flash('❌ La contraseña actual del sistema es incorrecta.', 'danger')
                 return redirect(request.referrer or url_for('dashboard.index'))
@@ -228,7 +228,7 @@ def cambiar_password_rapido():
             flash('✅ Contraseña de acceso al sistema actualizada con éxito.', 'success')
             
         elif tipo == 'superadmin':
-            clave_actual_super = _obtener_clave('superadmin_password', 'admin2026')
+            clave_actual_super = _obtener_clave('superadmin_password', 'ADMIN2026')
             from werkzeug.security import check_password_hash, generate_password_hash
             from models import PersonalAdministrativo
             
@@ -264,7 +264,7 @@ def cambiar_password_rapido():
             
             # Buscar clave guardada en la base de datos o usar respaldo
             clave_guardada = _obtener_clave(f'turno_password_{turno_key}', default_pass)
-            clave_sistema = _obtener_clave('sistema_password', 'VacaDiez2026')
+            clave_sistema = _obtener_clave('sistema_password', 'admin2026')
             
             valido_turno = (password_antigua == clave_guardada) or (password_antigua == clave_sistema) or (password_antigua == default_pass)
             
@@ -387,7 +387,7 @@ def index():
     error = None
     if request.method == 'POST':
         password = request.form.get('password', '').strip()
-        clave_sistema = _obtener_clave('sistema_password', 'VacaDiez2026')
+        clave_sistema = _obtener_clave('sistema_password', 'admin2026')
 
         if password == clave_sistema:
             session['sistema_autenticado'] = True
@@ -426,7 +426,7 @@ app.config['SECRET_KEY'] = 'AvroraSoft_Vibola_LLC_2026_ClaveSegura_ASestud'
 # =========================================================================
 
 def _generar_password():
-    return "VacaDiez2026"
+    return "admin2026"
 
 def _set_clave(clave, valor):
     try:
@@ -562,7 +562,7 @@ def login_sistema():
 
     if request.method == 'POST':
         password = request.form.get('password', '').strip()
-        clave_sistema = _obtener_clave('sistema_password', 'VacaDiez2026')
+        clave_sistema = _obtener_clave('sistema_password', 'admin2026')
 
         if password == clave_sistema:
             session['sistema_autenticado'] = True

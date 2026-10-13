@@ -6,8 +6,11 @@ Proyecto: ASestud
 Descripción:
     Punto de entrada para ejecución en producción local con IP fija/dinámica de red.
     Configurado para operar de manera absoluta desde C:\ASestud, utilizando
-    Waitress como servidor WSGI y maximizando la ventana al 100% mediante
-    la API Win32 (ShowWindow SW_MAXIMIZE) sin carteles de contraseñas.
+    Waitress como servidor WSGI y maximizando la ventana al 100% de pantalla
+    mediante Win32 API (ShowWindow SW_MAXIMIZE) sin parpadeos ni pérdida de foco.
+    Verifica e inyecta automáticamente las credenciales por defecto:
+    - Login de usuario: admin / admin2026
+    - Acceso Superadmin / Bóveda: ADMIN2026
 ==============================================================================
 """
 
@@ -27,6 +30,7 @@ if os.path.exists(BASE_SYSTEM_DIR):
         sys.path.insert(0, BASE_SYSTEM_DIR)
     os.chdir(BASE_SYSTEM_DIR)
 
+from werkzeug.security import generate_password_hash
 from app import create_app
 from models import db
 
@@ -59,47 +63,116 @@ def obtener_ip_local():
         return "127.0.0.1"
 
 
-def forzar_ventana_maximizada():
+def verificar_credenciales_defecto():
     """
-    Busca la ventana abierta por el sistema y le aplica la instrucción
-    SW_MAXIMIZE (3) a nivel de sistema operativo Windows para forzar el 100%.
+    Garantiza la existencia y consistencia de las credenciales oficiales por defecto:
+    - Usuario administrador: 'admin' con clave 'admin2026'.
+    - Bóveda / Superadministrador: clave 'ADMIN2026'.
+    """
+    try:
+        from models import PersonalAdministrativo
+        
+        # 1. Verificar e inyectar usuario administrativo por defecto
+        admin = PersonalAdministrativo.query.filter_by(usuario='admin').first()
+        if not admin:
+            nuevo_admin = PersonalAdministrativo(
+                nombres='Administrador',
+                apellidos='General',
+                ci='0000000',
+                cargo='Superadministrador',
+                usuario='admin',
+                contrasena_hash=generate_password_hash('admin2026'),
+                salario_base=0.0,
+                adelanto_quincenal=0.0,
+                activo=True
+            )
+            db.session.add(nuevo_admin)
+            db.session.commit()
+        else:
+            if not admin.activo:
+                admin.activo = True
+                db.session.commit()
+
+        # 2. Verificar e inyectar clave de Bóveda / Superadmin
+        try:
+            from models import SuperadminConfig
+            config = SuperadminConfig.query.first()
+            if not config:
+                nuevo_config = SuperadminConfig(
+                    clave_hash=generate_password_hash('ADMIN2026')
+                )
+                db.session.add(nuevo_config)
+                db.session.commit()
+        except Exception:
+            pass
+
+    except Exception as e:
+        print(f"[ALERTA] Error al verificar credenciales: {e}")
+
+
+def esperar_servidor_activo(puerto, tiempo_limite=15):
+    """Verifica que el socket del servidor responda antes de intentar abrir el navegador."""
+    tiempo_inicio = time.time()
+    while time.time() - tiempo_inicio < tiempo_limite:
+        try:
+            with socket.create_connection(('127.0.0.1', puerto), timeout=0.5):
+                return True
+        except (OSError, ConnectionRefusedError):
+            time.sleep(0.15)
+    return False
+
+
+def maximizar_ventana_win32():
+    """
+    Busca la ventana lanzada en modo app y le aplica SW_MAXIMIZE exactamente
+    una sola vez para llevarla al 100% de la pantalla sin interferir con Windows.
     """
     user32 = ctypes.windll.user32
     SW_MAXIMIZE = 3
+    encontrada = [False]
 
-    # Reintenta durante 6 segundos hasta que la ventana esté creada en pantalla
-    for _ in range(12):
-        time.sleep(0.5)
-        def enum_windows_callback(hwnd, extra):
-            if user32.IsWindowVisible(hwnd):
-                length = user32.GetWindowTextLengthW(hwnd)
-                buff = ctypes.create_unicode_buffer(length + 1)
-                user32.GetWindowTextW(hwnd, buff, length + 1)
-                titulo = buff.value.lower()
-                # Coincide si el título contiene ASestud, el nombre del sistema o la IP/puerto
-                if any(k in titulo for k in ['asestud', 'colegio', '5000', 'gestión', 'gestion', 'cardex', 'unidad']):
-                    user32.ShowWindow(hwnd, SW_MAXIMIZE)
-                    user32.SetForegroundWindow(hwnd)
-                    return False
-            return True
+    def enum_windows_callback(hwnd, extra):
+        if user32.IsWindowVisible(hwnd):
+            length = user32.GetWindowTextLengthW(hwnd)
+            buff = ctypes.create_unicode_buffer(length + 1)
+            user32.GetWindowTextW(hwnd, buff, length + 1)
+            titulo = buff.value.lower()
+            
+            claves = ['asestud', 'colegio', '5000', 'gestión', 'gestion', 'cardex', 'unidad', 'sistema escolar']
+            if any(k in titulo for k in claves):
+                user32.ShowWindow(hwnd, SW_MAXIMIZE)
+                user32.SetForegroundWindow(hwnd)
+                encontrada[0] = True
+                return False
+        return True
 
-        WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
-        cb = WNDENUMPROC(enum_windows_callback)
+    WNDENUMPROC = ctypes.WINFUNCTYPE(ctypes.c_bool, ctypes.c_void_p, ctypes.c_void_p)
+    cb = WNDENUMPROC(enum_windows_callback)
+
+    # Reintenta durante unos segundos hasta que la ventana exista, la maximiza y finaliza
+    for _ in range(20):
+        time.sleep(0.3)
         user32.EnumWindows(cb, 0)
+        if encontrada[0]:
+            break
 
 
-def abrir_navegador(url):
+def abrir_navegador(url, puerto):
     """
-    Lanza el navegador y ejecuta el forzado de ventana al 100% en Windows.
+    Espera a que Waitress esté escuchando y lanza la ventana en modo aplicación
+    maximizada limpia.
     """
-    time.sleep(1.2)
+    esperar_servidor_activo(puerto)
+    time.sleep(0.2)
 
-    # Banderas específicas para neutralizar captura de contraseñas
+    # Disparar hilo para maximizar la ventana en cuanto aparezca
+    threading.Thread(target=maximizar_ventana_win32, daemon=True).start()
+
     flags_navegador = [
         f"--app={url}",
         "--start-maximized",
         "--disable-save-password-bubble",
-        "--disable-features=PasswordManager,AutofillServerCommunication,PasswordGeneration",
+        "--disable-features=PasswordManager,AutofillServerCommunication,PasswordGeneration,PasswordCheck",
         "--password-store=basic",
         "--no-first-run",
         "--no-default-browser-check"
@@ -130,9 +203,6 @@ def abrir_navegador(url):
         except Exception:
             pass
 
-    # Disparar el forzado a 100% de Windows en segundo plano
-    threading.Thread(target=forzar_ventana_maximizada, daemon=True).start()
-
 
 def main():
     configurar_id_barra_tareas()
@@ -145,6 +215,7 @@ def main():
 
     with app.app_context():
         db.create_all()
+        verificar_credenciales_defecto()
 
     print("=" * 70)
     print("ASestud - Gestión Escolar (Servidor Central)")
@@ -155,12 +226,14 @@ def main():
     print("Presione Ctrl+C para detener el servidor.")
     print("=" * 70)
 
+    # Iniciar la apertura del navegador en un hilo independiente
     threading.Thread(
         target=abrir_navegador,
-        args=(url,),
+        args=(url, port),
         daemon=True
     ).start()
 
+    # Iniciar servidor de producción Waitress
     try:
         from waitress import serve
         serve(

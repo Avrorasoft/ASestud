@@ -203,7 +203,7 @@ def _get_pwa_password():
         return nueva
     except Exception:
         db.session.rollback()
-        return 'VacaDiez2026'
+        return 'admin2026'
 
 
 def _set_pwa_password(nueva_password):
@@ -591,8 +591,8 @@ def reset_fabrica():
         db.session.add(config_inicial)
 
         cfg_flag = ConfiguracionSuperadmin(clave='institucion_configurada', valor='true')
-        cfg_pass_sis = ConfiguracionSuperadmin(clave='sistema_password', valor='VacaDiez2026')
-        cfg_pass_adm = ConfiguracionSuperadmin(clave='superadmin_password', valor='admin2026')
+        cfg_pass_sis = ConfiguracionSuperadmin(clave='sistema_password', valor='admin2026')
+        cfg_pass_adm = ConfiguracionSuperadmin(clave='superadmin_password', valor='ADMIN2026')
         db.session.add_all([cfg_flag, cfg_pass_sis, cfg_pass_adm])
         db.session.commit()
 
