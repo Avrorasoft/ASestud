@@ -1,248 +1,500 @@
-@'
-{% extends "base.html" %}
-{% block title %}Cierre de Caja - Turno {{ balance.turno }} ({{ balance.fecha.strftime('%d/%m/%Y') }}){% endblock %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cierre de Caja - Turno {{ balance.turno }} ({{ balance.fecha.strftime('%d/%m/%Y') }})</title>
+    <style>
+        /* CONFIGURACIÓN EXACTA DE IMPRESIÓN (PAPEL CARTA) */
+        @page {
+            size: letter portrait;
+            margin: 8mm 10mm 8mm 10mm;
+        }
 
-{% block content %}
-<div class="container mt-4 mb-5">
-    <div class="d-flex justify-content-between align-items-center mb-3 no-print">
-        <a href="{{ url_for('caja.index') }}" class="btn btn-secondary rounded-pill">
-            <i class="bi bi-arrow-left"></i> Volver a Caja
-        </a>
-        <button onclick="window.print()" class="btn btn-primary rounded-pill">
-            <i class="bi bi-printer-fill me-1"></i> Imprimir Reporte de Cierre
-        </button>
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+
+        /* VISTA EN PANTALLA: FONDO SUAVE Y HOJA CENTRADA */
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            color: #000;
+            background-color: #e9ecef; /* Fondo suave para resaltar la hoja */
+            margin: 0;
+            padding: 25px 15px;
+            font-size: 11px;
+            line-height: 1.25;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        /* CONTENEDOR TIPO HOJA CARTA EN PANTALLA */
+        .documento-hoja {
+            background: #ffffff;
+            width: 100%;
+            max-width: 820px;
+            padding: 30px 35px;
+            border-radius: 6px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+            margin: 0 auto;
+        }
+
+        .no-print {
+            display: block;
+            width: 100%;
+            max-width: 820px;
+            margin-bottom: 15px;
+        }
+
+        /* AJUSTES EXCLUSIVOS DE IMPRESIÓN */
+        @media print {
+            body {
+                background: #ffffff !important;
+                padding: 0 !important;
+                display: block !important;
+            }
+            .documento-hoja {
+                max-width: 100% !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+                margin: 0 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+        }
+
+        /* BOTONES DE LA BARRA SUPERIOR */
+        .btn-imprimir {
+            display: inline-block;
+            background: #0d6efd;
+            color: #fff;
+            padding: 9px 18px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 13px;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 5px rgba(13, 110, 253, 0.3);
+            transition: background 0.2s;
+        }
+        .btn-imprimir:hover {
+            background: #0b5ed7;
+        }
+
+        .btn-volver {
+            display: inline-block;
+            background: #6c757d;
+            color: #fff;
+            padding: 9px 18px;
+            border-radius: 20px;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 13px;
+            margin-right: 10px;
+            transition: background 0.2s;
+        }
+        .btn-volver:hover {
+            background: #5c636a;
+        }
+
+        /* ENCABEZADO */
+        .header-doc {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+        }
+
+        .header-doc h2 {
+            margin: 0;
+            font-size: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .header-doc h3 {
+            margin: 2px 0 0 0;
+            font-size: 12px;
+            font-weight: normal;
+        }
+
+        .header-doc .subtitulo {
+            margin: 2px 0 0 0;
+            font-size: 11px;
+            font-weight: bold;
+            color: #222;
+        }
+
+        /* METADATOS EN CABECERA */
+        .meta-barra {
+            display: flex;
+            justify-content: space-between;
+            background: #f1f1f1;
+            padding: 5px 10px;
+            border: 1px solid #ccc;
+            font-size: 10.5px;
+            margin-bottom: 8px;
+            border-radius: 3px;
+        }
+
+        /* RESUMEN FINANCIERO COMPACTO */
+        .grid-resumen {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .caja-resumen {
+            border: 1px solid #000;
+            padding: 6px;
+            text-align: center;
+            background: #fafafa;
+            border-radius: 3px;
+        }
+
+        .caja-resumen .etiqueta {
+            font-size: 9.5px;
+            font-weight: bold;
+            text-transform: uppercase;
+            color: #444;
+            margin-bottom: 2px;
+        }
+
+        .caja-resumen .monto {
+            font-size: 14px;
+            font-weight: bold;
+            color: #000;
+        }
+
+        .caja-resumen .detalle {
+            font-size: 8.5px;
+            color: #555;
+            margin-top: 2px;
+        }
+
+        .caja-destacada {
+            background: #eef7ee;
+            border: 1.5px solid #198754;
+        }
+
+        .caja-destacada .monto {
+            color: #198754;
+        }
+
+        /* DETERMINACIÓN DE CAJA FÍSICA */
+        .seccion-flujo {
+            border: 1px solid #000;
+            margin-bottom: 8px;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .seccion-flujo .titulo-flujo {
+            background: #212529;
+            color: #fff;
+            padding: 4px 8px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .tabla-flujo {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 10.5px;
+        }
+
+        .tabla-flujo td {
+            padding: 4px 8px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .tabla-flujo tr:last-child td {
+            border-bottom: none;
+        }
+
+        .tabla-flujo .signo {
+            width: 25px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .tabla-flujo .monto-col {
+            text-align: right;
+            font-weight: bold;
+            width: 110px;
+        }
+
+        .fila-total-fisico {
+            background: #f8f9fa;
+            font-weight: bold;
+            border-top: 1.5px solid #000 !important;
+        }
+
+        .fila-total-fisico td {
+            font-size: 11.5px;
+        }
+
+        /* TABLAS DE DETALLES */
+        .seccion-tabla {
+            margin-bottom: 8px;
+        }
+
+        .titulo-tabla {
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-bottom: 1px solid #000;
+            padding-bottom: 2px;
+            margin-bottom: 3px;
+        }
+
+        .tabla-datos {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9.5px;
+        }
+
+        .tabla-datos th {
+            background: #eaeaea;
+            border: 1px solid #999;
+            padding: 3px 5px;
+            text-align: left;
+            font-weight: bold;
+        }
+
+        .tabla-datos td {
+            border: 1px solid #ccc;
+            padding: 3px 5px;
+        }
+
+        .tabla-datos td.text-end, .tabla-datos th.text-end {
+            text-align: right;
+        }
+
+        .tabla-datos td.text-center, .tabla-datos th.text-center {
+            text-align: center;
+        }
+
+        .sin-datos {
+            padding: 5px;
+            text-align: center;
+            font-style: italic;
+            color: #666;
+            border: 1px dashed #ccc;
+            font-size: 9px;
+            margin-bottom: 4px;
+        }
+
+        /* FIRMAS AL PIE */
+        .seccion-firmas {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 18px;
+            padding-top: 4px;
+            page-break-inside: avoid;
+        }
+
+        .bloque-firma {
+            width: 42%;
+            text-align: center;
+        }
+
+        .linea-firma {
+            border-top: 1px solid #000;
+            width: 80%;
+            margin: 0 auto 3px auto;
+        }
+
+        .bloque-firma .nombre-firma {
+            font-weight: bold;
+            font-size: 10px;
+        }
+
+        .bloque-firma .cargo-firma {
+            font-size: 8.5px;
+            color: #444;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- BOTONES DE ACCIÓN (SOLO PANTALLA) -->
+    <div class="no-print" style="text-align: right;">
+        <a href="{{ url_for('caja.index') }}" class="btn-volver">← Volver a Caja</a>
+        <button onclick="window.print()" class="btn-imprimir">🖨️ Imprimir Cierre (1 Hoja)</button>
     </div>
 
-    <div class="card shadow border-dark p-4 bg-white text-dark">
-        <!-- MEMBRETE DINÁMICO Y GENÉRICO -->
-        <div class="text-center border-bottom pb-3 mb-3">
-            <h3 class="fw-bold mb-0">
-                {% if institucion %}
-                    {{ institucion.get('institucion_linea1') if institucion.get else (institucion.institucion_linea1 if institucion.institucion_linea1 else 'SISTEMA DE GESTIÓN ESCOLAR') }}
-                {% else %}
-                    SISTEMA DE GESTIÓN ESCOLAR
-                {% endif %}
-            </h3>
-            <p class="text-muted mb-1 small">
-                {% if institucion %}
-                    {{ institucion.get('institucion_linea2') if institucion.get else (institucion.institucion_linea2 if institucion.institucion_linea2 else 'Administración y Tesorería Central') }}
-                {% else %}
-                    Administración y Tesorería Central
-                {% endif %}
-            </p>
-            <h4 class="fw-bold text-primary mt-2">CIERRE DE TURNO: {{ balance.turno|upper }}</h4>
-            <span class="badge bg-dark fs-6">Fecha del Cierre: {{ balance.fecha.strftime('%d/%m/%Y') }}</span>
+    <!-- DOCUMENTO EN FORMATO HOJA -->
+    <div class="documento-hoja">
+
+        <!-- ENCABEZADO INSTITUCIONAL -->
+        <div class="header-doc">
+            <h2>SISTEMA DE GESTIÓN ESCOLAR</h2>
+            <h3>ARQUEO Y CIERRE DE CAJA DIARIO</h3>
+            <div class="subtitulo">TURNO: {{ balance.turno|upper }}</div>
         </div>
 
-        <!-- ========================================================================= -->
-        <!-- ⭐ PANEL GRÁFICO VISIBLE DE OPERACIÓN: DE DÓNDE SALE EL EFECTIVO FÍSICO   -->
-        <!-- ========================================================================= -->
-        <div class="card border border-2 border-success bg-light mb-4 shadow-sm">
-            <div class="card-header bg-success text-white fw-bold py-2 text-center fs-6">
-                <i class="bi bi-calculator me-1"></i> DETERMINACIÓN GRÁFICA DEL EFECTIVO FÍSICO EN CAJA (TURNO {{ balance.turno|upper }})
+        <!-- METADATOS -->
+        <div class="meta-barra">
+            <div><strong>Fecha de Operación:</strong> {{ balance.fecha.strftime('%d/%m/%Y') }}</div>
+            <div><strong>Turno Evaluado:</strong> {{ balance.turno }}</div>
+            <div><strong>Emisión:</strong> {{ balance.fecha.strftime('%d/%m/%Y') }} - Cierre Oficial</div>
+        </div>
+
+        <!-- DETERMINACIÓN GRÁFICA DEL EFECTIVO FÍSICO EN CAJA -->
+        <div class="seccion-flujo">
+            <div class="titulo-flujo">Determinación Exacta del Efectivo Físico en Caja</div>
+            <table class="tabla-flujo">
+                <tr>
+                    <td class="signo">(+)</td>
+                    <td><strong>Recaudación en Efectivo del Turno</strong> (Pensiones + Ingresos Directos)</td>
+                    <td class="monto-col">Bs. {{ "%.2f"|format(balance.total_efectivo_ingresado) }}</td>
+                </tr>
+                <tr>
+                    <td class="signo">(-)</td>
+                    <td><strong>Egresos y Salidas en Efectivo</strong> (Gastos operativos y anticipos pagados del cajón)</td>
+                    <td class="monto-col">Bs. {{ "%.2f"|format(balance.total_egresos_efectivo) }}</td>
+                </tr>
+                <tr class="fila-total-fisico">
+                    <td class="signo">(=)</td>
+                    <td><strong>TOTAL REAL EN CAJA FÍSICA (BILLETES Y MONEDAS EN CAJÓN)</strong></td>
+                    <td class="monto-col" style="font-size: 13px;">Bs. {{ "%.2f"|format(balance.efectivo_en_caja_real) }}</td>
+                </tr>
+            </table>
+        </div>
+
+        <!-- RESUMEN DE BANCO Y SALDO LÍQUIDO -->
+        <div class="grid-resumen">
+            <div class="caja-resumen">
+                <div class="etiqueta">Recaudación Banco / QR</div>
+                <div class="monto">Bs. {{ "%.2f"|format(balance.total_banco_ingresado) }}</div>
+                <div class="detalle">Cobros digitales directos</div>
             </div>
-            <div class="card-body p-3">
-                <div class="row text-center align-items-center g-2">
-                    
-                    <!-- 1. TOTAL COBRADO EN EFECTIVO -->
-                    <div class="col-md-3">
-                        <div class="p-2 border rounded bg-white">
-                            <span class="text-muted small fw-bold d-block text-uppercase">1. Recaudación Efectivo</span>
-                            <span class="fs-4 fw-bold text-dark">Bs. {{ "%.2f"|format(balance.total_efectivo_ingresado) }}</span>
-                            <small class="text-muted d-block" style="font-size: 11px;">(Pensiones + Ingresos Directos)</small>
-                        </div>
-                    </div>
-
-                    <!-- SIGNO MENOS -->
-                    <div class="col-md-1 d-flex justify-content-center align-items-center">
-                        <span class="display-6 fw-bold text-danger">−</span>
-                    </div>
-
-                    <!-- 2. GASTOS / PAGOS EN EFECTIVO -->
-                    <div class="col-md-3">
-                        <div class="p-2 border rounded bg-white border-danger">
-                            <span class="text-danger small fw-bold d-block text-uppercase">2. Salidas / Egresos Efectivo</span>
-                            <span class="fs-4 fw-bold text-danger">Bs. {{ "%.2f"|format(balance.total_egresos_efectivo) }}</span>
-                            <small class="text-muted d-block" style="font-size: 11px;">(Gastos y Pagos pagados del cajón)</small>
-                        </div>
-                    </div>
-
-                    <!-- SIGNO IGUAL -->
-                    <div class="col-md-1 d-flex justify-content-center align-items-center">
-                        <span class="display-6 fw-bold text-success">=</span>
-                    </div>
-
-                    <!-- 3. RESULTADO: DINERO FÍSICO EN CAJA -->
-                    <div class="col-md-4">
-                        <div class="p-2 border rounded bg-success bg-opacity-10 border-success">
-                            <span class="text-success small fw-bold d-block text-uppercase">TOTAL REAL EN CAJA (FÍSICO)</span>
-                            <span class="fs-3 fw-bold text-success">Bs. {{ "%.2f"|format(balance.efectivo_en_caja_real) }}</span>
-                            <small class="text-success fw-bold d-block" style="font-size: 11px;">BILLETES Y MONEDAS EN CAJÓN</small>
-                        </div>
-                    </div>
-
-                </div>
+            <div class="caja-resumen">
+                <div class="etiqueta">Egresos Banco / QR</div>
+                <div class="monto">Bs. {{ "%.2f"|format(balance.total_egresos_banco) }}</div>
+                <div class="detalle">Pagos por transferencia/QR</div>
+            </div>
+            <div class="caja-resumen caja-destacada">
+                <div class="etiqueta">Saldo Neto Líquido Total</div>
+                <div class="monto">Bs. {{ "%.2f"|format(balance.saldo_neto_global) }}</div>
+                <div class="detalle">Efectivo en Cajón + Banco Neto</div>
             </div>
         </div>
 
-        <!-- RESUMEN DE BANCO Y TOTAL RECAUDADO -->
-        <div class="row g-3 mb-4 text-center">
-            <div class="col-md-4">
-                <div class="p-2 bg-info bg-opacity-10 border border-info rounded">
-                    <span class="text-info fw-bold d-block small">BANCO / QR (NETO DEL TURNO)</span>
-                    <h4 class="fw-bold text-primary mb-0">Bs. {{ "%.2f"|format(balance.banco_neto) }}</h4>
-                    <small class="text-muted">Cobrado Bs. {{ "%.2f"|format(balance.total_banco_ingresado) }} − Egresos QR Bs. {{ "%.2f"|format(balance.total_egresos_banco) }}</small>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="p-2 bg-danger bg-opacity-10 border border-danger rounded">
-                    <span class="text-danger fw-bold d-block small">TOTAL SALIDAS DEL TURNO</span>
-                    <h4 class="fw-bold text-danger mb-0">Bs. {{ "%.2f"|format(balance.total_egresos) }}</h4>
-                    <small class="text-muted">Efectivo + QR/Banco</small>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="p-2 bg-dark bg-opacity-10 border border-dark rounded">
-                    <span class="text-dark fw-bold d-block small">SALDO NETO TOTAL LIQUIDO</span>
-                    <h4 class="fw-bold text-dark mb-0">Bs. {{ "%.2f"|format(balance.saldo_neto_global) }}</h4>
-                    <small class="text-muted">Caja Física + Banco Neto</small>
-                </div>
-            </div>
-        </div>
-
-        <!-- 1. COBROS DE PENSIONES -->
-        <h5 class="fw-bold border-bottom pb-2">1. Cobros de Pensiones Escolares (Turno {{ balance.turno }})</h5>
-        <div class="table-responsive mb-4">
-            <table class="table table-sm table-bordered">
-                <thead class="table-light">
+        <!-- 1. COBROS DE PENSIONES ESCOLARES -->
+        <div class="seccion-tabla">
+            <div class="titulo-tabla">1. Cobros de Pensiones Escolares (Turno {{ balance.turno }})</div>
+            {% if balance.pagos and balance.pagos|length > 0 %}
+            <table class="tabla-datos">
+                <thead>
                     <tr>
-                        <th>Hora</th>
-                        <th>Estudiante</th>
-                        <th>Concepto</th>
-                        <th>Método</th>
-                        <th class="text-end">Monto (Bs.)</th>
+                        <th style="width: 12%;">Hora</th>
+                        <th style="width: 48%;">Estudiante</th>
+                        <th style="width: 25%;">Concepto</th>
+                        <th style="width: 15%;" class="text-center">Método</th>
+                        <th style="width: 15%;" class="text-end">Monto</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for p in balance.pagos %}
                     <tr>
                         <td>{{ p.fecha_pago.strftime('%H:%M') if p.fecha_pago else '--:--' }}</td>
-                        <td>{{ p.estudiante.apellidos if p.estudiante else 'S/N' }}, {{ p.estudiante.nombres if p.estudiante else '' }}</td>
-                        <td>{{ p.detalle_concepto or p.mes }}</td>
-                        <td>
-                            <span class="badge {{ 'bg-success' if (p.metodo_pago or 'Efectivo') == 'Efectivo' else 'bg-primary' }}">
-                                {{ p.metodo_pago or 'Efectivo' }}
-                            </span>
-                        </td>
-                        <td class="text-end fw-bold">{{ "%.2f"|format(p.monto_pagado) }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="text-center text-muted py-2">No se registraron cobros de pensiones en este turno.</td>
+                        <td>{{ p.estudiante.apellidos }} {{ p.estudiante.nombres if p.estudiante else 'General' }}</td>
+                        <td>{{ p.concepto or 'Pensión Escolar' }}</td>
+                        <td class="text-center">{{ p.metodo_pago or 'Efectivo' }}</td>
+                        <td class="text-end">Bs. {{ "%.2f"|format(p.monto_pagado) }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+            {% else %}
+            <div class="sin-datos">No se registraron cobros de pensiones en este turno.</div>
+            {% endif %}
         </div>
 
-        <!-- 2. INGRESOS DIRECTOS -->
-        <h5 class="fw-bold border-bottom pb-2 mt-3">2. Ingresos Directos de Tesorería (Turno {{ balance.turno }})</h5>
-        <div class="table-responsive mb-4">
-            <table class="table table-sm table-bordered">
-                <thead class="table-light">
+        <!-- 2. INGRESOS DIRECTOS DE TESORERÍA -->
+        <div class="seccion-tabla">
+            <div class="titulo-tabla">2. Ingresos Directos de Tesorería (Turno {{ balance.turno }})</div>
+            {% if balance.ingresos_directos and balance.ingresos_directos|length > 0 %}
+            <table class="tabla-datos">
+                <thead>
                     <tr>
-                        <th>Hora</th>
-                        <th>Entregado Por</th>
-                        <th>Categoría / Detalle</th>
-                        <th>Método</th>
-                        <th class="text-end">Monto (Bs.)</th>
+                        <th style="width: 10%;">Hora</th>
+                        <th style="width: 28%;">Entregado Por</th>
+                        <th style="width: 37%;">Categoría / Detalle</th>
+                        <th style="width: 12%;" class="text-center">Método</th>
+                        <th style="width: 13%;" class="text-end">Monto</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for i in balance.ingresos_directos %}
+                    {% for ing in balance.ingresos_directos %}
                     <tr>
-                        <td>{{ i.fecha.strftime('%H:%M') if i.fecha else '--:--' }}</td>
-                        <td>{{ i.recibido_de }}</td>
-                        <td>{{ i.categoria }} - {{ i.descripcion }}</td>
-                        <td>
-                            <span class="badge {{ 'bg-success' if (i.metodo_pago or 'Efectivo') == 'Efectivo' else 'bg-primary' }}">
-                                {{ i.metodo_pago or 'Efectivo' }}
-                            </span>
-                        </td>
-                        <td class="text-end fw-bold">{{ "%.2f"|format(i.monto) }}</td>
-                    </tr>
-                    {% else %}
-                    <tr>
-                        <td colspan="5" class="text-center text-muted py-2">No se registraron ingresos directos en este turno.</td>
+                        <td>{{ ing.fecha.strftime('%H:%M') if ing.fecha else '--:--' }}</td>
+                        <td>{{ ing.recibido_de }}</td>
+                        <td><strong>{{ ing.categoria }}:</strong> {{ ing.descripcion }}</td>
+                        <td class="text-center">{{ ing.metodo_pago }}</td>
+                        <td class="text-end">Bs. {{ "%.2f"|format(ing.monto) }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
+            {% else %}
+            <div class="sin-datos">No se registraron ingresos directos en este turno.</div>
+            {% endif %}
         </div>
 
-        <!-- 3. EGRESOS DEL TURNO -->
-        {% if balance.gastos or balance.personal %}
-        <h5 class="fw-bold border-bottom pb-2 mt-3 text-danger">3. Egresos y Salidas Imputadas (Turno {{ balance.turno }})</h5>
-        <div class="table-responsive mb-4">
-            <table class="table table-sm table-bordered">
-                <thead class="table-light">
+        <!-- 3. EGRESOS / GASTOS OPERATIVOS -->
+        {% if balance.gastos and balance.gastos|length > 0 %}
+        <div class="seccion-tabla">
+            <div class="titulo-tabla">3. Salidas y Gastos Registrados</div>
+            <table class="tabla-datos">
+                <thead>
                     <tr>
-                        <th>Hora</th>
-                        <th>Tipo</th>
-                        <th>Concepto / Proveedor</th>
-                        <th>Método</th>
-                        <th class="text-end">Monto (Bs.)</th>
+                        <th style="width: 10%;">Hora</th>
+                        <th style="width: 65%;">Concepto / Justificación</th>
+                        <th style="width: 12%;" class="text-center">Método</th>
+                        <th style="width: 13%;" class="text-end">Monto</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for g in balance.gastos %}
                     <tr>
                         <td>{{ g.fecha.strftime('%H:%M') if g.fecha else '--:--' }}</td>
-                        <td><span class="badge bg-secondary">Gasto Operativo</span></td>
-                        <td>{{ g.descripcion }} {% if g.proveedor %}(Prov: {{ g.proveedor }}){% endif %}</td>
-                        <td>{{ g.metodo_pago or 'Efectivo' }}</td>
-                        <td class="text-end text-danger fw-bold">- {{ "%.2f"|format(g.monto) }}</td>
-                    </tr>
-                    {% endfor %}
-                    {% for pp in balance.personal %}
-                    <tr>
-                        <td>{{ pp.fecha_pago.strftime('%H:%M') if pp.fecha_pago else '--:--' }}</td>
-                        <td><span class="badge bg-warning text-dark">Pago Personal</span></td>
-                        <td>{{ pp.personal.nombre_completo if pp.personal else 'Personal' }} ({{ pp.concepto or 'Adelanto/Sueldo' }})</td>
-                        <td>{{ pp.metodo_pago or 'Efectivo' }}</td>
-                        <td class="text-end text-danger fw-bold">- {{ "%.2f"|format(pp.monto_neto_pagado) }}</td>
+                        <td>{{ g.descripcion }}</td>
+                        <td class="text-center">{{ g.metodo_pago or 'Efectivo' }}</td>
+                        <td class="text-end">Bs. {{ "%.2f"|format(g.monto) }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
-                <tfoot>
-                    <tr class="table-light fw-bold">
-                        <td colspan="4" class="text-end">TOTAL EGRESOS DEL TURNO:</td>
-                        <td class="text-end text-danger">- {{ "%.2f"|format(balance.total_egresos) }}</td>
-                    </tr>
-                </tfoot>
             </table>
         </div>
         {% endif %}
 
-        <!-- FIRMAS -->
-        <div class="row text-center mt-5 pt-4">
-            <div class="col-6">
-                <div style="border-top: 1px solid #000; width: 60%; margin: auto;"></div>
-                <small class="fw-bold">Responsable Turno {{ balance.turno }}<br>Entregué Conforme</small>
+        <!-- FIRMAS AL PIE DE PÁGINA -->
+        <div class="seccion-firmas">
+            <div class="bloque-firma">
+                <div class="linea-firma"></div>
+                <div class="nombre-firma">Responsable Turno {{ balance.turno }}</div>
+                <div class="cargo-firma">Entregué Conforme (Caja)</div>
             </div>
-            <div class="col-6">
-                <div style="border-top: 1px solid #000; width: 60%; margin: auto;"></div>
-                <small class="fw-bold">Dirección / Administración<br>Recibí Conforme</small>
+            <div class="bloque-firma">
+                <div class="linea-firma"></div>
+                <div class="nombre-firma">Dirección / Administración</div>
+                <div class="cargo-firma">Recibí Conforme (Tesorería)</div>
             </div>
         </div>
-    </div>
-</div>
 
-<style>
-@media print {
-    .no-print, header, nav, footer, #sidebar { display: none !important; }
-    body { background: #fff !important; }
-}
-</style>
-{% endblock %}
-'@ | Set-Content -Path "C:\ASestud\templates\caja\reporte_cierre_turno.html" -Encoding UTF8
+    </div>
+
+</body>
+</html>

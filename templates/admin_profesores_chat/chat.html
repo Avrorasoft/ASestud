@@ -6,9 +6,9 @@
         <h2 class="text-dark fw-bold">
             <i class="bi bi-chat-heart-fill me-2 text-warning"></i>Centro de Comunicación con Profesores
         </h2>
-        <a href="{{ url_for('admin_profesores_chat.gestionar_chat_profesores') }}" class="btn btn-warning text-dark shadow-sm fw-bold">
+        <button type="button" class="btn btn-warning text-dark shadow-sm fw-bold" data-bs-toggle="modal" data-bs-target="#modalNuevoComunicado">
             <i class="bi bi-plus-circle me-1"></i>Enviar Nuevo Comunicado
-        </a>
+        </button>
     </div>
 
     <!-- Lista de profesores / selección -->
@@ -20,6 +20,10 @@
                 </div>
                 <div class="card-body">
                     <div class="d-flex flex-wrap gap-2">
+                        <a href="{{ url_for('admin_profesores_chat.gestionar_chat_profesores') }}" 
+                           class="btn {% if not profesor_seleccionado %}btn-secondary text-white{% else %}btn-outline-secondary{% endif %} shadow-sm">
+                            <i class="bi bi-people-fill me-1"></i>Ver Todos / General
+                        </a>
                         {% for prof in profesores %}
                         <a href="{{ url_for('admin_profesores_chat.gestionar_chat_profesores', profesor_id=prof.id) }}" 
                            class="btn {% if profesor_seleccionado and profesor_seleccionado.id == prof.id %}btn-primary text-white{% else %}btn-outline-dark{% endif %} shadow-sm">
@@ -33,7 +37,7 @@
     </div>
 
     {% if profesor_seleccionado %}
-    <!-- Formulario de Envío con Action Explícito -->
+    <!-- Formulario de Envío con Action Explícito cuando hay docente seleccionado -->
     <div class="card shadow-sm border-0 mb-4">
         <div class="card-header bg-primary text-white py-3">
             <h5 class="mb-0 fw-bold">
@@ -52,12 +56,24 @@
                         </select>
                     </div>
                     <div class="col-md-8">
+                        <label class="form-label fw-bold text-primary"><i class="bi bi-card-text me-1"></i>Cargar Plantilla / Modelo Predeterminado</label>
+                        <select class="form-select bg-light border-primary" id="selectorPlantillaRapido">
+                            <option value="">-- Redactar mensaje libre (Sin plantilla) --</option>
+                            <option value="consejo">Convocatoria a Consejo de Profesores / Reunión Técnica</option>
+                            <option value="notas">Plazo Límite de Entrega de Calificaciones y Centralizadores</option>
+                            <option value="planificacion">Presentación de Planificaciones Curriculares (PDC)</option>
+                            <option value="civica">Comisiones y Organización de Actividad Cívico-Cultural</option>
+                            <option value="emergencia">Citación de Carácter Urgente en Dirección</option>
+                            <option value="felicitacion">Reconocimiento Institucional y Felicitación Docente</option>
+                        </select>
+                    </div>
+                    <div class="col-md-12">
                         <label class="form-label fw-bold">Asunto</label>
-                        <input type="text" name="asunto" class="form-control" placeholder="Ej. Presentación de Notas Trimestrales" required autocomplete="off">
+                        <input type="text" name="asunto" id="asuntoRapido" class="form-control" placeholder="Ej. Presentación de Notas Trimestrales" required autocomplete="off">
                     </div>
                     <div class="col-12">
                         <label class="form-label fw-bold">Contenido del Mensaje</label>
-                        <textarea name="contenido" rows="3" class="form-control" placeholder="Escriba los detalles del comunicado oficial..." required></textarea>
+                        <textarea name="contenido" id="contenidoRapido" rows="4" class="form-control" placeholder="Escriba los detalles del comunicado oficial..." required></textarea>
                     </div>
                     <div class="col-12 text-end">
                         <button type="submit" class="btn btn-success px-4 fw-bold">
@@ -96,9 +112,14 @@
                             <div class="d-flex justify-content-between align-items-start">
                                 <div>
                                     <h6 class="mb-1 text-dark fw-bold">
-                                        <i class="bi bi-person-fill me-1 text-muted"></i>{{ msg.asunto }}
+                                        <i class="bi bi-envelope-paper me-1 text-muted"></i>{{ msg.asunto }}
                                     </h6>
-                                    <span class="badge bg-light text-dark border me-2 mb-1 text-uppercase">{{ msg.tipo }}</span>
+                                    <span class="badge {% if msg.tipo == 'general' %}bg-success{% else %}bg-primary{% endif %} text-white me-2 mb-1 text-uppercase">{{ msg.tipo }}</span>
+                                    {% if msg.profesor %}
+                                    <small class="text-muted"><i class="bi bi-person me-1"></i>Destinatario: {{ msg.profesor.apellidos }}, {{ msg.profesor.nombres }}</small>
+                                    {% else %}
+                                    <small class="text-muted"><i class="bi bi-people me-1"></i>Para todo el plantel docente</small>
+                                    {% endif %}
                                 </div>
                                 <div class="text-end">
                                     <small class="text-muted fw-bold">
@@ -115,9 +136,8 @@
                                 <button type="button" class="btn btn-outline-primary mb-1 btn-ver-mensaje"
                                         data-bs-toggle="modal" 
                                         data-bs-target="#modalUnico"
-                                        data-destinatario="Profesor/a"
+                                        data-destinatario="{% if msg.profesor %}{{ msg.profesor.apellidos }}, {{ msg.profesor.nombres }}{% else %}Plantel Docente (General){% endif %}"
                                         data-tipo="{{ msg.tipo }}"
-                                        data-telefono="Institucional"
                                         data-fecha="{{ msg.fecha_envio.strftime('%d/%m/%Y %H:%M:%S') if msg.fecha_envio else '' }}"
                                         data-contenido="{{ contenido_str }}"
                                         title="Ver comunicado completo">
@@ -133,14 +153,89 @@
             <div class="text-center py-5 text-dark">
                 <i class="bi bi-chat-square-dots fs-1 text-muted d-block mb-3"></i>
                 <h5 class="text-muted fw-bold">No hay comunicados registrados</h5>
-                <p class="text-muted">Seleccione un profesor arriba y envíe su primer mensaje o aviso general.</p>
+                <p class="text-muted">Presione el botón "Enviar Nuevo Comunicado" arriba para redactar un mensaje oficial.</p>
             </div>
             {% endif %}
         </div>
     </div>
 </div>
 
-<!-- MODAL ÚNICO DINÁMICO IDÉNTICO AL DEL CHAT DE PADRES -->
+<!-- MODAL PARA ENVIAR NUEVO COMUNICADO CON SELECTOR DE PLANTILLAS -->
+<div class="modal fade" id="modalNuevoComunicado" tabindex="-1" aria-labelledby="modalNuevoComunicadoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold" id="modalNuevoComunicadoLabel">
+                    <i class="bi bi-send-plus-fill me-2"></i>Nuevo Comunicado Oficial a Profesores
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <form method="POST" action="{{ url_for('admin_profesores_chat.gestionar_chat_profesores') }}">
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Destinatario / Profesor</label>
+                            <select name="profesor_id" class="form-select" id="selectorProfesorModal" required>
+                                <option value="" disabled {% if not profesor_seleccionado %}selected{% endif %}>-- Seleccionar Destinatario --</option>
+                                <option value="todos">Plantel Docente Completo (Aviso General)</option>
+                                {% for prof in profesores %}
+                                <option value="{{ prof.id }}" {% if profesor_seleccionado and profesor_seleccionado.id == prof.id %}selected{% endif %}>
+                                    {{ prof.apellidos }}, {{ prof.nombres }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold">Tipo de Comunicado</label>
+                            <select name="tipo" class="form-select" id="selectorTipoModal" required>
+                                <option value="privado">Mensaje Privado</option>
+                                <option value="general">Aviso General</option>
+                            </select>
+                        </div>
+
+                        <!-- SELECTOR DE MODELOS / PLANTILLAS PREDETERMINADAS -->
+                        <div class="col-12">
+                            <div class="p-2 border rounded bg-light">
+                                <label class="form-label fw-bold text-primary mb-1">
+                                    <i class="bi bi-bookmark-star-fill me-1"></i>Cargar Plantilla o Modelo Oficial:
+                                </label>
+                                <select class="form-select border-primary" id="selectorPlantillaModal">
+                                    <option value="">-- Redactar mensaje libre (Sin plantilla) --</option>
+                                    <option value="consejo">Convocatoria a Consejo de Profesores / Reunión Técnica</option>
+                                    <option value="notas">Plazo Límite de Entrega de Calificaciones y Centralizadores</option>
+                                    <option value="planificacion">Presentación de Planificaciones Curriculares (PDC)</option>
+                                    <option value="civica">Comisiones y Organización de Actividad Cívico-Cultural</option>
+                                    <option value="emergencia">Citación de Carácter Urgente en Dirección</option>
+                                    <option value="felicitacion">Reconocimiento Institucional y Felicitación Docente</option>
+                                </select>
+                                <small class="text-muted d-block mt-1">Al elegir una plantilla se completará automáticamente el asunto y texto, listos para que agregues fechas o detalles.</small>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Asunto</label>
+                            <input type="text" name="asunto" id="asuntoModal" class="form-control" placeholder="Ej. Convocatoria a Consejo de Profesores" required autocomplete="off">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Contenido del Comunicado</label>
+                            <textarea name="contenido" id="contenidoModal" rows="6" class="form-control" placeholder="Escriba aquí los detalles del mensaje o circular..." required></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="bi bi-x-circle me-1"></i>Cancelar
+                    </button>
+                    <button type="submit" class="btn btn-success fw-bold px-4">
+                        <i class="bi bi-send-check-fill me-1"></i>Enviar Mensaje Oficial
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL ÚNICO DINÁMICO PARA VER COMUNICADO COMPLETO -->
 <div class="modal fade" id="modalUnico" tabindex="-1" aria-labelledby="modalUnicoLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow">
@@ -152,11 +247,15 @@
             </div>
             <div class="modal-body text-dark">
                 <div class="row mb-3">
-                    <div class="col-md-6 mb-2">
-                        <strong class="text-dark"><i class="bi bi-tag me-1"></i>Tipo de Envío:</strong> 
+                    <div class="col-md-4 mb-2">
+                        <strong class="text-dark"><i class="bi bi-person me-1"></i>Para:</strong> 
+                        <span class="text-dark fw-bold" id="modalDestinatario"></span>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <strong class="text-dark"><i class="bi bi-tag me-1"></i>Tipo:</strong> 
                         <span class="badge bg-primary text-white text-uppercase" id="modalTipo"></span>
                     </div>
-                    <div class="col-md-6 mb-2">
+                    <div class="col-md-4 mb-2">
                         <strong class="text-dark"><i class="bi bi-calendar3 me-1"></i>Fecha:</strong> 
                         <span class="text-dark" id="modalFecha"></span>
                     </div>
@@ -176,14 +275,107 @@
 </div>
 
 <script>
+// Diccionario oficial de plantillas predeterminadas
+const plantillasComunicados = {
+    consejo: {
+        asunto: "CONVOCATORIA: Consejo de Profesores y Evaluación Técnica Pedagógica",
+        contenido: "Estimados(as) colegas docentes:\n\nPor disposición de la Dirección, se convoca a todo el plantel docente a la Reunión Ordinaria de Consejo de Profesores, a llevarse a cabo el día [FECHA] a horas [HORA] en la Sala de Profesores / Auditorio.\n\nPUNTOS A TRATAR:\n1. Evaluación del rendimiento y disciplina del periodo actual.\n2. Coordinación de actividades académicas e institucionales.\n3. Asuntos varios.\n\nSe encarece puntualidad y asistencia obligatoria.\n\nAtentamente,\nLa Dirección",
+        tipo: "general"
+    },
+    notas: {
+        asunto: "RECORDATORIO: Plazo Límite para Entrega de Calificaciones y Centralizadores",
+        contenido: "Estimado(a) Profesor(a):\n\nSe le recuerda cordialmente que la fecha límite impostergable para la carga y entrega de notas correspondientes al presente periodo académico concluye el día [FECHA] a horas [HORA].\n\nFavor verificar que todos los estudiantes cuenten con sus evaluaciones debidamente registradas en la plataforma antes del cierre del sistema para evitar observaciones en la emisión de boletines.\n\nAtentamente,\nDirección Académica y Secretaría",
+        tipo: "privado"
+    },
+    planificacion: {
+        asunto: "SOLICITUD: Presentación de Planificaciones Curriculares (PDC)",
+        contenido: "Estimado(a) colega docente:\n\nPor medio de la presente, se solicita la remisión de los Planes de Desarrollo Curricular (PDC) correspondientes al próximo mes/etapa académica.\n\nFecha límite de recepción en Dirección: [FECHA].\nFormato: Físico debidamente firmado o remitido en digital según corresponda.\n\nAgradecemos de antemano su constante esmero y dedicación pedagógica.\n\nAtentamente,\nComisión Pedagógica / Dirección",
+        tipo: "general"
+    },
+    civica: {
+        asunto: "ORGANIZACIÓN: Comisiones para Actividad Cívico-Cultural Institucional",
+        contenido: "A todo el Personal Docente:\n\nCon motivo de la conmemoración de [NOMBRE DE LA ACTIVIDAD O FECHA CÍVICA], se hace llegar el cronograma y designación de comisiones de trabajo para el evento a realizarse el día [FECHA].\n\nSe solicita a los responsables de cada área coordinar las tareas pertinentes con anticipación para garantizar el éxito y realce de nuestra institución.\n\nEl detalle de las comisiones se encuentra a disposición en secretaría.\n\nAtentamente,\nComité Organizador / Dirección",
+        tipo: "general"
+    },
+    emergencia: {
+        asunto: "CITACIÓN URGENTE: Reunión de Coordinación en Dirección",
+        contenido: "Estimado(a) Profesor(a):\n\nPor medio de la presente, se solicita su presencia con carácter de urgencia en la oficina de Dirección para el día [HOY / MAÑANA] a horas [HORA], a fin de tratar un asunto de coordinación académica / disciplinaria de suma importancia.\n\nRogamos confirmar su recepción.\n\nAtentamente,\nDirección Institucional",
+        tipo: "privado"
+    },
+    felicitacion: {
+        asunto: "RECONOCIMIENTO Y FELICITACIÓN: Destacada Labor Pedagógica e Institucional",
+        contenido: "Estimado(a) Profesor(a):\n\nLa Dirección y el equipo administrativo expresan su sincero reconocimiento y felicitación por su destacada participación y compromiso demostrados en [MOTIVO / ACTIVIDAD].\n\nSu vocación, puntualidad y entrega profesional enriquecen significativamente la formación de nuestros estudiantes y enaltecen a nuestra institución educativa.\n\n¡Muchas felicidades y continúe con ese valioso trabajo!\n\nAtentamente,\nDirección General",
+        tipo: "privado"
+    }
+};
+
 document.addEventListener('DOMContentLoaded', function() {
-    const modal = document.getElementById('modalUnico');
-    modal.addEventListener('show.bs.modal', function(event) {
-        const button = event.relatedTarget;
-        document.getElementById('modalTipo').textContent = button.getAttribute('data-tipo');
-        document.getElementById('modalFecha').textContent = button.getAttribute('data-fecha');
-        document.getElementById('modalContenido').textContent = button.getAttribute('data-contenido');
-    });
+    // 1. Manejo del visor modal de lectura de comunicados
+    const modalVer = document.getElementById('modalUnico');
+    if (modalVer) {
+        modalVer.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const destinatario = button.getAttribute('data-destinatario') || 'Profesor/a';
+            const tipo = button.getAttribute('data-tipo') || '';
+            const fecha = button.getAttribute('data-fecha') || '';
+            const contenido = button.getAttribute('data-contenido') || '';
+
+            const elDestinatario = document.getElementById('modalDestinatario');
+            const elTipo = document.getElementById('modalTipo');
+            const elFecha = document.getElementById('modalFecha');
+            const elContenido = document.getElementById('modalContenido');
+
+            if (elDestinatario) elDestinatario.textContent = destinatario;
+            if (elTipo) elTipo.textContent = tipo;
+            if (elFecha) elFecha.textContent = fecha;
+            if (elContenido) elContenido.textContent = contenido;
+        });
+    }
+
+    // 2. Sincronización automática de selector en nuevo comunicado (Modal)
+    const selectorProf = document.getElementById('selectorProfesorModal');
+    const selectorTipo = document.getElementById('selectorTipoModal');
+    if (selectorProf && selectorTipo) {
+        selectorProf.addEventListener('change', function() {
+            if (this.value === 'todos') {
+                selectorTipo.value = 'general';
+            }
+        });
+    }
+
+    // 3. Cargar plantillas en el Modal
+    const selPlantillaModal = document.getElementById('selectorPlantillaModal');
+    const inputAsuntoModal = document.getElementById('asuntoModal');
+    const txtContenidoModal = document.getElementById('contenidoModal');
+
+    if (selPlantillaModal) {
+        selPlantillaModal.addEventListener('change', function() {
+            const key = this.value;
+            if (key && plantillasComunicados[key]) {
+                inputAsuntoModal.value = plantillasComunicados[key].asunto;
+                txtContenidoModal.value = plantillasComunicados[key].contenido;
+                if (plantillasComunicados[key].tipo === 'general' && selectorProf && selectorProf.value === '') {
+                    selectorProf.value = 'todos';
+                    if (selectorTipo) selectorTipo.value = 'general';
+                }
+            }
+        });
+    }
+
+    // 4. Cargar plantillas en el Formulario Rápido (cuando hay docente activo)
+    const selPlantillaRapido = document.getElementById('selectorPlantillaRapido');
+    const inputAsuntoRapido = document.getElementById('asuntoRapido');
+    const txtContenidoRapido = document.getElementById('contenidoRapido');
+
+    if (selPlantillaRapido) {
+        selPlantillaRapido.addEventListener('change', function() {
+            const key = this.value;
+            if (key && plantillasComunicados[key]) {
+                inputAsuntoRapido.value = plantillasComunicados[key].asunto;
+                txtContenidoRapido.value = plantillasComunicados[key].contenido;
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

@@ -25,74 +25,17 @@ from reportlab.lib import colors
 from reportlab.platypus import Table, TableStyle, Paragraph
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 import qrcode
+from utils_pdf import ruta_logo, obtener_datos_institucion
 
 BOLIVIA_TZ = timezone(timedelta(hours=-4))
 
-# =============================================================================
-# FUNCIONES DINÁMICAS INSTITUCIONALES (INTEGRADAS DIRECTAMENTE)
-# =============================================================================
-
-def ruta_logo():
-    """Busca y devuelve la ruta del logo institucional si existe físicamente."""
-    try:
-        base_dir = current_app.root_path if current_app else os.getcwd()
-        posibles = [
-            os.path.join(base_dir, 'static', 'img', 'logo.png'),
-            os.path.join(base_dir, 'static', 'uploads', 'logo.png'),
-            os.path.join(base_dir, 'uploads', 'logo.png'),
-            os.path.join(base_dir, 'static', 'logo.png')
-        ]
-        for p in posibles:
-            if os.path.exists(p):
-                return p
-    except Exception:
-        pass
-    return None
-
 def nombre_institucion():
-    """
-    Obtiene el nombre de la institución dinámicamente de variables o base de datos.
-    Si no existe ninguna configuración, utiliza un nombre genérico.
-    """
-    try:
-        if current_app:
-            nom_cfg = current_app.config.get('NOMBRE_INSTITUCION') or current_app.config.get('INSTITUCION_NOMBRE')
-            if nom_cfg and str(nom_cfg).strip():
-                return str(nom_cfg).strip()
-
-        from models import db
-        try:
-            from models import Configuracion
-            cfg = Configuracion.query.filter_by(clave='nombre_institucion').first()
-            if cfg and cfg.valor and cfg.valor.strip():
-                return cfg.valor.strip()
-        except Exception:
-            pass
-
-        try:
-            from models import Institucion
-            inst = Institucion.query.first()
-            if inst:
-                nom = getattr(inst, 'nombre', None) or getattr(inst, 'institucion_linea1', None)
-                if nom and str(nom).strip():
-                    return str(nom).strip()
-        except Exception:
-            pass
-    except Exception:
-        pass
-
-    return "UNIDAD EDUCATIVA"
+    nom, _, _ = obtener_datos_institucion()
+    return nom
 
 def linea_secundaria_institucion():
-    """Subtítulo genérico institucional."""
-    try:
-        if current_app:
-            sub = current_app.config.get('INSTITUCION_SUBTITULO')
-            if sub and str(sub).strip():
-                return str(sub).strip()
-    except Exception:
-        pass
-    return "SEGUIMIENTO ACADÉMICO INTEGRAL"
+    _, sub, _ = obtener_datos_institucion()
+    return sub
 
 def guardar_boletin_localmente(pdf_bytes, est_id, anio_actual, est_rude):
     """Guarda físicamente el PDF generado reemplazando cualquier copia previa."""
@@ -142,7 +85,7 @@ def _render_nidito(c_canvas, width, height, estudiante, calificaciones, materias
 
     c_canvas.setFont("Helvetica", 8)
     c_canvas.setFillColor(colors.HexColor('#4A5568'))
-    c_canvas.drawString(76, height - 40, "EDUCACIÓN INICIAL EN FAMILIA COMUNITARIA - SEGUIMIENTO INTEGRAL")
+    c_canvas.drawString(76, height - 40, linea_secundaria_institucion().upper())
 
     c_canvas.setFont("Helvetica-Bold", 10.5)
     c_canvas.setFillColor(colors.HexColor('#1E4E79'))

@@ -3,7 +3,7 @@ import io
 import os
 import tempfile
 import qrcode
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.pdfgen import canvas
@@ -14,6 +14,7 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from utils_pdf import nombre_institucion, ruta_logo
 
+BOLIVIA_TZ = timezone(timedelta(hours=-4))
 
 def obtener_fecha_hora_local():
     """
@@ -105,7 +106,6 @@ def generar_boletin_nidito_pdf(estudiante, calificaciones=None, materias=None, c
     materias_map = {}
     for c in calificaciones:
         m_obj = getattr(c, "materia", None)
-        # En Nidito, el área viene en 'tipo' o en materia.nombre
         tipo_area = getattr(c, "tipo", None) or (c.get("tipo") if isinstance(c, dict) else None)
         m_nom = str(tipo_area or getattr(m_obj, "nombre", None) or getattr(c, "materia_nombre", "") or "").strip()
         if not m_nom or m_nom.lower() in ["materia eliminada", "none"]:

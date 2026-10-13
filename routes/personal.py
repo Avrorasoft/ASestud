@@ -31,7 +31,7 @@ from flask import (
 
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash
-from utils_pdf import cabecera_logo
+from utils_pdf import cabecera_logo, obtener_datos_institucion
 
 from models import (
     db,
@@ -1378,11 +1378,9 @@ def generar_recibo_personal_pdf(pago, persona, tipo_db):
         elements.append(logo)
         elements.append(Spacer(1, 0.05 * inch))
 
-    elements.append(Paragraph("COLEGIO DR. ANTONIO VACA DÍEZ", title_style))
-    elements.append(Paragraph(
-        "Dirección Administrativa y Académica - Riberalta, Beni, Bolivia",
-        header_style
-    ))
+    nom_inst, sub_inst, _ = obtener_datos_institucion()
+    elements.append(Paragraph(nom_inst, title_style))
+    elements.append(Paragraph(sub_inst, header_style))
     elements.append(Spacer(1, 0.08 * inch))
 
     elements.append(Paragraph(
@@ -1579,7 +1577,7 @@ def generar_recibo_personal_pdf(pago, persona, tipo_db):
 
     footer_text = Paragraph(
         f"<i>Este documento es un comprobante oficial de pago. Conserve este registro. "
-        f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')} - Colegio Dr. Antonio Vaca Díez.</i>",
+        f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')} - {nom_inst}.</i>",
         small_style
     )
 
@@ -1667,11 +1665,9 @@ def generar_recibo_adelanto_pdf(pago, persona, tipo_db):
         elements.append(logo)
         elements.append(Spacer(1, 0.05 * inch))
 
-    elements.append(Paragraph("COLEGIO DR. ANTONIO VACA DÍEZ", title_style))
-    elements.append(Paragraph(
-        "Dirección Administrativa y Académica - Riberalta, Beni, Bolivia",
-        header_style
-    ))
+    nom_inst, sub_inst, _ = obtener_datos_institucion()
+    elements.append(Paragraph(nom_inst, title_style))
+    elements.append(Paragraph(sub_inst, header_style))
     elements.append(Spacer(1, 0.08 * inch))
 
     elements.append(Paragraph(

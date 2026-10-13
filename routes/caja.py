@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
-from models import db, Pago, Gasto, Estudiante, PagoPersonal, IngresoCaja
+from models import db, Pago, Gasto, Estudiante, PagoPersonal, IngresoCaja, ConfiguracionInstitucion
 from sqlalchemy import func, or_, and_
 from datetime import datetime, date, time, timedelta
 
@@ -398,7 +398,8 @@ def registrar_ingreso_directo():
             db.session.commit()
 
             flash(f'✅ Ingreso de Bs. {monto:.2f} registrado exitosamente en el Turno {turno_responsable}.', 'success')
-            return render_template('caja/recibo_ingreso.html', ingreso=nuevo_ingreso)
+            config_inst = ConfiguracionInstitucion.query.first()
+            return render_template('caja/recibo_ingreso.html', ingreso=nuevo_ingreso, config_institucion=config_inst)
 
         except Exception as e:
             db.session.rollback()
@@ -428,7 +429,8 @@ def registrar_ingreso_directo():
 @caja_bp.route('/recibo_ingreso/<int:id>')
 def recibo_ingreso_directo(id):
     ingreso = IngresoCaja.query.get_or_404(id)
-    return render_template('caja/recibo_ingreso.html', ingreso=ingreso)
+    config_inst = ConfiguracionInstitucion.query.first()
+    return render_template('caja/recibo_ingreso.html', ingreso=ingreso, config_institucion=config_inst)
 
 
 # ==============================================================================

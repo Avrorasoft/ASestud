@@ -516,28 +516,90 @@ def reset_fabrica():
         return redirect(url_for('dashboard.index'))
 
     try:
-        # 1. LIMPIEZA DE BASE DE DATOS (Registros operativos)
-        for modelo in [
-            InformeEconomico, HistorialCalificacion, Egresado, Mensaje,
-            Gasto, PagoPersonal, Pago, Calificacion, Falta, Materia,
-            Padre, Estudiante, Profesor, PersonalAdministrativo
-        ]:
-            db.session.query(modelo).delete()
+        # Importación de modelos existentes en models.py
+        import models
+        from models import (
+            db, Pago, Gasto, Estudiante, Padre, 
+            Calificacion, Asistencia, Mensaje,
+            PersonalAdministrativo, ConfiguracionSuperadmin, ConfiguracionInstitucion
+        )
 
-        # 2. LIMPIEZA DE CONFIGURACIONES INSTITUCIONALES (Para vaciar el formulario)
-        claves_institucionales = [
-            'institucion_linea1', 'institucion_linea2', 'institucion_linea3',
-            'institucion_direccion', 'institucion_telefono', 'institucion_ciudad',
-            'institucion_email', 'institucion_gestion', 'institucion_logo'
+        # 1. PURGA EXPLÍCITA POR ORM
+        # Intentar purgar cada entidad financiera y académica de forma segura
+        entidades_a_purgar = [
+            'IngresoCaja', 'Pago', 'Gasto', 'PagoPersonal',
+            'Calificacion', 'Asistencia', 'Mensaje', 'Padre', 'Estudiante'
         ]
-        db.session.query(ConfiguracionSuperadmin).filter(
-            ConfiguracionSuperadmin.clave.in_(claves_institucionales)
-        ).delete(synchronize_session=False)
 
+        for entidad_nombre in entidades_a_purgar:
+            modelo = getattr(models, entidad_nombre, None)
+            if modelo is not None:
+                try:
+                    modelo.query.delete()
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+
+        # 2. PURGA DIRECTA EN SQLITE (Garantía física a nivel de base de datos)
+        conn = db.engine.raw_connection()
+        cursor = conn.cursor()
+        cursor.execute("PRAGMA foreign_keys = OFF;")
+
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%';")
+        todas_las_tablas = [fila[0] for fila in cursor.fetchall()]
+
+        for nombre_tabla in todas_las_tablas:
+            try:
+                cursor.execute(f"DELETE FROM [{nombre_tabla}];")
+            except Exception:
+                pass
+
+        try:
+            cursor.execute("DELETE FROM sqlite_sequence;")
+        except Exception:
+            pass
+
+        conn.commit()
+        cursor.execute("PRAGMA foreign_keys = ON;")
+        conn.commit()
+        conn.close()
+
+        # 3. EXPIRAR Y REMOVER SESIÓN DE MEMORIA EN SQLALCHEMY
+        db.session.expire_all()
+        db.session.remove()
+
+        # 4. RECREACIÓN DE ACCESO SUPERADMINISTRADOR Y CONFIGURACIÓN BASE
+        from werkzeug.security import generate_password_hash
+
+        admin_default = PersonalAdministrativo(
+            ci="0000000",
+            apellidos="General",
+            nombres="Administrador",
+            cargo="Superadministrador",
+            usuario="admin",
+            correo="admin@institucion.edu",
+            contrasena_hash=generate_password_hash("admin2026"),
+            estado="Activo"
+        )
+        db.session.add(admin_default)
+
+        config_inicial = ConfiguracionInstitucion(
+            institucion_linea1="Sistema de Gestion Escolar",
+            institucion_linea2="Modulo Academico Institucional",
+            institucion_logo="logo_institucion.png"
+        )
+        db.session.add(config_inicial)
+
+        cfg_flag = ConfiguracionSuperadmin(clave='institucion_configurada', valor='true')
+        cfg_pass_sis = ConfiguracionSuperadmin(clave='sistema_password', valor='VacaDiez2026')
+        cfg_pass_adm = ConfiguracionSuperadmin(clave='superadmin_password', valor='admin2026')
+        db.session.add_all([cfg_flag, cfg_pass_sis, cfg_pass_adm])
         db.session.commit()
 
-        # 3. PURGA DESTRUCTIVA DE CARPETAS MULTIMEDIA (WINDOWS BRUTE FORCE)
+        # 5. PURGA COMPLETA DE ARCHIVOS EN DISCO (UPLOADS Y STATIC)
+        base_upload = os.path.abspath(current_app.config.get('UPLOAD_FOLDER', r"C:\ASestud\uploads"))
         carpetas_limpiar = [
+            base_upload,
             os.path.join(current_app.root_path, 'static', 'uploads'),
             os.path.join(current_app.root_path, 'static', 'recibos'),
             os.path.join(current_app.root_path, 'static', 'boletines'),
@@ -547,34 +609,34 @@ def reset_fabrica():
 
         for carpeta in carpetas_limpiar:
             if os.path.exists(carpeta):
-                # Intento 1: shutil.rmtree con cambio de permisos en tiempo real
                 try:
                     shutil.rmtree(carpeta, onerror=_force_remove_readonly)
                 except Exception:
                     pass
-                
-                # Intento 2: Aniquilación a nivel de sistema operativo (CMD Windows)
                 if os.path.exists(carpeta):
                     try:
                         subprocess.call(['cmd', '/c', 'rmdir', '/S', '/Q', carpeta])
                     except Exception:
                         pass
 
-        # 4. RECONSTRUCCIÓN DE ESTRUCTURA BÁSICA (Evitar errores 404/500 por carpetas faltantes)
+        # 6. RECONSTRUCCIÓN DE ESTRUCTURA VACÍA DE DIRECTORIOS
         carpetas_recrear = [
-            os.path.join(current_app.root_path, 'static', 'uploads', 'estudiantes'),
-            os.path.join(current_app.root_path, 'static', 'uploads', 'personal'),
-            os.path.join(current_app.root_path, 'static', 'uploads', 'chat'),
-            os.path.join(current_app.root_path, 'static', 'uploads', 'archivos'),
-            os.path.join(current_app.root_path, 'static', 'recibos'),
-            os.path.join(current_app.root_path, 'static', 'boletines'),
-            os.path.join(current_app.root_path, 'static', 'recibos_personal'),
+            base_upload,
+            os.path.join(base_upload, 'boletines'),
+            os.path.join(base_upload, 'chat'),
+            os.path.join(base_upload, 'estudiantes'),
+            os.path.join(base_upload, 'personal'),
+            os.path.join(base_upload, 'archivos'),
             os.path.join(current_app.root_path, 'static', 'backups')
         ]
         for carpeta in carpetas_recrear:
             os.makedirs(carpeta, exist_ok=True)
 
-        flash('⚠️ SISTEMA RESETEADO A FÁBRICA. BASE DE DATOS Y ARCHIVOS PURGADOS TOTALMENTE.', 'warning')
+        # 7. LIMPIEZA FINAL DE SESIÓN
+        db.session.expire_all()
+        db.session.remove()
+
+        flash('⚠️ SISTEMA RESETEADO A FÁBRICA. TODAS LAS TABLAS CONTABLES HAN SIDO PURGADAS AL 100%. BALANCE EN BS. 0.00.', 'warning')
 
     except Exception as e:
         db.session.rollback()

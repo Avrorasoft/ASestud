@@ -843,7 +843,7 @@ def pagar_estudiante(id):
             ).all()
             
             abonado_previo = sum(float(p.monto_pagado or 0.0) for p in pagos_previos if getattr(p, 'estado', 'Pagado') != 'Anulado')
-            desc_previo = sum(float(p.descuento or 0.0) for p in pagos_previos if getattr(p, 'estado', 'Pagado') != 'Anulado')
+            desc_previo = sum(float(p.descuento or 0.0) for p in pagos_previo if getattr(p, 'estado', 'Pagado') != 'Anulado')
             
             costo_neto_mes = max(0.0, monto_mensual - desc_previo)
             saldo_mes = max(0.0, costo_neto_mes - abonado_previo)
@@ -1020,14 +1020,15 @@ def generar_recibo_pago_pdf(pagos, estudiante, padre, monto_total, descuento, fe
 
     elements = []
 
-    from utils_pdf import cabecera_logo, nombre_institucion
+    from utils_pdf import cabecera_logo, obtener_datos_institucion
+    nombre_inst, subtitulo_inst, _ = obtener_datos_institucion()
+
     logo = cabecera_logo()
     if logo:
         elements.append(logo)
         elements.append(Spacer(1, 0.1 * inch))
-    elements.append(Paragraph(nombre_institucion().upper(), title_style))
-    elements.append(Paragraph("Dirección Administrativa y Académica", header_style))
-    elements.append(Paragraph("Riberalta, Beni, Bolivia", header_style))
+    elements.append(Paragraph(nombre_inst, title_style))
+    elements.append(Paragraph(subtitulo_inst, header_style))
     elements.append(Spacer(1, 0.3 * inch))
     elements.append(Paragraph("RECIBO OFICIAL DE PAGO", title_style))
     elements.append(Spacer(1, 0.2 * inch))
@@ -1219,8 +1220,11 @@ def enviar_recibo_chat(id):
         monto_total = sum(p.monto_pagado for p in pagos_recientes)
         meses_pagados = ', '.join([p.mes for p in pagos_recientes])
 
+        cfg_inst = ConfiguracionInstitucion.query.first()
+        nom_col = cfg_inst.institucion_linea1.strip().upper() if (cfg_inst and cfg_inst.institucion_linea1) else "SISTEMA DE GESTIÓN ESCOLAR"
+
         contenido = (
-            f"COLEGIO DR. ANTONIO VACA DÍEZ\nCOMPROBANTE OFICIAL DE PAGO\n\n"
+            f"{nom_col}\nCOMPROBANTE OFICIAL DE PAGO\n\n"
             f"Estudiante: {est.nombres} {est.apellidos}\nC.I.: {est.ci}\nCurso: {est.curso}\n"
             f"Meses pagados: {meses_pagados}\nMonto total: Bs. {monto_total:.2f}\n\n"
             f"---ARCHIVO_ADJUNTO---\n{pdf_url}"
@@ -1547,8 +1551,19 @@ def enviar_boletin_chat(id):
     try:
         pdf_url = f"/static/boletines/{boletin_filename}"
 
+        pagos_recientes = Pago.query.filter_by(
+            estudiante_id=id,
+            estado='Pagado'
+        ).order_by(Pago.fecha_pago.desc()).limit(5).all()
+
+        monto_total = sum(p.monto_pagado for p in pagos_recientes)
+        meses_pagados = ', '.join([p.mes for p in pagos_recientes])
+
+        cfg_inst = ConfiguracionInstitucion.query.first()
+        nom_col = cfg_inst.institucion_linea1.strip().upper() if (cfg_inst and cfg_inst.institucion_linea1) else "SISTEMA DE GESTIÓN ESCOLAR"
+
         contenido = (
-            f"COLEGIO DR. ANTONIO VACA DÍEZ\nCOMPROBANTE OFICIAL DE PAGO\n\n"
+            f"{nom_col}\nCOMPROBANTE OFICIAL DE PAGO\n\n"
             f"Estudiante: {est.nombres} {est.apellidos}\nC.I.: {est.ci}\nCurso: {est.curso}\n"
             f"Meses pagados: {meses_pagados}\nMonto total: Bs. {monto_total:.2f}\n\n"
             f"---ARCHIVO_ADJUNTO---\n{pdf_url}"

@@ -466,17 +466,8 @@ def generar_recibo_pago_pdf_simple(pago, estudiante, padre):
     except ImportError:
         raise Exception("ReportLab no está instalado.")
     
-    inst_linea1 = "SISTEMA DE GESTIÓN ESCOLAR"
-    inst_linea2 = "Dirección Administrativa y Financiera"
-    try:
-        c1 = ConfiguracionSuperadmin.query.filter_by(clave='institucion_linea1').first()
-        if c1 and c1.valor:
-            inst_linea1 = c1.valor
-        c2 = ConfiguracionSuperadmin.query.filter_by(clave='institucion_linea2').first()
-        if c2 and c2.valor:
-            inst_linea2 = c2.valor
-    except Exception:
-        pass
+    from utils_pdf import obtener_datos_institucion
+    inst_linea1, inst_linea2, _ = obtener_datos_institucion()
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter, 
